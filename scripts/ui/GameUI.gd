@@ -118,7 +118,6 @@ func _setup_ui():
 	squad_header_btn.focus_mode = Control.FOCUS_NONE
 	squad_header_btn.pressed.connect(_on_squad_detail_pressed)
 
-	
 	# Status Glossary Button
 	var glossary_btn = Button.new()
 	glossary_btn.text = "?"
@@ -133,13 +132,22 @@ func _setup_ui():
 	header_hbox.add_child(glossary_btn)
 	
 	squad_container.add_child(header_hbox)
-	# squad_container.add_child(squad_header_btn) # Removed original add
 
-	
 	# Dynamic List Container (So we don't clear the button)
 	squad_list_container = VBoxContainer.new()
 	squad_list_container.add_theme_constant_override("separation", 10)
 	squad_container.add_child(squad_list_container)
+
+
+	
+	# Sync Signals
+	if SignalBus:
+		if SignalBus.has_signal("on_ui_select_unit"):
+			if not SignalBus.on_ui_select_unit.is_connected(_on_external_unit_selection):
+				SignalBus.on_ui_select_unit.connect(_on_external_unit_selection)
+			
+	# Init Overlay Logic
+	_setup_overlay_elements()
 
 	# 2. BOTTOM PANEL (Card + Actions)
 	var bottom_panel = PanelContainer.new()
@@ -1195,6 +1203,32 @@ func _create_squad_frame(unit):
 		style.border_width_right = 2
 		style.border_width_bottom = 2
 		style.border_color = Color.WHITE
+
+
+func _on_external_unit_selection(unit):
+	selected_unit = unit
+	_update_squad_selection_visuals(unit)
+	update_unit_info(unit)
+
+func _update_squad_selection_visuals(active_unit):
+	if not squad_list_container: return
+	
+	for child in squad_list_container.get_children():
+		if child.has_meta("unit_ref") and child.has_meta("frame_style"):
+			var u = child.get_meta("unit_ref")
+			var style = child.get_meta("frame_style")
+			
+			if u == active_unit:
+				style.border_width_left = 2
+				style.border_width_top = 2
+				style.border_width_right = 2
+				style.border_width_bottom = 2
+				style.border_color = Color.WHITE
+			else:
+				style.border_width_left = 0
+				style.border_width_top = 0
+				style.border_width_right = 0
+				style.border_width_bottom = 0
 
 
 # ------------------------------------------------------------------------------

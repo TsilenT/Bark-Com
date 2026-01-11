@@ -128,14 +128,12 @@ func _setup_astar():
 					astar.connect_points(id, n_id)
 
 	# 3. Apply Traverse Weights (Ladders are slow)
+	# UPDATE: User requested Ladders cost 1 AP (standard) but cannot be stopped on.
 	for coord in grid_data:
-		var type = grid_data[coord].get("type", TileType.GROUND)
 		var id = _get_point_id(coord)
 		if astar.has_point(id):
-			if type == TileType.LADDER:
-				astar.set_point_weight_scale(id, 2.0)
-			else:
-				astar.set_point_weight_scale(id, 1.0)  # Default
+			# Uniform weight provided logic handles blocking elsewhere
+			astar.set_point_weight_scale(id, 1.0)
 
 
 func get_move_path(start: Vector2, end: Vector2) -> Array[Vector2]:
@@ -164,9 +162,10 @@ func calculate_path_cost(path: Array[Vector2]) -> int:
 		
 		# Step Cost (Matches get_reachable_tiles logic)
 		var cost = 1
-		var type = grid_data[curr].get("type", TileType.GROUND)
-		if type == TileType.LADDER:
-			cost = 2
+		# UPDATE: Ladders now cost 1.
+		# var type = grid_data[curr].get("type", TileType.GROUND)
+		# if type == TileType.LADDER:
+		# 	cost = 2
 			
 		total_cost += cost
 
@@ -365,8 +364,9 @@ func get_reachable_tiles(start_pos: Vector2, max_move: int) -> Array[Vector2]:
 			
 			# Calculate Cost to neighbor
 			var move_cost = 1
-			if grid_data[n_pos].get("type") == TileType.LADDER:
-				move_cost = 2
+			# UPDATE: Ladders cost 1 now.
+			# if grid_data[n_pos].get("type") == TileType.LADDER:
+			# 	move_cost = 2
 				
 			var new_cost = current.cost + move_cost
 			

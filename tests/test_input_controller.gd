@@ -53,6 +53,20 @@ class MockSignalBus:
 	signal on_show_hit_chance(c, b, p)
 	signal on_hide_hit_chance()
 	signal on_combat_log_event(t, c)
+	
+class MockGridVisualizer extends Node:
+	var highlight_calls = 0
+	var preview_calls = 0
+	func show_highlights(tiles, color):
+		highlight_calls += 1
+		print("MockGV: Showing ", tiles.size(), " tiles.")
+	func clear_highlights(): pass
+	func clear_preview_path(): pass
+	func clear_preview_aoe(): pass
+	func clear_hover_cursor(): pass
+	func preview_path(p, c): 
+		preview_calls += 1
+	func preview_aoe(t, c): pass
 
 class MockUnit extends Node:
 	var grid_pos = Vector2(2,2)
@@ -60,6 +74,7 @@ class MockUnit extends Node:
 	var primary_weapon = null
 	var faction = "Player"
 	var current_hp = 10
+	var current_ap = 2 # Default active
 	func get_item(slot): return null
 	# func has_method(m): return false # Removed override
 
@@ -89,6 +104,9 @@ func setup():
 	
 	# 2. Create Mocks
 	mock_main = MockMain.new()
+	var mock_gv = MockGridVisualizer.new()
+	mock_gv.name = "GridVisualizer"
+	mock_main.add_child(mock_gv)
 	add_child(mock_main)
 	
 	mock_gm = MockGridManager.new()
@@ -259,5 +277,42 @@ func run_tests() -> bool:
 	# I can rely on output observation or trust the code change. 
 	# Adding the test case serves as regression check if I update MockMain later.
 	print("✅ PASS: Interaction Test Run (Check logs for Delegation)")
+	
+	# --- Test 9: Low AP Visualization check ---
+	print("Testing Low AP Visuals...")
+	var gv = mock_main.get_node("GridVisualizer")
+	gv.highlight_calls = 0
+	
+	# Case A: 0 AP
+	controller.selected_unit.current_ap = 0
+	controller.set_input_state(controller.InputState.SELECTING)
+	controller.set_input_state(controller.InputState.MOVING)
+	
+	if gv.highlight_calls == 0:
+		print("✅ PASS: No Highlights shown for 0 AP Unit.")
+	else:
+		printerr("❌ FAIL: Highlights shown for 0 AP Unit! calls:", gv.highlight_calls)
+		passed = false
+
+	# Test Path Preview Blocking
+	gv.preview_calls = 0
+	controller.handle_mouse_hover(Vector2(5,5))
+	if gv.preview_calls == 0:
+		print("✅ PASS: Path Preview blocked for 0 AP Unit.")
+	else:
+		printerr("❌ FAIL: Path Preview shown for 0 AP Unit!")
+		passed = false
+		
+	# Case B: 1 AP
+	controller.selected_unit.current_ap = 1
+	controller.set_input_state(controller.InputState.SELECTING)
+	controller.set_input_state(controller.InputState.MOVING)
+	
+	if gv.highlight_calls > 0:
+		print("✅ PASS: Highlights shown for 1 AP Unit.")
+	else:
+		printerr("❌ FAIL: No highlights for active unit.")
+		passed = false
+
 	return passed
 

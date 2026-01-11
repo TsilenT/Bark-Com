@@ -27,6 +27,7 @@ var selected_unit = null
 var selected_ability = null # Ability Resource/Script
 var pending_item_action = null
 var pending_item_slot: int = -1
+var _last_debug_hover: Vector2 = Vector2(-999, -999)
 
 # Signals (To update UI/Visuals)
 signal input_state_changed(new_state)
@@ -54,8 +55,13 @@ func set_input_state(new_state: int):
 	if new_state == InputState.MOVING and selected_unit:
 		var gv = _get_grid_visualizer()
 		if gv and grid_manager:
-			var reachable = grid_manager.get_reachable_tiles(selected_unit.grid_pos, selected_unit.mobility)
-			gv.show_highlights(reachable, Color(0, 0, 1, 0.4)) # Blue transparent
+			# Only show reachable tiles if unit has AP to move
+			if _can_unit_move():
+				var reachable = grid_manager.get_reachable_tiles(selected_unit.grid_pos, selected_unit.mobility)
+				gv.show_highlights(reachable, Color(0, 1, 1, 0.4)) # Cyan transparent
+			else:
+				# Feedback handled by enter_movement_mode or suppressed
+				pass
 			
 	if new_state == InputState.ABILITY_TARGETING and selected_unit and selected_ability:
 		var gv = _get_grid_visualizer()
@@ -262,6 +268,12 @@ func _handle_move_click(grid_pos: Vector2):
 	print("PMC: _handle_move_click. Unit: ", selected_unit)
 	if not selected_unit: return
 
+	# CHECK AP
+	if not _can_unit_move():
+		print("PMC: Unit has 0 AP. Ignoring Move Click.")
+		cancel_action()
+		return
+
 	# 0. Friendly Unit Switching (Overriding Move)
 	var clicked_unit = _get_unit_at(grid_pos)
 	if clicked_unit and clicked_unit.get("faction") == "Player" and clicked_unit != selected_unit:
@@ -287,10 +299,9 @@ func _handle_move_click(grid_pos: Vector2):
 	var path = grid_manager.get_move_path(selected_unit.grid_pos, grid_pos)
 	print("PMC: Path size: ", path.size())
 	if path.size() > 0:
-		# Validation: Mobility
 		var cost = grid_manager.calculate_path_cost(path)
 		if cost > selected_unit.mobility:
-			print("PMC: Selected move invalid. Too far. Cost: ", cost)
+			print("PMC: Selected move invalid. Too far. Cost: ", cost, " > ", selected_unit.mobility)
 			if _signal_bus:
 				_signal_bus.on_combat_log_event.emit("Too Far!", Color.ORANGE)
 			return
@@ -364,6 +375,10 @@ func _handle_item_click(grid_pos: Vector2):
 
 func _preview_movement(grid_pos: Vector2, gv: Node):
 	if not selected_unit: return
+	
+	if not _can_unit_move():
+		gv.clear_preview_path()
+		return
 	
 	var path = grid_manager.get_move_path(selected_unit.grid_pos, grid_pos)
 	if path.size() > 0:
@@ -580,3 +595,25 @@ func _get_interactive_at(grid_pos: Vector2):
 		if is_instance_valid(p) and "grid_pos" in p and p.grid_pos == grid_pos:
 			return p
 	return null
+
+# --- Public Methods (Called by Main/UI) ---
+
+func enter_movement_mode():
+	if not selected_unit: return
+	
+	# Centralized AP Check
+	if not _can_unit_move():
+		if game_ui and game_ui.has_method("log_message"):
+			game_ui.log_message("Units needs at least 1 AP to move.")
+		return # Do not switch state
+		
+	# Pre-Move Logic (Refresh Pathfinding)
+	if grid_manager and turn_manager:
+		grid_manager.refresh_pathfinding(turn_manager.units, selected_unit)
+		
+	# Switch State (Visuals handled in set_input_state)
+	set_input_state(InputState.MOVING)
+
+func _can_unit_move() -> bool:
+	if not selected_unit: return false
+	return selected_unit.current_ap >= 1

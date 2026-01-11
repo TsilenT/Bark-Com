@@ -1311,20 +1311,9 @@ func _on_ui_action(action):
 
 	if action == "Move":
 		if player_controller:
-			player_controller.set_input_state(player_controller.InputState.MOVING)
+			player_controller.enter_movement_mode()
 		print("Select a tile to Move...")
-		
-		# VISUALIZE MOVEMENT (Static Highlights)
-		if selected_unit and grid_manager and turn_manager:
-			# Ensure pathfinding knows about other units
-			grid_manager.refresh_pathfinding(turn_manager.units, selected_unit)
-			
-			var move_range = selected_unit.mobility
-			var reachable = grid_manager.get_reachable_tiles(selected_unit.grid_pos, move_range)
-			
-			var gv = get_node("GridVisualizer")
-			if gv:
-				gv.show_highlights(reachable, Color.CYAN)
+		# Visualization delegated to PlayerController
 	elif action == "Attack":
 		if player_controller:
 			player_controller.set_input_state(player_controller.InputState.TARGETING)
