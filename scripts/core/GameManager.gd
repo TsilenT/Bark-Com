@@ -47,7 +47,10 @@ const BOND_LEVEL_2 = 25  # Packmates (+10 Aim)
 const BOND_LEVEL_3 = 50  # Soul Pups (Berserk Vengeance)
 
 # Init removed (Autoload)
-# func _init():
+func _init():
+	if "--unit-test" in OS.get_cmdline_args():
+		save_file_path = "user://test_savegame.dat"
+		print("GameManager: TEST MOCK ENABLED. Forcing save path to: ", save_file_path)
 # 	if not instance:
 # 		instance = self
 

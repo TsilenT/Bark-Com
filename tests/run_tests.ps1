@@ -41,7 +41,7 @@ function Run-GodotTest {
 
 # 1. Run Scenes
 foreach ($scene in $TestScenes) {
-    $result = Run-GodotTest -Name $scene.Name -Arguments "--headless --path . `"$($scene.FullName)`""
+    $result = Run-GodotTest -Name $scene.Name -Arguments "--headless --unit-test --path . `"$($scene.FullName)`""
     if ($result -ne 0) { $GlobalExitCode = 1 }
 }
 
@@ -50,7 +50,7 @@ foreach ($script in $TestScripts) {
     # Check if script is a test runner (extends SceneTree/MainLoop)
     $Content = Get-Content $script.FullName -Raw
     if ($Content -match "extends\s+(SceneTree|MainLoop)") {
-        $result = Run-GodotTest -Name $script.Name -Arguments "--headless -s `"$($script.FullName)`""
+        $result = Run-GodotTest -Name $script.Name -Arguments "--headless --unit-test -s `"$($script.FullName)`""
         if ($result -ne 0) { $GlobalExitCode = 1 }
     }
 }

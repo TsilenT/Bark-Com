@@ -11,13 +11,8 @@ func _ready():
 	
 	# Clean up previous runs
 	var dir = DirAccess.open("user://")
-	# Clean BOTH test and potential real save file to prevent logic collision?
-	# Ideally we should backup the real one, but running tests locally on dev machine is risky.
-	# The user is running this via pre-commit, so it's a dev environment.
-	# Safety: Only delete if it looks like a test artifact? No, the test writes to 'savegame.dat'.
-	# We must clean it.
-	if dir.file_exists("savegame.dat"):
-		dir.remove("savegame.dat")
+	
+	# ONLY delete the test save file. NEVER touch the real savegame.dat.
 	if dir.file_exists("test_savegame.dat"):
 		dir.remove("test_savegame.dat")
 		
@@ -99,6 +94,7 @@ func _test_save_load_cycle():
 func _test_mission_completion_roster_integrity():
 	print("\n[TEST] Mission Completion & Roster Safety...")
 	gm = game_manager_script.new()
+	gm.save_file_path = "user://test_savegame.dat" # CRITICAL: Isolation
 	add_child(gm)
 	
 	gm.roster.clear()
@@ -168,6 +164,7 @@ func _test_iron_dog_logic():
 func _test_inventory_null_filtering():
 	print("\n[TEST] Inventory Null Filtering (Unknown Item Fix)...")
 	gm = game_manager_script.new()
+	gm.save_file_path = "user://test_savegame.dat" # CRITICAL: Isolation
 	add_child(gm)
 	
 	gm.roster.clear()
