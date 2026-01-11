@@ -486,6 +486,7 @@ func _on_sb_turn_changed(phase_name: String, turn_number: int):
 	# Detect Player Turn Start to refresh ability cooldown visuals
 	if "PLAYER" in phase_name:
 		if selected_unit:
+			_update_unit_card()
 			_refresh_action_bar(selected_unit)
 
 

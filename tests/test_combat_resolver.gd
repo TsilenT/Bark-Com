@@ -45,6 +45,7 @@ func _ready():
 	test_range_falloff()
 	test_min_hit_chance()
 	test_max_hit_chance()
+	test_null_target()
 	
 	print("--- ALL TESTS PASSED ---")
 	get_tree().quit()
@@ -110,3 +111,13 @@ func test_max_hit_chance():
 	
 	var result = CombatResolver.calculate_hit_chance(attacker, target, gm)
 	assert_eq(int(result["hit_chance"]), 100, "Maximum Hit Chance Clamp (100%)")
+	
+func test_null_target():
+	var gm = MockGridManager.new()
+	var attacker = MockUnit.new()
+	
+	# Pass null as target
+	var result = CombatResolver.calculate_hit_chance(attacker, null, gm)
+	
+	assert_eq(int(result["hit_chance"]), 0, "Null Target Safety (Hit Chance)")
+	assert_eq(result["breakdown"], "No Target", "Null Target Safety (Breakdown)")

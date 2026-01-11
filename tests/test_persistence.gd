@@ -24,7 +24,7 @@ func _ready():
 	# Setup fake user directory logic by checking if we are in tmp dir?
 	# We rely on CLI --user-data-dir. 
 	
-	_run_tests()
+	await _run_tests()
 	
 	if failures > 0:
 		print("❌ FAILED: ", failures, " tests failed.")
@@ -45,6 +45,7 @@ func _run_tests():
 	print("--- Starting Persistence Tests ---")
 	await _test_save_load_cycle()
 	_test_mission_completion_roster_integrity()
+	_test_inventory_null_filtering()
 	_test_iron_dog_logic()
 	print("--- Finished Persistence Tests ---")
 
@@ -139,6 +140,7 @@ func _test_mission_completion_roster_integrity():
 func _test_iron_dog_logic():
 	print("\n[TEST] Iron Dog Wipe...")
 	gm = game_manager_script.new()
+	gm.save_file_path = "user://test_savegame.dat"
 	add_child(gm)
 	gm.iron_dog_mode = true
 	gm.roster.clear()
@@ -146,19 +148,51 @@ func _test_iron_dog_logic():
 	gm.deploying_squad = [gm.roster[0]]
 	
 	# Create dummy save
-	var f = FileAccess.open("user://savegame.dat", FileAccess.WRITE)
+	var f = FileAccess.open("user://test_savegame.dat", FileAccess.WRITE)
 	f.store_string("test")
 	f.close()
+	await get_tree().process_frame # Flush IO
 	
 	# Register death to ensure roster purge triggers
 	gm.register_fallen_hero(gm.roster[0], "Wiped")
 	
 	gm.complete_mission([], false, [], 0)
 	
-	if FileAccess.file_exists("user://savegame.dat"):
+	if FileAccess.file_exists("user://test_savegame.dat"):
 		fail("FAIL: Save not deleted on wipe.")
 	else:
 		pass_test("PASS: Save deleted.")
+		
+	gm.queue_free()
+
+func _test_inventory_null_filtering():
+	print("\n[TEST] Inventory Null Filtering (Unknown Item Fix)...")
+	gm = game_manager_script.new()
+	add_child(gm)
+	
+	gm.roster.clear()
+	gm._add_recruit("LooterDog", 1, "Scout")
+	
+	# Mock Deployment
+	gm.deploying_squad = [gm.roster[0]]
+	
+	# Create a Mock Item (Dictionary since we are simulating serialized data passed from Main)
+	# Or Resources if Main passes resources. Main passes unit.inventory (Resources).
+	# But here we pass a dictionary simulating what Main passes in 'survivors_data'
+	# 'survivors_data' expects 'inventory' array.
+	# We'll pass [Resource, null] logic.
+	# Since we can't easily create a real Resource here without loading one, we use a Helper or Mock.
+	# GameManager save logic can handle Dictionaries too.
+	var mock_item = {"display_name": "TestBone"}
+	var survivors = [{"name": "LooterDog", "hp": 10, "inventory": [mock_item, null]}]
+	
+	gm.complete_mission(survivors, true, [], 0)
+	
+	var unit = gm.roster[0]
+	if unit["inventory"].size() == 1 and unit["inventory"][0]["display_name"] == "TestBone":
+		pass_test("PASS: Null item filtered from inventory.")
+	else:
+		fail("FAIL: Inventory not filtered correctly. Got: " + str(unit["inventory"]))
 		
 	gm.queue_free()
 

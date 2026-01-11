@@ -441,7 +441,12 @@ func complete_mission(
 					print("DEBUG_PERSIST: Syncing Inventory for ", member["name"])
 					print(" - Old Inv: ", member.get("inventory"))
 					print(" - New Inv (Survivor): ", survivor["inventory"])
-					member["inventory"] = survivor["inventory"].duplicate() 
+					# Filter nulls to prevent "Unknown Item" in UI (and match save_game logic)
+					var clean_inv = []
+					for item in survivor["inventory"]:
+						if item != null:
+							clean_inv.append(item)
+					member["inventory"] = clean_inv
 					print(" - Result Inv: ", member["inventory"])
 
 				if DEBUG_GAME:
@@ -616,8 +621,13 @@ func save_game():
 		mem_copy["inventory"] = []
 		if member.has("inventory"):
 			for item in member["inventory"]:
-				if item != null and (item.has_method("get_class") or "display_name" in item):
-					mem_copy["inventory"].append(item.display_name)
+				if item != null:
+					if item is Object and item.has_method("get_class"):
+						mem_copy["inventory"].append(item.display_name)
+					elif item is Dictionary and "display_name" in item:
+						mem_copy["inventory"].append(item["display_name"])
+					elif "display_name" in item: # Resource fallback via property access
+						mem_copy["inventory"].append(item.display_name)
 				else:
 					print("GameManager: Validation Warning - Skipping invalid item in Unit Inventory.")
 

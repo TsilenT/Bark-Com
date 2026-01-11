@@ -372,6 +372,7 @@ func setup(data):
 	if items.size() > 0:
 		w_text += "\n[b]Carried Items:[/b]\n"
 		for it in items:
+			if it == null: continue
 			var i_name = "Unknown Item"
 			if it is Resource or it is Object:
 				i_name = it.display_name if "display_name" in it else "Item"

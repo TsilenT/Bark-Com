@@ -15,6 +15,9 @@ static func calculate_hit_chance(
 	from_pos: Vector2 = Vector2(-999, -999),
 	is_reaction: bool = false
 ) -> Dictionary:
+	if not target:
+		return {"hit_chance": 0, "breakdown": "No Target"}
+
 	var breakdown = ""
 
 	# Determine Attack Source

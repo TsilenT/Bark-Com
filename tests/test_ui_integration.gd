@@ -3,6 +3,7 @@ extends Node
 # Usage: godot -s tests/test_ui_integration.gd
 
 var GameUI_Script
+var SquadMemberFrame_Script
 var SignalBus_Script
 
 class MockGridManager:
@@ -20,6 +21,7 @@ class MockUnit:
 	var abilities = []
 	var max_sanity = 100
 	var current_sanity = 100
+	var max_ap = 5
 	var current_ap = 2
 
 
@@ -29,12 +31,16 @@ func _ready():
 	await get_tree().process_frame
 	
 	GameUI_Script = load("res://scripts/ui/GameUI.gd")
-	if not GameUI_Script:
-		printerr("CRITICAL FAIL: Could not load GameUI script! Check for syntax errors or duplicates.")
+	SquadMemberFrame_Script = load("res://scripts/ui/SquadMemberFrame.gd")
+	if not GameUI_Script or not SquadMemberFrame_Script:
+		printerr("CRITICAL FAIL: Could not load UI scripts!")
 		get_tree().quit(1)
 		return
 
-	test_signal_connection_and_processing()
+		return
+
+	await test_signal_connection_and_processing()
+	await test_squad_sync()
 	
 
 
@@ -96,10 +102,81 @@ func test_signal_connection_and_processing():
 		failed = true
 
 	gui.queue_free()
-	
+	await get_tree().process_frame # Flush old GUI
+
 	if failed:
 		print("--- UI TESTS FAILED ---")
 		get_tree().quit(1)
 	else:
-		print("--- ALL UI TESTS PASSED ---")
-		get_tree().quit(0)
+		print("--- UI CONNECTIVITY PASS ---")
+
+func test_squad_sync():
+	print("--- TEST: SQUAD SYNC ---")
+	var gui = GameUI_Script.new()
+	var squad_frame = SquadMemberFrame_Script.new()
+	var mock_unit = MockUnit.new()
+	mock_unit.name = "SyncUnit"
+	
+	# Setup
+	get_tree().root.add_child(gui)
+	get_tree().root.add_child(squad_frame)
+	
+	# Initialize Frame
+	squad_frame.initialize(mock_unit)
+	
+	# Initialize GameUI
+	# GameUI creates its own internal elements, we need to inspect them.
+	# We select the unit to show it in Bottom Panel
+	gui.update_unit_info(mock_unit)
+	
+	# 1. Verify Initial State
+	await get_tree().process_frame
+	var frame_ap = squad_frame.ap_label.text
+	var bottom_ap = gui.ap_label.text # "AP 2/2"
+	
+	if "2" in frame_ap and "2" in bottom_ap:
+		print("PASS: Initial AP matches (2).")
+	else:
+		print("FAIL: Initial Sync Mismatch. Frame: ", frame_ap, " Bottom: ", bottom_ap)
+		get_tree().quit(1)
+		return
+
+	# 2. Simulate Turn Change (AP Refresh)
+	# Modifying Mock Data
+	mock_unit.current_ap = 3 
+	# The real system might emit stats_changed or turn_changed.
+	# We test the FIX: SquadFrame listening to Turn Changed.
+	
+	print("Emitting on_turn_changed...")
+	SignalBus.on_turn_changed.emit("PLAYER PHASE", 2)
+	await get_tree().process_frame
+	
+	# 3. Verify Sync
+	frame_ap = squad_frame.ap_label.text
+	# Note: GameUI might NOT update bottom panel on turn change automatically if it relies on stats_changed
+	# But we want to ensure SQUAD FRAME updated.
+	
+	if "3" in frame_ap:
+		print("PASS: SquadFrame updated AP to 3 on Turn Change.")
+	else:
+		printerr("FAIL: SquadFrame STALE! Expected 3, got ", frame_ap)
+		get_tree().quit(1)
+		return
+
+	# 4. Verify Bottom Panel (Optional, user said it was correct)
+	# If Bottom Panel listens to stats_changed, we need to emit that too for full simulation
+	SignalBus.on_unit_stats_changed.emit(mock_unit)
+	await get_tree().process_frame
+	bottom_ap = gui.ap_label.text
+	
+	if "3" in bottom_ap:
+		print("PASS: Bottom Panel updated AP to 3.")
+	else:
+		printerr("FAIL: Bottom Panel STALE! Expected 3, got ", bottom_ap)
+		get_tree().quit(1)
+		return
+	
+	gui.queue_free()
+	squad_frame.queue_free()
+	print("--- ALL UI TESTS PASSED ---")
+	get_tree().quit(0)

@@ -17,8 +17,13 @@ func initialize(unit):
 	refresh()
 
 	# Connect signals
+	# Connect signals
 	if SignalBus.has_signal("on_unit_stats_changed"):
 		SignalBus.on_unit_stats_changed.connect(_on_stats_changed)
+	if SignalBus.has_signal("on_turn_changed"):
+		SignalBus.on_turn_changed.connect(_on_turn_changed)
+	if SignalBus.has_signal("on_ui_force_update"):
+		SignalBus.on_ui_force_update.connect(func(): refresh())
 
 
 func _setup_ui():
@@ -113,6 +118,11 @@ func refresh():
 func _on_stats_changed(u):
 	if u == unit_ref:
 		refresh()
+
+
+func _on_turn_changed(_phase, _turn):
+	# Refresh AP at start of turn
+	refresh()
 
 
 func _gui_input(event):
