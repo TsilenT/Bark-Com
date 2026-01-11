@@ -136,7 +136,7 @@ jobs:
           BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
           CHANNEL: windows
           ITCH_GAME: bark-com
-          ITCH_USER: smilidog
+          ITCH_USER: eldritch-dream
           PACKAGE: windows_build.zip
           VERSION: ${{ github.ref_name }}
 
@@ -146,7 +146,7 @@ jobs:
           BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
           CHANNEL: web
           ITCH_GAME: bark-com
-          ITCH_USER: smilidog
+          ITCH_USER: eldritch-dream
           PACKAGE: web_build.zip
           VERSION: ${{ github.ref_name }}
 
