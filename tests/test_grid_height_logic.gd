@@ -13,7 +13,7 @@ func _ready():
 	_test_ladder_cost()
 	
 	gm.queue_free()
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func _test_flat_connectivity():
 	print("\n[TEST] Flat Connectivity (0 -> 0)...")

@@ -90,4 +90,4 @@ func _ready():
 		
 	print("--- MISSION REWARDS TEST COMPLETE ---")
 	GM.free()
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)

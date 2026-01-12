@@ -89,7 +89,7 @@ var visible = true # Needed for visibility checks
 	await get_tree().process_frame
 	
 	_run_tests()
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func _run_tests():
 	# Test A: Grenade Helper (Ground Target)

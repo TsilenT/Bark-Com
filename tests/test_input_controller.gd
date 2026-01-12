@@ -90,10 +90,10 @@ func _ready():
 func _start_tests():
 	if not await run_tests():
 		print("❌ FAIL: Input Controller Tests Failed")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 	else:
 		print("✅ PASS: All Input Controller Tests Passed")
-		get_tree().quit(0)
+		await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func setup():
 	# 1. Instantiate Controller

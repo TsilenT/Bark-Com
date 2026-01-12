@@ -53,7 +53,7 @@ func run_tests():
 	await test_blocked_los()
 	
 	print("--- ALL VISION TESTS PASSED ---")
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func test_clear_los():
 	print("\nTest: Clear Line of Sight...")
@@ -67,7 +67,7 @@ func test_clear_los():
 		print("PASS: LOS is clear.")
 	else:
 		print("FAIL: LOS reported blocked (Expected Clear).")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 
 func test_blocked_los():
 	print("\nTest: Blocked Line of Sight...")
@@ -86,4 +86,4 @@ func test_blocked_los():
 		print("PASS: LOS is blocked.")
 	else:
 		print("FAIL: LOS reported clear (Expected Blocked).")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)

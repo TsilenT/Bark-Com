@@ -91,7 +91,7 @@ func _ready():
 	
 	if passed:
 		print("--- ALL ITEM TARGET TESTS PASSED ---")
-		get_tree().quit(0)
+		await TestUtils.finalize_and_quit(get_tree(), 0)
 	else:
 		print("--- ITEM TARGET TESTS FAILED ---")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)

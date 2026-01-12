@@ -30,4 +30,4 @@ func _ready():
 	grid_viz.preview_path([Vector2(0,0), Vector2(0,0)])
 	
 	print("--- TEST END ---")
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)

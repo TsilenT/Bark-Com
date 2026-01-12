@@ -11,7 +11,7 @@ func _ready():
 	test_reactivity()
 	
 	print("--- All Grid Tests Passed ---")
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func test_reactivity():
 	print("Test 1: Signal Connection and Visualization")
@@ -53,4 +53,4 @@ func test_reactivity():
 func assert_check(condition, msg):
 	if not condition:
 		print("FAILED: " + msg)
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)

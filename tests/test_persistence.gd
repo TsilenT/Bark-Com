@@ -23,10 +23,10 @@ func _ready():
 	
 	if failures > 0:
 		print("❌ FAILED: ", failures, " tests failed.")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 	else:
 		print("✅ PASS: All tests passed.")
-		get_tree().quit()
+		await TestUtils.finalize_and_quit(get_tree(), 0)
 
 var failures = 0
 func fail(msg):
@@ -47,10 +47,10 @@ func _run_tests():
 
 	if failures > 0:
 		print("❌ FAILED: " + str(failures) + " tests failed.")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 	else:
 		print("✅ ALL TASKS PASSED.")
-		get_tree().quit(0)
+		await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func _test_save_load_cycle():
 	print("\n[TEST] Save/Load Cycle...")

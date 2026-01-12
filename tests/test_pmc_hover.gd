@@ -37,13 +37,13 @@ func _ready():
 	
 	if not PlayerMissionController:
 		print("ERROR: Could not load PMC")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 
 	test_hover_blocked_by_action()
 	
 	print("--- ALL PMC TESTS PASSED ---")
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func test_hover_blocked_by_action():
 	var pmc = PlayerMissionController.new()

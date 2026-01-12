@@ -15,14 +15,14 @@ func _ready():
 		print("✅ PASS: Squad List Container exists.")
 	else:
 		print("❌ FAIL: Squad List Container is missing!")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 		
 	if game_ui.squad_list_container.get_parent():
 		print("✅ PASS: Squad List Container is in tree.")
 	else:
 		print("❌ FAIL: Squad List Container orphaned.")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		
 	print("✅ PASS: All UI Elements Verified.")
-	get_tree().quit(0)
+	await TestUtils.finalize_and_quit(get_tree(), 0)

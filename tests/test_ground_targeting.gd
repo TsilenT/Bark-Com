@@ -26,7 +26,7 @@ func run_all_tests():
 	
 	print("--- ALL GROUND TARGETING TESTS PASSED ---")
 	print("Exiting...")
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func setup_env():
 
@@ -34,7 +34,7 @@ func setup_env():
 	# It should be available as 'SignalBus' global
 	if not get_node_or_null("/root/SignalBus"):
 		printerr("CRITICAL: SignalBus Autoload NOT found. Test will fail.")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 		
 	var sb = get_node("/root/SignalBus")
@@ -67,7 +67,7 @@ func setup_env():
 	var MockUnitScript = load("res://tests/MockUnitGround.gd")
 	if not MockUnitScript:
 		printerr("CRITICAL: Failed to load MockUnitGround.gd")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 		
 	selected_unit = MockUnitScript.new()
@@ -105,7 +105,7 @@ func test_ability(name, script, expected_chance):
 			print("PASS: ", name, " showed ", expected_chance, "%")
 		else:
 			print("FAIL: ", name, " showed ", signal_data['chance'], "% expected ", expected_chance, "%")
-			get_tree().quit(1)
+			await TestUtils.finalize_and_quit(get_tree(), 1)
 	else:
 		print("FAIL: ", name, " did NOT show hit chance on ground.")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)

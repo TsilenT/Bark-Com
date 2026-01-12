@@ -38,7 +38,7 @@ func _ready():
 	CombatResolver = load("res://scripts/managers/CombatResolver.gd")
 	if not CombatResolver:
 		print("ERROR: Could not load CombatResolver!")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 
 	test_base_hit_chance()
@@ -48,7 +48,7 @@ func _ready():
 	test_null_target()
 	
 	print("--- ALL TESTS PASSED ---")
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func assert_eq(actual, expected, context):
 	if actual != expected:

@@ -12,7 +12,7 @@ func _ready():
 	test_pmc_logic_check()
 	
 	print("--- All Ability Tests Passed ---")
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func test_base_ability():
 	print("Test 1: Base Ability Contract")
@@ -76,7 +76,7 @@ func test_pmc_logic_check():
 func assert_check(condition, msg):
 	if not condition:
 		print("FAILED: " + msg)
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 
 # --- MOCKS ---
 class MockAbility extends Ability:

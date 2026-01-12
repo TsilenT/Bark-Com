@@ -12,14 +12,14 @@ func _ready():
 	MainScript = load("res://scripts/core/Main.gd")
 	if not MainScript:
 		printerr("CRITICAL: Main.gd failed to load.")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 
 	test_mission_ended_signature()
 	test_main_signal_safety()
 	
 	print("--- ALL STABILIZATION TESTS PASSED ---")
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func test_mission_ended_signature():
 	var main = MainScript.new()

@@ -58,7 +58,7 @@ func run_tests():
 	await test_turn_cycling()
 	
 	print("--- ALL TURN MANAGER TESTS PASSED ---")
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func test_initialization():
 	print("\nTest: Initialization...")
@@ -75,13 +75,13 @@ func test_initialization():
 		print("PASS: Started in Player Turn.")
 	else:
 		print("FAIL: Wrong start state: ", tm.current_turn)
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		
 	if tm.turn_count == 1:
 		print("PASS: Turn Count is 1.")
 	else:
 		print("FAIL: Turn Count mismatch: ", tm.turn_count)
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		
 	u1.queue_free()
 
@@ -116,7 +116,7 @@ func test_turn_cycling():
 		print("PASS: Cycled to Enemy Turn.")
 	else:
 		print("FAIL: Did not cycle to Enemy Turn. State: ", tm.current_turn)
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		
 	# Enemy Logic runs automatically in start_enemy_turn -> execute actions
 	# verify e1.decide_action was called? e1 emits signal immediately.
@@ -128,14 +128,14 @@ func test_turn_cycling():
 		print("PASS: Cycled back to Player Turn (Turn 2).")
 	else:
 		print("FAIL: Did not cycle back to Player. State: ", tm.current_turn, " Turn: ", tm.turn_count)
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 	
 	# Verify AP Reset
 	if p1.current_ap == p1.max_ap:
 		print("PASS: Player AP refreshed.")
 	else:
 		print("FAIL: Player AP not refreshed.")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 
 	p1.queue_free()
 	e1.queue_free()

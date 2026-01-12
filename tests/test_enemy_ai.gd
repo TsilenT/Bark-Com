@@ -94,10 +94,10 @@ func run_tests():
 	
 	if failures > 0:
 		print("❌ FAILED: ", failures, " tests failed.")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 	else:
 		print("✅ ALL AI TESTS PASSED")
-		get_tree().quit()
+		await TestUtils.finalize_and_quit(get_tree(), 0)
 
 var failures = 0
 func fail(msg):

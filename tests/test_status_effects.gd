@@ -11,7 +11,7 @@ func _ready():
 	
 	if not UnitScript or not StunScript:
 		printerr("FAIL: Could not load required scripts.")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 
 	# 1. Setup Unit
@@ -40,7 +40,7 @@ func _ready():
 		print("PASS: Stun effect applied correctly.")
 	else:
 		printerr("FAIL: apply_effect did not add effect to active_effects.")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 
 	# 3. Turn Start Logic (Stun should drain AP)
@@ -54,7 +54,7 @@ func _ready():
 		print("PASS: Stun drained AP to 0.")
 	else:
 		printerr("FAIL: Stun failed to drain AP. Current AP: ", unit.current_ap)
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 
 	# 4. Check Duration Decrement
@@ -62,7 +62,7 @@ func _ready():
 		print("PASS: Effect duration decremented.")
 	else:
 		printerr("FAIL: Effect duration not decremented. Duration: ", stun.duration)
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 		
 	# 5. Next Turn (Effect should expire)
@@ -73,7 +73,7 @@ func _ready():
 		print("PASS: Stun effect expired and removed.")
 	else:
 		print("FAIL: Stun still active. Size: ", unit.active_effects.size())
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 
 	# 6. Verify AP restored after expiration
@@ -83,8 +83,8 @@ func _ready():
 		print("PASS: AP restored in subsequent turn.")
 	else:
 		printerr("FAIL: AP not restored. AP: ", unit.current_ap)
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 
 	print("--- Status Effects Test PASSED ---")
-	get_tree().quit(0)
+	await TestUtils.finalize_and_quit(get_tree(), 0)

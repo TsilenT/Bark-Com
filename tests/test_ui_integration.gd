@@ -34,7 +34,7 @@ func _ready():
 	SquadMemberFrame_Script = load("res://scripts/ui/SquadMemberFrame.gd")
 	if not GameUI_Script or not SquadMemberFrame_Script:
 		printerr("CRITICAL FAIL: Could not load UI scripts!")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 
 		return
@@ -106,7 +106,7 @@ func test_signal_connection_and_processing():
 
 	if failed:
 		print("--- UI TESTS FAILED ---")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 	else:
 		print("--- UI CONNECTIVITY PASS ---")
 
@@ -138,7 +138,7 @@ func test_squad_sync():
 		print("PASS: Initial AP matches (2).")
 	else:
 		print("FAIL: Initial Sync Mismatch. Frame: ", frame_ap, " Bottom: ", bottom_ap)
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 
 	# 2. Simulate Turn Change (AP Refresh)
@@ -160,7 +160,7 @@ func test_squad_sync():
 		print("PASS: SquadFrame updated AP to 3 on Turn Change.")
 	else:
 		printerr("FAIL: SquadFrame STALE! Expected 3, got ", frame_ap)
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 
 	# 4. Verify Bottom Panel (Optional, user said it was correct)
@@ -173,10 +173,10 @@ func test_squad_sync():
 		print("PASS: Bottom Panel updated AP to 3.")
 	else:
 		printerr("FAIL: Bottom Panel STALE! Expected 3, got ", bottom_ap)
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 	
 	gui.queue_free()
 	squad_frame.queue_free()
 	print("--- ALL UI TESTS PASSED ---")
-	get_tree().quit(0)
+	await TestUtils.finalize_and_quit(get_tree(), 0)

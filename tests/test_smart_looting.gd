@@ -16,7 +16,7 @@ func _ready():
 	await test_auto_pickup()
 	
 	print("--- Smart Looting Test Passed ---")
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func test_auto_pickup():
 	print("Running Auto-Pickup Test...")
@@ -54,7 +54,7 @@ func test_auto_pickup():
 	var items = gm.get_items_at(crate_pos)
 	if items.size() == 0 or items[0] != crate:
 		print("FAIL: Crate not registered as item.")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 	print("Crate spawned at 0,1.")
 	
@@ -135,7 +135,7 @@ func test_auto_pickup():
 	# Assert Inventory
 	if unit.inventory[0] == null:
 		print("FAIL: Inventory empty. Auto-pickup failed.")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 		
 	# Assert Crate Gone

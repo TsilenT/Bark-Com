@@ -125,7 +125,7 @@ func take_damage(amt):
 	_run_tests()
 	
 	print("--- TEST END ---")
-	get_tree().quit()
+	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func _run_tests():
 	print("Test 1: Destructible Lookup...")

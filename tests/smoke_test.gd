@@ -7,7 +7,7 @@ func _ready():
 	var main_scene_res = load("res://scenes/Base.tscn")
 	if not main_scene_res:
 		printerr("❌ Smoke Test FAILED: Main scene not found!")
-		get_tree().quit(1)
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 
 	var main_scene = main_scene_res.instantiate()
@@ -26,4 +26,4 @@ func _ready():
 	main_scene.queue_free()
 	await get_tree().process_frame # Allow cleanup frame
 	
-	get_tree().quit(0)
+	await TestUtils.finalize_and_quit(get_tree(), 0)
