@@ -1,5 +1,6 @@
 extends Node
 class_name TurnManager
+const LOG_PREFIX = "TurnManager: "
 
 signal turn_changed(new_turn_state)
 
@@ -14,11 +15,11 @@ var is_handling_action: bool = false # Track if an async action (grenade etc) is
 
 
 func _ready():
-	print("TurnManager initialized! Instance ID: ", get_instance_id())
+	GameManager.log(LOG_PREFIX, "Initialized! Instance ID: ", get_instance_id())
 	
 	# Singleton Enforcement: Prevent duplicate Managers
 	if get_tree().get_nodes_in_group("TurnManager").size() > 0:
-		print("TurnManager: Duplicate detected! Destroying self (Instance ", get_instance_id(), ")")
+		GameManager.log(LOG_PREFIX, "Duplicate detected! Destroying self (Instance ", get_instance_id(), ")")
 		queue_free()
 		return
 
@@ -41,7 +42,7 @@ func _on_cinematic_mode_changed(active: bool):
 func register_unit(unit):
 	if not units.has(unit):
 		units.append(unit)
-		print("TurnManager: Registered new unit ", unit.name)
+		GameManager.log(LOG_PREFIX, "Registered new unit ", unit.name)
 
 
 func _on_combat_action_started(_attacker, _target, _action, _pos):
@@ -61,7 +62,7 @@ func _on_combat_action_finished(_attacker):
 
 
 func _on_mission_ended(_victory, _rewards):
-	print("TurnManager: Mission Ended. Stopping.")
+	GameManager.log(LOG_PREFIX, "Mission Ended. Stopping.")
 	game_over = true
 	# Force stop any looping logic if possible, 
 	# but the flag checks in loops are primary defense.
@@ -71,7 +72,7 @@ func start_game(all_units: Array):
 	units = all_units
 	turn_count = 0
 	game_over = false
-	print("\n=== GAME START ===")
+	GameManager.log("\n", LOG_PREFIX, "=== GAME START ===")
 	start_player_turn()
 
 
@@ -84,7 +85,7 @@ func start_player_turn():
 	if gm:
 		gm.refresh_pathfinding(units)
 
-	print("\n--- TURN ", turn_count, ": PLAYER PHASE ---")
+	GameManager.log("\n", LOG_PREFIX, "--- TURN ", turn_count, ": PLAYER PHASE ---")
 	SignalBus.on_turn_changed.emit("PLAYER PHASE", turn_count)
 
 	for unit in units:
@@ -115,19 +116,19 @@ func start_player_turn():
 
 func check_auto_end_turn():
 	# DEBUG: Trace Turn End Logic
-	print("TM: check_auto_end_turn() called. CurrentTurn: ", current_turn, " (0=Player, 1=Enemy). Cinematic: ", is_cinematic_active)
+	GameManager.log(LOG_PREFIX, "check_auto_end_turn() called. CurrentTurn: ", current_turn, " (0=Player, 1=Enemy). Cinematic: ", is_cinematic_active)
 
 	# If ALL player units have AP <= 0, end turn automatically
 	if current_turn != TurnState.PLAYER_TURN:
-		print("TM: Aborting check (Not Player Turn).")
+		GameManager.log(LOG_PREFIX, "Aborting check (Not Player Turn).")
 		return
 
 	if is_cinematic_active:
-		print("TM: Cinematic active, deferring end turn.")
+		GameManager.log(LOG_PREFIX, "Cinematic active, deferring end turn.")
 		return
 
 	if is_handling_action:
-		print("TM: Action in progress, deferring end turn.")
+		GameManager.log(LOG_PREFIX, "Action in progress, deferring end turn.")
 		return
 
 	var any_can_act = false
@@ -140,10 +141,10 @@ func check_auto_end_turn():
 				break
 
 	if not any_can_act:
-		print("TM: All units acted. Ending Player Turn...")
+		GameManager.log(LOG_PREFIX, "All units acted. Ending Player Turn...")
 		call_deferred("end_player_turn")
 	else:
-		print("TM: Waiting for unit: ", active_unit_name)
+		GameManager.log(LOG_PREFIX, "Waiting for unit: ", active_unit_name)
 
 
 func end_player_turn():
@@ -157,7 +158,7 @@ func end_player_turn():
 		):
 			unit.process_turn_end_effects()
 
-	print("Player ended turn.")
+	GameManager.log(LOG_PREFIX, "Player ended turn.")
 	# Small delay before Enemy Phase starts
 	await get_tree().create_timer(0.5).timeout
 	start_enemy_turn()
@@ -165,7 +166,7 @@ func end_player_turn():
 
 func start_enemy_turn():
 	if game_over or current_turn == TurnState.ENEMY_TURN:
-		print("TurnManager: start_enemy_turn blocked (Game Over or Already Active).")
+		GameManager.log(LOG_PREFIX, "start_enemy_turn blocked (Game Over or Already Active).")
 		return
 
 	current_turn = TurnState.ENEMY_TURN
@@ -180,7 +181,7 @@ func start_enemy_turn():
 		if is_instance_valid(u) and not u.is_queued_for_deletion() and u.current_hp > 0:
 			units.append(u)
 	
-	print("\n--- TURN ", turn_count, ": ENEMY PHASE (Units: ", units.size(), ") ---")
+	GameManager.log("\n", LOG_PREFIX, "--- TURN ", turn_count, ": ENEMY PHASE (Units: ", units.size(), ") ---")
 	SignalBus.on_turn_changed.emit("ENEMY PHASE", turn_count)
 
 	# Enemy Start Turn Effects
@@ -201,7 +202,7 @@ func start_enemy_turn():
 	# In a real game, this might be async with yields/awaits for animations.
 	for unit in units:
 		if game_over:
-			print("TurnManager: Game Over detected. Aborting Enemy Turn.")
+			GameManager.log(LOG_PREFIX, "Game Over detected. Aborting Enemy Turn.")
 			break
 
 		if (
@@ -222,7 +223,7 @@ func start_enemy_turn():
 					# Wait for pan + moment of recognition
 					await get_tree().create_timer(1.5).timeout
 
-				print("TM [", get_instance_id(), "]: Awaiting action for ", unit.name, " (", unit.get_instance_id(), ")")
+					GameManager.log(LOG_PREFIX, "[", get_instance_id(), "]: Awaiting action for ", unit.name, " (", unit.get_instance_id(), ")")
 
 
 				unit.decide_action(units, gm)
@@ -256,12 +257,12 @@ func start_enemy_turn():
 
 func start_environment_turn():
 	current_turn = TurnState.ENVIRONMENT_TURN
-	print("\n--- TURN ", turn_count, ": ENVIRONMENT PHASE ---")
+	GameManager.log("\n", LOG_PREFIX, "--- TURN ", turn_count, ": ENVIRONMENT PHASE ---")
 	SignalBus.on_turn_changed.emit("ENVIRONMENT PHASE", turn_count)
 
 	# Handle Environment effects (Sanity decay, etc.)
 	# Placeholder
-	print("Environment is calm...")
+	GameManager.log(LOG_PREFIX, "Environment is calm...")
 
 	# Check Objective Status (Timers, etc)
 	var status = check_game_over()
@@ -286,7 +287,7 @@ func check_game_over() -> String:
 		if game_over:
 			return "WIN"  # Already triggered
 		game_over = true
-		print("\n*** VICTORY! ***")
+		GameManager.log("\n", LOG_PREFIX, "*** VICTORY! ***")
 		var reward = 50  # Default
 		if GameManager and GameManager.active_mission:
 			reward = GameManager.active_mission.reward_kibble
@@ -330,7 +331,7 @@ func check_game_over() -> String:
 		if game_over:
 			return "LOSS"
 		game_over = true
-		print("\n*** DEFEAT... ***")
+		GameManager.log("\n", LOG_PREFIX, "*** DEFEAT... ***")
 		SignalBus.on_mission_ended.emit(false, 0)
 
 		# Ensure dead are purged even on loss
@@ -447,6 +448,7 @@ func handle_reaction_fire(mover, from_pos: Vector2 = Vector2(-999, -999)):
 					SignalBus.on_request_floating_text.emit(
 						unit.position, "REACTION!", Color.ORANGE
 					)
+					GameManager.log(LOG_PREFIX, "!!! OVERWATCH TRIGGERED: ", unit.name, " -> ", mover.name)
 
 					# Small delay for drama
 					await get_tree().create_timer(0.5).timeout
@@ -469,7 +471,7 @@ func force_retreat():
 	if game_over:
 		return
 	game_over = true
-	print("\n*** RETREAT! ***")
+	GameManager.log("\n", LOG_PREFIX, "*** RETREAT! ***")
 	SignalBus.on_mission_ended.emit(false, 0)  # Loss with 0 reward? Or partial?
 
 	if GameManager:
@@ -501,7 +503,7 @@ func force_retreat():
 		# 3. Complete Mission
 		GameManager.complete_mission(survivors, false, enemy_survivors)
 
-	print("TurnManager: Retreat Executed.")
+	GameManager.log(LOG_PREFIX, "Retreat Executed.")
 
 
 func _build_survivor_data(u) -> Dictionary:

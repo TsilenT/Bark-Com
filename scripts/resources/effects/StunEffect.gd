@@ -2,6 +2,8 @@ extends StatusEffect
 class_name StunEffect
 
 
+const LOG_PREFIX = "StunEffect: "
+
 func _init():
 	display_name = "Stunned"
 	description = "Cannot act (0 AP)."
@@ -11,7 +13,7 @@ func _init():
 
 
 func on_apply(unit: Node):
-	print("StatusEffect: ", unit.name, " is STUNNED!")
+	GameManager.log(LOG_PREFIX, unit.name, " is STUNNED!")
 	SignalBus.on_request_floating_text.emit(
 		unit.position + Vector3(0, 2.5, 0), "STUNNED!", Color.YELLOW
 	)
@@ -24,7 +26,7 @@ func on_turn_start(unit: Node):
 	# Drain AP
 	if unit.get("current_ap") != null:
 		unit.current_ap = 0
-		print("StatusEffect: Stun drained AP from ", unit.name)
+		GameManager.log(LOG_PREFIX, "Stun drained AP from ", unit.name)
 		SignalBus.on_request_floating_text.emit(
 			unit.position + Vector3(0, 2.5, 0), "NO AP!", Color.YELLOW
 		)

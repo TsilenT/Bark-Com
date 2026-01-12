@@ -1,4 +1,5 @@
 extends Node3D
+const LOG_PREFIX = "Main: "
 
 var main_camera: Camera3D
 var selection_marker: Node3D
@@ -72,7 +73,7 @@ func _ready():
 
 	# Connect Mission Signals
 	mission_manager.wave_started.connect(
-		func(idx, total): _log("Wave " + str(idx) + "/" + str(total) + " Started!")
+		func(idx, total): GameManager.log(LOG_PREFIX, "Wave " + str(idx) + "/" + str(total) + " Started!")
 	)
 	mission_manager.mission_completed.connect(func(_data): _on_mission_completed())
 
@@ -154,18 +155,18 @@ func _ready():
 	# Fetch from GameManager if local property is empty (Standard Flow)
 	if active_mission_data == null and GameManager and GameManager.active_mission:
 		active_mission_data = GameManager.active_mission
-		print("Main: Retrieved Active Mission from GameManager.")
+		GameManager.log(LOG_PREFIX, "Retrieved Active Mission from GameManager.")
 
 	if active_mission_data:
 		if active_mission_data is MissionConfig:
 			mission_config = active_mission_data
-			print("Main: Loaded Native MissionConfig -> ", mission_config.mission_name)
+			GameManager.log(LOG_PREFIX, "Loaded Native MissionConfig -> ", mission_config.mission_name)
 		elif (
 			active_mission_data.get_class() == "MissionData"
 			or "objective_type" in active_mission_data
 		):
 			# AUTO-ADAPTER: Convert Legacy Data to Config
-			print("Main: Adapting Legacy MissionData -> MissionConfig")
+			GameManager.log(LOG_PREFIX, "Adapting Legacy MissionData -> MissionConfig")
 			mission_config = MissionConfig.new()
 			mission_config.mission_name = active_mission_data.mission_name
 			mission_config.description = active_mission_data.description
@@ -216,7 +217,7 @@ func _ready():
 		var level = 1
 		if GameManager:
 			level = GameManager.mission_level
-		print("Main: No active mission found. Generating Level ", level, " Mission.")
+		GameManager.log(LOG_PREFIX, "No active mission found. Generating Level ", level, " Mission.")
 		mission_config = mission_manager.generate_mission_config(level)
 
 	# Perform Game Logic Setup (UI, TurnManager, Players)
@@ -248,10 +249,10 @@ func _ready():
 
 func _setup_controllers(gm, gv):
 	# Instantiate PlayerMissionController
-	print("DEBUG: _setup_controllers called.")
+	GameManager.log(LOG_PREFIX, "DEBUG: _setup_controllers called.")
 	var controller_script = load("res://scripts/controllers/PlayerMissionController.gd")
 	if controller_script:
-		print("DEBUG: Script Loaded.")
+		GameManager.log(LOG_PREFIX, "DEBUG: Script Loaded.")
 		player_controller = controller_script.new()
 		player_controller.name = "PlayerMissionController"
 		add_child(player_controller)
@@ -359,7 +360,7 @@ func _on_turn_changed(phase_name, _turn_num):
 
 
 func _on_mission_completed():
-	print("Main: _on_mission_completed triggered. Syncing Roster...")
+	GameManager.log(LOG_PREFIX, "_on_mission_completed triggered. Syncing Roster...")
 	
 	if not GameManager:
 		return
@@ -386,31 +387,31 @@ func _on_mission_completed():
 			}
 			# Sync Inventory (Loot Persistence)
 			# Sync Inventory (Loot Persistence)
-			print("DEBUG_MAIN: Processing Unit: ", unit.name, " (Type: ", unit.get_class(), ")")
+			GameManager.log(LOG_PREFIX, "Processing Unit: ", unit.name, " (Type: ", unit.get_class(), ")")
 			
 			var u_cast = unit as Unit
 			if u_cast:
 				data["inventory"] = u_cast.inventory
-				print("DEBUG_MAIN: Inventory Found (Cast): ", data["inventory"])
+				GameManager.log(LOG_PREFIX, "Inventory Found (Cast): ", data["inventory"])
 			else:
 				# Fallback or Debug
 				var dyn_inv = unit.get("inventory")
 				if dyn_inv != null:
 					data["inventory"] = dyn_inv
-					print("DEBUG_MAIN: Inventory Found (Dynamic): ", dyn_inv)
+					GameManager.log(LOG_PREFIX, "Inventory Found (Dynamic): ", dyn_inv)
 				else:
-					print("DEBUG_MAIN: CRITICAL - No inventory access on unit!")
+					GameManager.log(LOG_PREFIX, "CRITICAL - No inventory access on unit!")
 
 			survivors_data.append(data)
 	
 	# 2. Add Unspawned Survivors (Left in Shuttle)
 	if not unspawned_survivors.is_empty():
-		print("Main: Adding ", unspawned_survivors.size(), " unspawned units to survivors list.")
+		GameManager.log(LOG_PREFIX, "Adding ", unspawned_survivors.size(), " unspawned units to survivors list.")
 		for u_data in unspawned_survivors:
 			# Ensure we pass the data format GameManager expects (it accepts the roster dict format)
 			survivors_data.append(u_data)
 
-	print("Main: Syncing Roster. Survivors: ", survivors_data.size())
+	GameManager.log(LOG_PREFIX, "Syncing Roster. Survivors: ", survivors_data.size())
 	
 	# 3. Call GameManager
 	# Use correct function name 'complete_mission'. Roster purging uses internal 'deploying_squad'.
@@ -423,7 +424,7 @@ func _on_mission_completed():
 	
 	# 4. End Mission (UI / Signal)
 	# Logic merged from deleted duplicate:
-	print("Mission Completed via MissionManager!")
+	GameManager.log(LOG_PREFIX, "Mission Completed via MissionManager!")
 	if (
 		mission_manager.active_mission_config
 		and mission_manager.active_mission_config.is_final_defense
@@ -435,14 +436,14 @@ var _mission_end_processed = false
 var unspawned_survivors: Array = [] # Tracks units that exceeded spawn limit or failed to find spot
 
 func _on_mission_ended_handler(victory: bool, _rewards: int = 0):
-	print("DEBUG: _on_mission_ended_handler called! Victory: ", victory)
-	print("DEBUG: Stack Trace: ", get_stack())
+	GameManager.log(LOG_PREFIX, "DEBUG: _on_mission_ended_handler called! Victory: ", victory)
+	GameManager.log(LOG_PREFIX, "DEBUG Stack: ", get_stack())
 	
 	if _mission_end_processed:
 		return
 	_mission_end_processed = true
 
-	print("Main: Mission Ended Signal Received. Victory: ", victory)
+	GameManager.log(LOG_PREFIX, "Mission Ended Signal Received. Victory: ", victory)
 	
 	# Stop Turn Processing
 	if turn_manager:
@@ -456,7 +457,7 @@ func _on_mission_ended_handler(victory: bool, _rewards: int = 0):
 				and mission_manager.active_mission_config.is_final_defense
 			):
 				GameManager.invasion_progress = 0
-				print("BASE DEFENSE SUCCESSFUL! DOOMSDAY AVERTED... FOR NOW.")
+				GameManager.log(LOG_PREFIX, "BASE DEFENSE SUCCESSFUL! DOOMSDAY AVERTED... FOR NOW.")
 				# Trigger Victory Scene
 				await get_tree().create_timer(3.0).timeout
 				get_tree().change_scene_to_file("res://scenes/ui/VictoryScene.tscn")
@@ -473,7 +474,7 @@ func _process(_delta):
 	if Input.is_action_just_pressed("ui_accept"):  # Spacebar / Enter
 		var ui = get_node_or_null("GameUI")
 		if ui and ui.mission_end_panel.visible:
-			print("Returning to Base Scene...")
+			GameManager.log(LOG_PREFIX, "Returning to Base Scene...")
 			queue_free()
 			return
 
@@ -491,7 +492,7 @@ func _process(_delta):
 
 func _apply_debug_effect(type: String):
 	if not selected_unit:
-		print("DEBUG: No unit selected for effect.")
+		GameManager.log(LOG_PREFIX, "DEBUG: No unit selected for effect.")
 		return
 
 	var effect = null
@@ -506,7 +507,7 @@ func _apply_debug_effect(type: String):
 		"Madness":
 			if selected_unit.has_method("take_sanity_damage"):
 				selected_unit.take_sanity_damage(30)
-				print("DEBUG: Inflicted 30 Sanity Damage to ", selected_unit.name)
+				GameManager.log(LOG_PREFIX, "DEBUG: Inflicted 30 Sanity Damage to ", selected_unit.name)
 				return
 
 	if effect:
@@ -569,7 +570,7 @@ func _handle_hover(screen_pos):
 func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  # Updated Signature
 	grid_manager.generate_grid() # Ensure grid exists and signals verify
 	active_mission_data = mission
-	print("--- TEST SCENARIO START ---")
+	GameManager.log(LOG_PREFIX, "--- TEST SCENARIO START ---")
 
 	if mission and mission.mission_name == "BASE DEFENSE":
 		print("--- BASE DEFENSE MISSION ---")
@@ -580,7 +581,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 	# Spawn Explosive Barrels
 	# Spawn Explosive Barrels (Randomized 1-20)
 	var num_barrels = randi_range(1, 20)
-	print("Spawning ", num_barrels, " random Explosive Barrels.")
+	GameManager.log(LOG_PREFIX, "Spawning ", num_barrels, " random Explosive Barrels.")
 	
 	for _i in range(num_barrels):
 		var pos = grid_manager.get_random_valid_position()
@@ -591,7 +592,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 			add_child(barrel)
 			barrel.initialize(pos, grid_manager)
 			spawned_units.append(barrel) # Treat as Unit for Targeting
-			print("Spawned Explosive Barrel at ", pos)
+			GameManager.log(LOG_PREFIX, "Spawned Explosive Barrel at ", pos)
 
 	# 1. Spawn Corgi(s)
 	# Check for GameManager
@@ -599,7 +600,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 	# --- LOOTAPALOOZA: Spawn Loot Crates ---
 	if GameManager and GameManager.debug_scenario == "lootapalooza":
 		var num_crates = 15
-		print("LOOTAPALOOZA: Spawning ", num_crates, " Loot Crates!")
+		GameManager.log(LOG_PREFIX, "LOOTAPALOOZA: Spawning ", num_crates, " Loot Crates!")
 		for _i in range(num_crates):
 			var pos = grid_manager.get_random_valid_position()
 			if pos != Vector2(-1, -1):
@@ -636,7 +637,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 
 	for data in ready_units:
 		if spawn_offset >= 4:
-			print("Main: Spawn limit (4) reached. Unit ", data["name"], " stays in shuttle.")
+			GameManager.log(LOG_PREFIX, "Spawn limit (4) reached. Unit ", data["name"], " stays in shuttle.")
 			unspawned_survivors.append(data)
 			continue  # Max 4 limit
 		
@@ -671,13 +672,13 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 
 
 		if not found_spot:
-			print("CRITICAL: No spawn spot found for ", data["name"])
+			GameManager.log(LOG_PREFIX, "CRITICAL: No spawn spot found for ", data["name"])
 			unspawned_survivors.append(data)
 			continue  # Skip spawn
 
 		unit.initialize(target_tile)
 		unit.position = grid_manager.get_world_position(target_tile)
-		print("Spawned ", data["name"], " at ", target_tile)
+		GameManager.log(LOG_PREFIX, "Spawned ", data["name"], " at ", target_tile)
 
 		# Apply Data
 		unit.name = data["name"]
@@ -861,7 +862,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 			loot.position = grid_manager.get_world_position(loot_grid)
 			objective_manager.loot_target = loot
 			all_units.append(loot)
-			print("Spawned Treat Bag at ", loot_grid)
+			GameManager.log(LOG_PREFIX, "Spawned Treat Bag at ", loot_grid)
 
 		elif mission_type == objective_manager.MissionType.RESCUE:
 			var human = load("res://scripts/entities/ObjectiveUnit.gd").new()
@@ -875,7 +876,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 			human.position = grid_manager.get_world_position(human_grid)
 			objective_manager.rescue_target = human
 			all_units.append(human)
-			print("Spawned Lost Human at ", human_grid)
+			GameManager.log(LOG_PREFIX, "Spawned Lost Human at ", human_grid)
 
 	# Spawn Interactive Props
 	if is_final:
@@ -884,7 +885,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 		spawn_interactive_test(grid_manager)
 
 	# INITIALIZE SQUAD UI
-	print("Main: Initializing Squad List with ", spawned_units.size(), " units.")
+	GameManager.log(LOG_PREFIX, "Initializing Squad List with ", spawned_units.size(), " units.")
 	game_ui.update_squad_overlay(spawned_units)
 	# Also update Objective UI
 	if objective_manager:
@@ -916,7 +917,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 		
 		# 1. Start with Provided Config
 		if mission and mission is MissionConfig:
-			print("Main: Using provided MissionConfig directly.")
+			GameManager.log(LOG_PREFIX, "Using provided MissionConfig directly.")
 			config = mission
 		else:
 			# 2. Legacy / Generation Logic
@@ -928,7 +929,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 			
 			# Sync Objective Type from Legacy Mission Data if present
 			if mission:
-				print("Main: Syncing from MissionData (Legacy) - Type: ", mission.objective_type)
+				GameManager.log(LOG_PREFIX, "Syncing from MissionData (Legacy) - Type: ", mission.objective_type)
 				config.objective_type = mission.objective_type
 				if "objective_target_count" in mission:
 					config.objective_target_count = mission.objective_target_count
@@ -941,7 +942,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 		
 		# Override for Lootapalooza
 		if GameManager and GameManager.debug_scenario == "lootapalooza":
-			print("LOOTAPALOOZA: Setting up minimal resistance (1 Rusher).")
+			GameManager.log(LOG_PREFIX, "LOOTAPALOOZA: Setting up minimal resistance (1 Rusher).")
 			config.waves.clear()
 			var dummy_wave = WaveDefinition.new()
 			dummy_wave.budget_points = 1 # 1 Rusher
@@ -952,7 +953,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 		# 3. Refresh Grid with Player Positions so Enemies don't spawn on top of them!
 		grid_manager.refresh_pathfinding(spawned_units)
 
-		print("Main: Starting MissionManager with Config -> Type: ", config.objective_type, " Count: ", config.objective_target_count)
+		GameManager.log(LOG_PREFIX, "Starting MissionManager with Config -> Type: ", config.objective_type, " Count: ", config.objective_target_count)
 		mission_manager.start_mission(config, grid_manager)
 
 		mission_manager.register_player_units(spawned_units) # Essential for Signal connections!
@@ -963,7 +964,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 		if config.objective_type == ObjectiveManager.MissionType.HACKER:
 			# Yield a frame to wait for spawn completion? MissionManager is sync usually.
 			var terminals = get_tree().get_nodes_in_group("Terminals")
-			print("Main: Wiring up ", terminals.size(), " Terminals (Post-Spawn).")
+			GameManager.log(LOG_PREFIX, "Wiring up ", terminals.size(), " Terminals (Post-Spawn).")
 			for term in terminals:
 				if not term.hack_complete.is_connected(_on_terminal_hack_complete):
 					term.connect("hack_complete", func(s): _on_terminal_hack_complete(s, term.grid_pos))
@@ -985,7 +986,7 @@ func _spawn_enemies_point_buy(grid_manager: GridManager, mission: MissionData):
 		# User defined logic: Diff 1 = 1 Rusher (Cost 1). So Budget 1 is fine.
 		# Whisperer (5) needs Budget 5.
 
-	print("Main: Spawning Enemies with Budget: ", budget)
+	GameManager.log(LOG_PREFIX, "Spawning Enemies with Budget: ", budget)
 
 	# Candidates and Costs
 	var candidates = [
@@ -1117,12 +1118,12 @@ func _spawn_enemy_unit(type_data: Dictionary, grid_manager: GridManager, index: 
 				break
 
 	if pos == Vector2(-1, -1):
-		print("Spawn Failed: Could not find empty tile after 50 attempts.")
+		GameManager.log(LOG_PREFIX, "Spawn Failed: Could not find empty tile after 50 attempts.")
 		pos = grid_manager.get_nearest_walkable_tile(Vector2(0, 0))  # Fallback
 
 	enemy.initialize(pos)
 	enemy.position = grid_manager.get_world_position(pos)
-	print("PointBuy: Spawned ", type_data.type, " at ", pos)
+	GameManager.log(LOG_PREFIX, "PointBuy: Spawned ", type_data.type, " at ", pos)
 
 
 func _spawn_terminals(gm: GridManager):
@@ -1137,7 +1138,7 @@ func _spawn_terminals(gm: GridManager):
 		add_child(term)
 		term.initialize(pos, gm)
 		term.connect("hack_complete", func(s): _on_terminal_hack_complete(s, pos))
-		print("Spawned Terminal at ", pos)
+		GameManager.log(LOG_PREFIX, "Spawned Terminal at ", pos)
 
 
 func _spawn_golden_hydrant(gm: GridManager):
@@ -1148,12 +1149,12 @@ func _spawn_golden_hydrant(gm: GridManager):
 	var hydrant = hydrant_script.new()
 	add_child(hydrant)
 	hydrant.initialize(pos, gm)
-	print("Spawned GOLDEN HYDRANT at ", pos)
+	GameManager.log(LOG_PREFIX, "Spawned GOLDEN HYDRANT at ", pos)
 
 
 # Legacy wave spawn moved to MissionManager
 func _spawn_wave_reinforcement():
-	print("Legacy Wave Spawn Blocked (Use MissionManager)")
+	GameManager.log(LOG_PREFIX, "Legacy Wave Spawn Blocked (Use MissionManager)")
 	pass
 
 
@@ -1163,7 +1164,7 @@ func _on_terminal_hack_complete(success: bool, pos: Vector2):
 		om.register_hack(success)
 
 	if success:
-		print("Main: Terminal Hacked at ", pos)
+		GameManager.log(LOG_PREFIX, "Terminal Hacked at ", pos)
 		# Spawn 2 "Security Drone" Reinforcements
 		var rusher_data = load("res://scripts/resources/EnemyData.gd").new()
 		rusher_data.display_name = "Security Drone"
@@ -1204,11 +1205,11 @@ func _on_terminal_hack_complete(success: bool, pos: Vector2):
 				if turn_manager and not turn_manager.units.has(enemy):
 					turn_manager.units.append(enemy)
 				
-				print("Main: Security Drone dispatched to ", spawn_pos)
+				GameManager.log(LOG_PREFIX, "Security Drone dispatched to ", spawn_pos)
 				SignalBus.on_request_floating_text.emit(enemy.position, "ALERT!", Color.RED)
 
 	else:
-		print("Main: Terminal Hack Failed at ", pos)
+		GameManager.log(LOG_PREFIX, "Terminal Hack Failed at ", pos)
 		# Punishment? Logic says 1 Rusher? 
 		# If user didn't ask for punishment fix, I'll leave it empty or add simple punishment.
 		spawn_reinforcement("Rusher", pos + Vector2(0, 3)) # Keeping legacy fallback for fail case
@@ -1220,10 +1221,10 @@ func spawn_reinforcement(type: String, near_grid_pos: Vector2):
 	# Find valid position near target that is NOT occupied
 	var valid_pos = _find_empty_tile_near(gm, near_grid_pos)
 	if valid_pos == Vector2(-999, -999):
-		print("Reinforcement Failed: No space near ", near_grid_pos)
+		GameManager.log(LOG_PREFIX, "Reinforcement Failed: No space near ", near_grid_pos)
 		return
 
-	print("Reinforcement Incoming: ", type)
+	GameManager.log(LOG_PREFIX, "Reinforcement Incoming: ", type)
 	SignalBus.on_request_floating_text.emit(gm.get_world_position(valid_pos), "WARNING!", Color.RED)
 
 	var data = {"type": type, "cost": 1, "script": "res://scripts/entities/EnemyUnit.gd"}
@@ -1312,24 +1313,24 @@ func _on_ui_action(action):
 	if action == "Move":
 		if player_controller:
 			player_controller.enter_movement_mode()
-		print("Select a tile to Move...")
+		GameManager.log(LOG_PREFIX, "Select a tile to Move...")
 		# Visualization delegated to PlayerController
 	elif action == "Attack":
 		if player_controller:
 			player_controller.set_input_state(player_controller.InputState.TARGETING)
-		print("Select a target to Attack...")
+		GameManager.log(LOG_PREFIX, "Select a target to Attack...")
 	elif action == "Interact":
 		_try_interact()
 	elif action == "EndTurn":
 		_end_player_turn()
 	elif action == "Abort":
-		print("Main: Abort Requested!")
+		GameManager.log(LOG_PREFIX, "Abort Requested!")
 		if turn_manager:
 			turn_manager.force_retreat()
 
 
 func _end_player_turn():
-	print("Main: Player ended turn. Applying Fog Penalties...")
+	GameManager.log(LOG_PREFIX, "Player ended turn. Applying Fog Penalties...")
 
 	if fog_manager:
 		fog_manager.apply_sanity_penalties(turn_manager.units)
@@ -1341,7 +1342,7 @@ func _end_player_turn():
 
 
 func _on_action_requested(action):
-	print("Main: Action Requested -> ", action)
+	GameManager.log(LOG_PREFIX, "Action Requested -> ", action)
 	if not player_controller: return
 
 	if action == "Move":
@@ -1354,7 +1355,7 @@ func _on_action_requested(action):
 		player_controller.set_input_state(player_controller.InputState.TARGETING)
 		# Ensure default ability is selected or cleared?
 		player_controller.selected_ability = null # Use default
-		print("Select a target to Attack...")
+		GameManager.log(LOG_PREFIX, "Select a target to Attack...")
 		
 	elif action == "Wait":
 		# End Unit Turn
@@ -1381,8 +1382,8 @@ func _on_ability_requested(ability):
 		player_controller.selected_ability = ability
 		player_controller.set_input_state(player_controller.InputState.ABILITY_TARGETING)
 	
-	print("Ability Selected: ", ability.display_name)
-	print("Select a target tile for ", ability.display_name)
+	GameManager.log(LOG_PREFIX, "Ability Selected: ", ability.display_name)
+	GameManager.log(LOG_PREFIX, "Select a target tile for ", ability.display_name)
 
 	# Highlights (Optional: Controller handles this via _mouse_hover or state set? Controller clears overlays on set_state(Selecting). Does it show highlights on set_state(Ability)?
 	# Controller logic for Mouse Hover shows highlights. 
@@ -1400,7 +1401,7 @@ func _on_ability_requested(ability):
 
 
 func _on_item_requested(item, slot_index):
-	print("Main: Item requested: ", item.display_name)
+	GameManager.log(LOG_PREFIX, "Item requested: ", item.display_name)
 
 	if player_controller:
 		player_controller.pending_item_action = item
@@ -1433,14 +1434,14 @@ func _on_item_requested(item, slot_index):
 
 func _execute_ability(ability, user, target, grid_pos):
 	if ability is StandardAttack:
-		print("Main: Executing Standard Attack via Ability Wrapper")
+		GameManager.log(LOG_PREFIX, "Executing Standard Attack via Ability Wrapper")
 		await _process_combat(target)
 		return
 	
 	var result = await ability.execute(
 		user, target, grid_pos, grid_manager
 	)
-	print("Ability Result: ", result)
+	GameManager.log(LOG_PREFIX, "Ability Result: ", result)
 	if game_ui:
 		SignalBus.on_combat_log_event.emit(str(result), Color.WHITE)
 	_clear_targeting() # Should clear controller state too? Controller handles its own reset.
@@ -1452,7 +1453,7 @@ func _execute_ability(ability, user, target, grid_pos):
 
 
 func _execute_item(user, item, slot_index, target, grid_pos):
-	print("Main: Executing Item ", item.display_name)
+	GameManager.log(LOG_PREFIX, "Executing Item ", item.display_name)
 	
 	# Execute logic (via Unit or Ability wrapper?)
 	# Items usually have 'ability_ref' (GrenadeToss) or effect.
@@ -1492,7 +1493,7 @@ func _execute_item(user, item, slot_index, target, grid_pos):
 						var idx = user.inventory.find(item)
 						if idx != -1:
 							user.inventory[idx] = null
-							print("Main: Consumed item ", item.display_name)
+							GameManager.log(LOG_PREFIX, "Consumed item ", item.display_name)
 							SignalBus.on_inventory_changed.emit() # Refresh UI
 			
 	elif item.has_method("execute"):
@@ -1501,7 +1502,7 @@ func _execute_item(user, item, slot_index, target, grid_pos):
 		# Fallback to Unit method
 		result = user.use_item(slot_index, target, grid_manager)
 		
-	print("Item Result: ", result)
+	GameManager.log(LOG_PREFIX, "Item Result: ", result)
 	if game_ui:
 		SignalBus.on_combat_log_event.emit(str(result), Color.WHITE)
 		
@@ -1521,7 +1522,7 @@ func _on_tile_clicked_LEGACY(grid_pos: Vector2, button_index: int):
 	if current_input_state == InputState.CINEMATIC:
 		return
 	if selected_unit and selected_unit.get("is_moving"):
-		print("Unit is moving, input ignored.")
+		GameManager.log(LOG_PREFIX, "Unit is moving, input ignored.")
 		return
 
 	# 3. State Handling
@@ -1537,7 +1538,7 @@ func _on_tile_clicked_LEGACY(grid_pos: Vector2, button_index: int):
 			var valid_tiles = selected_ability.get_valid_tiles(grid_manager, selected_unit)
 			if not valid_tiles.has(grid_pos):
 				SignalBus.on_combat_log_event.emit("Target out of range!", Color.RED)
-				print("Main: Ignored click at ", grid_pos, " - Out of Range.")
+				GameManager.log(LOG_PREFIX, "Ignored click at ", grid_pos, " - Out of Range.")
 				return
 
 			var world_pos = grid_manager.get_world_position(grid_pos)
@@ -1545,7 +1546,7 @@ func _on_tile_clicked_LEGACY(grid_pos: Vector2, button_index: int):
 			var result = await selected_ability.execute(
 				selected_unit, target_unit, grid_pos, grid_manager
 			)
-			print("Ability Result: ", result)
+			GameManager.log(LOG_PREFIX, "Ability Result: ", result)
 			SignalBus.on_combat_log_event.emit(str(result), Color.WHITE)
 			# Do NOT trigger floating text from log_message if it does that.
 			_clear_targeting()
@@ -1625,12 +1626,12 @@ func _on_mouse_hover(grid_pos: Vector2):
 	if cursor_shape == Input.CURSOR_ARROW:
 		# Check "Interactive" group (Crates, Terminals)
 		var interactives = get_tree().get_nodes_in_group("Interactive")
-		# print("DEBUG CURSOR: Checking ", interactives.size(), " interactives at ", grid_pos)
+		# GameManager.log(LOG_PREFIX, "DEBUG CURSOR: Checking ", interactives.size(), " interactives at ", grid_pos)
 		for obj in interactives:
 			if is_instance_valid(obj) and "grid_pos" in obj:
 				# Precise Check? grid_pos is generally integer-snapped Vector2 from InputManager
 				if obj.grid_pos == grid_pos:
-					# print("DEBUG CURSOR: Match found! Visible: ", obj.visible if "visible" in obj else "Unknown")
+					# GameManager.log(LOG_PREFIX, "DEBUG CURSOR: Match found! Visible: ", obj.visible if "visible" in obj else "Unknown")
 					# HIDDEN INFO CHECK: Must be visible
 					if "visible" in obj and obj.visible:
 						cursor_shape = Input.CURSOR_POINTING_HAND
@@ -1641,7 +1642,7 @@ func _on_mouse_hover(grid_pos: Vector2):
 	
 	# Force update?
 	if Input.get_current_cursor_shape() != cursor_shape:
-		# print("DEBUG CURSOR: Setting shape to ", cursor_shape)
+		# GameManager.log(LOG_PREFIX, "DEBUG CURSOR: Setting shape to ", cursor_shape)
 		Input.set_default_cursor_shape(cursor_shape) 
 	
 	# --------------------
@@ -1685,7 +1686,7 @@ func _on_mouse_hover(grid_pos: Vector2):
 		gv.clear_preview_path()
 		# DEBUG TRACE
 		var overlay_debug = "State: ABILITY_TARGETING | Ability: " + str(selected_ability.display_name if selected_ability else "None")
-		print(overlay_debug)
+		GameManager.log(LOG_PREFIX, "DEBUG OVERLAY:", overlay_debug)
 		
 		if selected_ability and "aoe_radius" in selected_ability:
 			var r = selected_ability.aoe_radius
@@ -1731,7 +1732,7 @@ func _on_mouse_hover(grid_pos: Vector2):
 			if selected_ability:
 				var target_unit = _get_unit_at_grid(grid_pos)
 				if target_unit:
-					print("Main Hover: Found Unit -> ", target_unit.name, " Faction: ", target_unit.get("faction"))
+					GameManager.log(LOG_PREFIX, "Hover: Found Unit -> ", target_unit.name, " Faction: ", target_unit.get("faction"))
 				
 				# CRASH FIX: Check for 'faction' property existence OR destructible nature
 				var is_valid_target = false
@@ -1815,7 +1816,7 @@ func _try_interact():
 				selected_unit.spend_ap(1)
 				return
 
-	print("Nothing in range to interact with!")
+	GameManager.log(LOG_PREFIX, "Nothing in range to interact with!")
 
 
 func _on_pause_toggle():
@@ -1830,12 +1831,12 @@ func _on_pause_toggle():
 
 func _on_debug_action(action: String):
 
-	print("DEBUG ACTION: ", action)
+	GameManager.log(LOG_PREFIX, "DEBUG: ACTION: ", action)
 	if action == "ForceWin":
-		print("DEBUG: Force WIN")
+		GameManager.log(LOG_PREFIX, "DEBUG: Force WIN")
 		SignalBus.on_mission_ended.emit(true, 500)
 	elif action == "ForceFail":
-		print("DEBUG: Force FAIL Defense")
+		GameManager.log(LOG_PREFIX, "DEBUG: Force FAIL Defense")
 		var hydrant = get_tree().get_first_node_in_group("Objectives")
 		if hydrant and is_instance_valid(hydrant) and hydrant.has_method("take_damage"):
 			hydrant.take_damage(9999)
@@ -1872,9 +1873,9 @@ func _process_combat(target_obj):
 			selected_unit.spend_ap(1)
 			current_input_state = InputState.SELECTING
 		else:
-			print("DEBUG: Attack Failed - Not enough AP! Current: ", selected_unit.current_ap)
+			GameManager.log(LOG_PREFIX, "DEBUG: Attack Failed - Not enough AP! Current: ", selected_unit.current_ap)
 	else:
-		print("DEBUG: Attack Failed - Invalid Faction Target. Self: ", s_faction, " Target: ", t_faction)
+		GameManager.log(LOG_PREFIX, "DEBUG: Attack Failed - Invalid Faction Target. Self: ", s_faction, " Target: ", t_faction)
 
 
 func _get_unit_at_grid(coord: Vector2):
@@ -1900,13 +1901,13 @@ func _is_valid_move(unit, grid_pos: Vector2) -> bool:
 
 	# Check Occupancy
 	if _get_unit_at_grid(grid_pos) != null:
-		print("Tile occupied!")
+		GameManager.log(LOG_PREFIX, "Tile occupied!")
 		return false
 
 	# Check distance (Mobility)
 	# 1. Check if Tile is Valid Destination (e.g. not a ladder)
 	if not gm.is_valid_destination(grid_pos):
-		print("Invalid destination (e.g. Ladder/Obstacle)")
+		GameManager.log(LOG_PREFIX, "Invalid destination (e.g. Ladder/Obstacle)")
 		return false
 
 	# 2. Calculate Actual Path Cost
@@ -1925,12 +1926,12 @@ func _is_valid_move(unit, grid_pos: Vector2) -> bool:
 		# If we assume 1 AP = 1 Move Action of "Mobility" distance.
 		# Then path cost must be <= unit.mobility.
 		if cost > unit.mobility:
-			print("Too far! Cost: ", cost, " vs Mobility: ", unit.mobility)
+			GameManager.log(LOG_PREFIX, "Too far! Cost: ", cost, " vs Mobility: ", unit.mobility)
 			return false
 
 	# Check AP
 	if unit.current_ap < 1:
-		print("No AP!")
+		GameManager.log(LOG_PREFIX, "No AP!")
 		return false
 
 	return true
@@ -1957,7 +1958,8 @@ func _process_move_or_interact(target_grid_pos: Vector2):
 	var objects = get_tree().get_nodes_in_group("Interactive")
 
 	# Debug
-	print(
+	GameManager.log(
+		LOG_PREFIX,
 		"DEBUG: Interaction check at ",
 		target_grid_pos,
 		". Found ",
@@ -1968,12 +1970,12 @@ func _process_move_or_interact(target_grid_pos: Vector2):
 	for obj in objects:
 		if obj.grid_pos == target_grid_pos:
 			interactive_obj = obj
-			print("DEBUG: Found object at target: ", obj)
+			GameManager.log(LOG_PREFIX, "DEBUG: Found object at target: ", obj)
 			break
 
 	if interactive_obj:
 		var dist = selected_unit.grid_pos.distance_to(target_grid_pos)
-		print("DEBUG: Object found. Distance: ", dist)
+		GameManager.log(LOG_PREFIX, "DEBUG: Object found. Distance: ", dist)
 
 		# Attempt Interaction
 		if dist <= 1.5:
@@ -1982,11 +1984,11 @@ func _process_move_or_interact(target_grid_pos: Vector2):
 			if om:
 				om.handle_interaction(selected_unit, interactive_obj)
 			else:
-				print("Main: Critical - OM not found for context interaction!")
+				GameManager.log(LOG_PREFIX, "Critical - OM not found for context interaction!")
 				interactive_obj.interact(selected_unit) # Fallback
 			return
 		else:
-			print("Too far to interact! (Dist: " + str(dist) + ")")
+			GameManager.log(LOG_PREFIX, "Too far to interact! (Dist: " + str(dist) + ")")
 
 	# MOVEMENT
 	# Refresh Pathfinding to respect units
@@ -1996,13 +1998,13 @@ func _process_move_or_interact(target_grid_pos: Vector2):
 	var path = gm.get_move_path(selected_unit.grid_pos, target_grid_pos)
 
 	if path.size() == 0:
-		print("Unreachable!")
+		GameManager.log(LOG_PREFIX, "Unreachable!")
 	elif path.size() - 1 > selected_unit.mobility:
-		print("Too far! Path length: ", path.size() - 1)
+		GameManager.log(LOG_PREFIX, "Too far! Path length: ", path.size() - 1)
 	elif _get_unit_at_grid(target_grid_pos) != null:
-		print("Cannot Move: Tile Occupied by Unit (Select 'Attack' to fight).")
+		GameManager.log(LOG_PREFIX, "Cannot Move: Tile Occupied by Unit (Select 'Attack' to fight).")
 	elif selected_unit.current_ap < 1:
-		print("No AP!")
+		GameManager.log(LOG_PREFIX, "No AP!")
 	else:
 		var world_path: Array[Vector3] = []
 		var grid_subset: Array[Vector2] = []
@@ -2022,7 +2024,7 @@ func _process_move_or_interact(target_grid_pos: Vector2):
 
 
 func play_intro_sequence(target_unit):
-	print("Main: Starting Cinematic Intro for " + target_unit.name)
+	GameManager.log(LOG_PREFIX, "Starting Cinematic Intro for " + target_unit.name)
 	current_input_state = InputState.CINEMATIC
 
 	# Hide UI (Optional)
@@ -2063,7 +2065,7 @@ func play_intro_sequence(target_unit):
 	SignalBus.on_cinematic_mode_changed.emit(false)
 
 	# Taunt Animation Placeholder
-	print("Main: [Nemesis Taunt Animation]")
+	GameManager.log(LOG_PREFIX, "[Nemesis Taunt Animation]")
 	# target_unit.play_anim("Taunt")
 
 
@@ -2079,7 +2081,7 @@ func _set_selected_unit(unit):
 			selection_marker.target_node = selected_unit
 			selection_marker.visible = true
 			
-		print("Main: Selected ", unit.name)
+		GameManager.log(LOG_PREFIX, "Selected ", unit.name)
 		
 		# Validate Controller Sync
 		if player_controller and player_controller.selected_unit != unit:
@@ -2145,7 +2147,7 @@ func _handle_unit_selection_from_ui(unit):
 
 	# SignalBus.on_cinematic_mode_changed.emit(false)
 	# current_input_state = InputState.SELECTING
-	# print("Main: Cinematic Ended.")
+	# GameManager.log(LOG_PREFIX, "Cinematic Ended.")
 
 
 func _unhandled_input(event):
@@ -2156,17 +2158,17 @@ func _unhandled_input(event):
 				and is_instance_valid(selected_unit)
 				and selected_unit.faction == "Player"
 			):
-				print("DEBUG: Inflicting Sanity Damage on ", selected_unit.name)
+				GameManager.log(LOG_PREFIX, "DEBUG: Inflicting Sanity Damage on ", selected_unit.name)
 				selected_unit.take_sanity_damage(100)  # Instant Panic
 		if event.pressed and event.keycode == KEY_L:
 			if selected_unit and is_instance_valid(selected_unit):
-				print("DEBUG: Killing Unit ", selected_unit.name)
+				GameManager.log(LOG_PREFIX, "DEBUG: Killing Unit ", selected_unit.name)
 				selected_unit.take_damage(999)  # Instant Kill
 
 
 # --- HELPERS ---
 func _log(msg: String):
-	print("[Main] ", msg)
+	GameManager.log(LOG_PREFIX, msg)
 
 
 
@@ -2175,7 +2177,7 @@ func _log(msg: String):
 func _trigger_victory_scene():
 	if GameManager:
 		GameManager.invasion_progress = 0
-		print("BASE DEFENSE SUCCESSFUL!")
+		GameManager.log(LOG_PREFIX, "BASE DEFENSE SUCCESSFUL!")
 		await get_tree().create_timer(3.0).timeout
 		get_tree().change_scene_to_file("res://scenes/ui/VictoryScene.tscn")
 
@@ -2252,7 +2254,7 @@ func _on_unit_death(unit):
 	if not "faction" in unit:
 		return # Ignore Props/Barrels
 
-	print("Main: _on_unit_death called for ", unit.name)
+	GameManager.log(LOG_PREFIX, "_on_unit_death called for ", unit.name)
 
 	# 1. Register Death in GameManager (Persistence)
 	if GameManager and unit.faction == "Player":
@@ -2273,10 +2275,10 @@ func _on_unit_death(unit):
 	# Note: The unit who just died might still be in the list until next frame, so we check carefully.
 	# If current_hp <= 0, they are technically dead.
 
-	print("DEBUG: _on_unit_death check. Players Alive: ", players_alive)
+	GameManager.log(LOG_PREFIX, "DEBUG: _on_unit_death check. Players Alive: ", players_alive)
 
 	if players_alive == 0:
-		print("Main: LAST SQUAD MEMBER FALLEN!")
+		GameManager.log(LOG_PREFIX, "LAST SQUAD MEMBER FALLEN!")
 		# Iron Dog check happens in GameManager on mission complete, but we need to trigger mission end.
 		_on_mission_ended_handler(false)
 		return

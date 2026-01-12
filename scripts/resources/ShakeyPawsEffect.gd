@@ -1,5 +1,6 @@
 extends "res://scripts/resources/StatusEffect.gd"
 
+const LOG_PREFIX = "ShakeyPawsEffect: "
 
 func _init():
 	display_name = "Shakey Paws"
@@ -7,7 +8,7 @@ func _init():
 
 
 func on_apply(unit: Node):
-	print(unit.name, " has Shakey Paws! Aim reduced by 20.")
+	GameManager.log(LOG_PREFIX, unit.name, " has Shakey Paws! Aim reduced by 20.")
 	# Apply logic usually handled by stats check,
 	# but we can modify the modifiers dictionary if Unit supports it.
 	# Unit.gd has 'modifiers'.
@@ -23,6 +24,6 @@ func on_apply(unit: Node):
 
 
 func on_remove(unit: Node):
-	print(unit.name, " recovered from Shakey Paws.")
+	GameManager.log(LOG_PREFIX, unit.name, " recovered from Shakey Paws.")
 	if "modifiers" in unit and unit.modifiers.has("aim"):
 		unit.modifiers["aim"] += 20

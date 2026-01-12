@@ -1,5 +1,6 @@
 extends Node
 class_name CombatResolver
+const LOG_PREFIX = "CombatResolver: "
 
 # Constants
 const BASE_WEAPON_RANGE = 4  # Tiles
@@ -207,7 +208,7 @@ static func calculate_hit_chance(
 static func execute_item_effect(
 	attacker, item, target_or_pos, grid_manager: GridManager
 ) -> bool:
-	print("CombatResolver: Executing Item ", item.display_name)
+	GameManager.log(LOG_PREFIX, "Executing Item ", item.display_name)
 
 	var target_pos = Vector3.ZERO
 	var target_unit = null
@@ -238,7 +239,7 @@ static func execute_item_effect(
 				break
 
 	if not target_unit:
-		print("CombatResolver: No target unit found for item execution.")
+		GameManager.log(LOG_PREFIX, "No target unit found for item execution.")
 		return false
 
 	if item.effect_type == ConsumableData.EffectType.HEAL:
@@ -306,7 +307,7 @@ static func execute_attack(
 	if attacker.faction == "Player" and targ_faction == "Player" and not is_berserk:
 		if attacker.primary_weapon and attacker.primary_weapon.display_name == "Syringe Gun":
 			SignalBus.on_combat_action_started.emit(attacker, target, "Heal", target.position)
-			print(attacker.name, " heals ", target.name)
+			GameManager.log(LOG_PREFIX, attacker.name, " heals ", target.name)
 			if target.has_method("heal"):
 				target.heal(4)
 
@@ -340,7 +341,8 @@ static func execute_attack(
 
 	var chance = result["hit_chance"]
 
-	print(
+	GameManager.log(
+		LOG_PREFIX,
 		attacker.name,
 		" attacks ",
 		target.name,
@@ -385,7 +387,7 @@ static func execute_attack(
 			# Sanity Damage on Crit
 			if targ_faction == "Player" and target.has_method("take_sanity_damage"):
 				target.take_sanity_damage(15)
-				print(target.name, " took CRIT SANITY DAMAGE!")
+				GameManager.log(LOG_PREFIX, target.name, " took CRIT SANITY DAMAGE!")
 
 		# 5. On-Hit Effects (Perks)
 		# (Go For Ankles is now an active ability, so no auto-passive here)
@@ -419,7 +421,7 @@ static func execute_attack(
 		if hp <= 0:
 			if attacker.has_method("gain_xp"):
 				attacker.gain_xp(50)
-				print(attacker.name, " killed ", target.name, " and gained 50 XP!")
+				GameManager.log(LOG_PREFIX, attacker.name, " killed ", target.name, " and gained 50 XP!")
 
 			# KILL TRACKING for Nemesis System
 			# AVENGE TRIGGER (Relationship Growth)
@@ -428,7 +430,7 @@ static func execute_attack(
 				var victim_friend = target.target_unit
 				if victim_friend != attacker and victim_friend.faction == "Player":
 					# Killed the enemy who was targeting my friend!
-					print(attacker.name, " avenged ", victim_friend.name, "!")
+					GameManager.log(LOG_PREFIX, attacker.name, " avenged ", victim_friend.name, "!")
 					if attacker.has_method("trigger_bond_growth"):
 						attacker.trigger_bond_growth(victim_friend, 5)
 
@@ -440,9 +442,9 @@ static func execute_attack(
 			if attacker.faction == "Enemy" and targ_faction == "Player":
 				if "victim_log" in attacker:
 					attacker.victim_log.append(dead_name)
-					print(
+					GameManager.log(
 						(
-							"CombatResolver: "
+							LOG_PREFIX
 							+ attacker.name
 							+ " added "
 							+ dead_name

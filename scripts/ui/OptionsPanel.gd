@@ -21,6 +21,35 @@ func _ready():
 	text_size_slider.value = 18 
 	if current_theme:
 		text_size_slider.value = current_theme.default_font_size
+		
+	# Dynamic Injection of Debug Checkbox to avoid TSCN edit risk
+	call_deferred("_inject_debug_checkbox")
+
+func _inject_debug_checkbox():
+	if not fs_check: return
+	
+	var container = fs_check.get_parent()
+	if container:
+		var debug_check = CheckBox.new()
+		debug_check.text = "Enable Debug Logging"
+		debug_check.name = "DebugLogCheck"
+		debug_check.tooltip_text = "Toggle verbose logging to console (for troubleshooting)."
+		
+		# Insert after Fullscreen check if possible
+		container.add_child(debug_check) 
+		container.move_child(debug_check, fs_check.get_index() + 1)
+		
+		# Init State
+		if GameManager:
+			debug_check.set_pressed_no_signal(GameManager.settings.get("debug_logging", false))
+			
+		# Connect
+		debug_check.toggled.connect(func(toggled):
+			if GameManager:
+				GameManager.settings["debug_logging"] = toggled
+				# Debug Log the change itself (meta!)
+				if toggled: print("[LOG] Debug Logging Enabled.")
+		)
 
 func _connect_signals():
 	music_slider.value_changed.connect(_on_music_volume_changed)

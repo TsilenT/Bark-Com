@@ -1,5 +1,6 @@
 extends Node
 class_name PlayerMissionController
+const LOG_PREFIX = "PMC: "
 
 const StandardAttack = preload("res://scripts/abilities/StandardAttack.gd")
 var default_attack: StandardAttack
@@ -41,7 +42,7 @@ func initialize(entry_main, entry_gm, entry_tm, entry_ui, entry_sb):
 	_signal_bus = entry_sb
 	_signal_bus = entry_sb
 	default_attack = StandardAttack.new()
-	print("PlayerMissionController: Initialized.")
+	GameManager.log(LOG_PREFIX, "Initialized.")
 
 func set_input_state(new_state: int):
 	current_input_state = new_state
@@ -171,7 +172,7 @@ func handle_mouse_hover(grid_pos: Vector2):
 
 func _handle_selection_click(grid_pos: Vector2):
 	var target_unit = _get_unit_at(grid_pos)
-	print("PMC: Attempting Select at ", grid_pos, ". Found: ", target_unit)
+	GameManager.log(LOG_PREFIX, "Attempting Select at ", grid_pos, ". Found: ", target_unit)
 	
 	# Friendly Switching
 	if target_unit and target_unit.get("faction") == "Player" and target_unit != selected_unit:
@@ -185,7 +186,7 @@ func _handle_selection_click(grid_pos: Vector2):
 		# Special Interaction (Smart Click)
 		# If clicking a Neutral Interactable (LootCrate), try to interact
 		if target_unit.is_in_group("Interactive") or target_unit.is_in_group("Objectives"):
-			print("PMC: Clicked Neutral Interactive. Delegating to Main.")
+			GameManager.log(LOG_PREFIX, "Clicked Neutral Interactive. Delegating to Main.")
 			if main_node.has_method("_process_move_or_interact"):
 				main_node._process_move_or_interact(grid_pos)
 
@@ -207,7 +208,7 @@ func select_unit(unit):
 	# Main._set_selected_unit(unit) # Legacy call if needed
 	
 func select_next_unit():
-	print("PMC: Cycle Next Unit Requested.")
+	GameManager.log(LOG_PREFIX, "Cycle Next Unit Requested.")
 	# 1. Get List of Player Units (Sorted by ID or Index)
 	# TurnManager.units is reliable list
 	if not turn_manager:
@@ -265,43 +266,43 @@ func select_next_unit():
 
 
 func _handle_move_click(grid_pos: Vector2):
-	print("PMC: _handle_move_click. Unit: ", selected_unit)
+	GameManager.log(LOG_PREFIX, "_handle_move_click. Unit: ", selected_unit)
 	if not selected_unit: return
 
 	# CHECK AP
 	if not _can_unit_move():
-		print("PMC: Unit has 0 AP. Ignoring Move Click.")
+		GameManager.log(LOG_PREFIX, "Unit has 0 AP. Ignoring Move Click.")
 		cancel_action()
 		return
 
 	# 0. Friendly Unit Switching (Overriding Move)
 	var clicked_unit = _get_unit_at(grid_pos)
 	if clicked_unit and clicked_unit.get("faction") == "Player" and clicked_unit != selected_unit:
-		print("PMC: Clicked Friendly Unit in Move Mode. Switching Selection to ", clicked_unit.name)
+		GameManager.log(LOG_PREFIX, "Clicked Friendly Unit in Move Mode. Switching Selection to ", clicked_unit.name)
 		select_unit(clicked_unit)
 		return
 
 	# 1. Check Interaction First
 	var interactive = _get_interactive_at(grid_pos)
 	if interactive:
-		print("PMC: Interactive object clicked. Delegating to Main.")
+		GameManager.log(LOG_PREFIX, "Interactive object clicked. Delegating to Main.")
 		if main_node.has_method("_process_move_or_interact"):
 			main_node._process_move_or_interact(grid_pos)
 		return
 
 	# 2. Validate Path for Movement
 	if not grid_manager.is_valid_destination(grid_pos):
-		print("PMC: Invalid destination (Blocked or LADDER).")
+		GameManager.log(LOG_PREFIX, "Invalid destination (Blocked or LADDER).")
 		if _signal_bus:
 			_signal_bus.on_combat_log_event.emit("Cannot Stop Here", Color.RED)
 		return
 
 	var path = grid_manager.get_move_path(selected_unit.grid_pos, grid_pos)
-	print("PMC: Path size: ", path.size())
+	GameManager.log(LOG_PREFIX, "Path size: ", path.size())
 	if path.size() > 0:
 		var cost = grid_manager.calculate_path_cost(path)
 		if cost > selected_unit.mobility:
-			print("PMC: Selected move invalid. Too far. Cost: ", cost, " > ", selected_unit.mobility)
+			GameManager.log(LOG_PREFIX, "Selected move invalid. Too far. Cost: ", cost, " > ", selected_unit.mobility)
 			if _signal_bus:
 				_signal_bus.on_combat_log_event.emit("Too Far!", Color.ORANGE)
 			return
@@ -330,7 +331,7 @@ func _handle_ability_click(grid_pos: Vector2):
 	if ability:
 		var valid_tiles = ability.get_valid_tiles(grid_manager, selected_unit)
 		if not valid_tiles.has(grid_pos):
-			print("PMC: Clicked Tile ", grid_pos, " is out of range/invalid.")
+			GameManager.log(LOG_PREFIX, "Clicked Tile ", grid_pos, " is out of range/invalid.")
 			# Optional: Feedback UI
 			if _signal_bus:
 				_signal_bus.on_combat_log_event.emit("Out of Range", Color.RED)
@@ -345,7 +346,7 @@ func _handle_ability_click(grid_pos: Vector2):
 
 func _handle_item_click(grid_pos: Vector2):
 	if not pending_item_action:
-		print("PMC: No item pending.")
+		GameManager.log(LOG_PREFIX, "No item pending.")
 		cancel_action()
 		return
 		
@@ -366,7 +367,7 @@ func _handle_item_click(grid_pos: Vector2):
 			if valid_tiles.has(grid_pos):
 				is_valid_range = true
 			else:
-				print("PMC: Tile ", grid_pos, " not in ability valid tiles.")
+				GameManager.log(LOG_PREFIX, "Tile ", grid_pos, " not in ability valid tiles.")
 	
 	if not is_valid_range:
 		# Fallback: Simple Range Check (for non-ability items)
@@ -382,7 +383,7 @@ func _handle_item_click(grid_pos: Vector2):
 			is_valid_range = true
 			
 	if not is_valid_range:
-		print("PMC: Item Out of Range.")
+		GameManager.log(LOG_PREFIX, "Item Out of Range.")
 		if _signal_bus:
 			_signal_bus.on_combat_log_event.emit("Out of Range", Color.RED)
 		return

@@ -1,5 +1,7 @@
 extends StatusEffect
 
+const LOG_PREFIX = "ShreddedArmorStatus: "
+
 func _init():
 	display_name = "Shredded Armor"
 	description = "Armor reduced by 2."
@@ -10,7 +12,7 @@ func _init():
 func on_apply(unit):
 	if not unit.modifiers.has("armor_change"): unit.modifiers["armor_change"] = 0
 	unit.modifiers["armor_change"] -= 2
-	print(unit.name, " armor SHREDDED! (-2 Armor)")
+	GameManager.log(LOG_PREFIX, unit.name, " armor SHREDDED! (-2 Armor)")
 
 func on_remove(unit):
 	# If it's permanent, we don't restore it. But status usually cleans up.
@@ -21,4 +23,4 @@ func on_remove(unit):
 	# For now, let's revert it on remove so it behaves like a status.
 	if unit.modifiers.has("armor_change"):
 		unit.modifiers["armor_change"] += 2
-	print(unit.name, " armor restored.")
+	GameManager.log(LOG_PREFIX, unit.name, " armor restored.")

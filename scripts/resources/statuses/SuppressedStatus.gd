@@ -1,5 +1,7 @@
 extends StatusEffect
 
+const LOG_PREFIX = "SuppressedStatus: "
+
 func _init():
 	display_name = "Suppressed"
 	description = "Mobility -4, Accuracy -20."
@@ -16,11 +18,11 @@ func on_apply(unit):
 	if not unit.modifiers.has("accuracy"): unit.modifiers["accuracy"] = 0
 	unit.modifiers["accuracy"] -= 20 # Aim penalty
 	
-	print(unit.name, " is SUPPRESSED! (-4 Mob, -20 Aim)")
+	GameManager.log(LOG_PREFIX, unit.name, " is SUPPRESSED! (-4 Mob, -20 Aim)")
 
 func on_remove(unit):
 	if unit.modifiers.has("mobility"):
 		unit.modifiers["mobility"] += 4
 	if unit.modifiers.has("accuracy"):
 		unit.modifiers["accuracy"] += 20
-	print(unit.name, " is no longer suppressed.")
+	GameManager.log(LOG_PREFIX, unit.name, " is no longer suppressed.")

@@ -13,6 +13,7 @@ var current_wave_index: int = 0
 var spawned_units: Array = []
 var grid_manager = null  # Reference to GridManager
 var _mission_ended_flag: bool = false
+const LOG_PREFIX = "MissionManager: "
 
 
 func _ready():
@@ -121,11 +122,11 @@ func start_mission(config: MissionConfig, grid: GridManager):
 	current_wave_index = 0
 	spawned_units.clear()
 
-	print("--- MISSION STARTED: ", config.mission_name, " ---")
+	GameManager.log(LOG_PREFIX, "--- MISSION STARTED: ", config.mission_name, " ---")
 
 	# Spawn Loot (10% Chance if Deathmatch, or Default for other?)
 	# Use standard Logic
-	print("MissionManager: Objective Type is ", active_mission_config.objective_type)
+	GameManager.log(LOG_PREFIX, "Objective Type is ", active_mission_config.objective_type)
 	if active_mission_config.objective_type != 0:
 		_spawn_objectives(active_mission_config.objective_type, active_mission_config.objective_target_count)
 	else:
@@ -137,13 +138,13 @@ func start_mission(config: MissionConfig, grid: GridManager):
 
 
 func _spawn_objectives(type: int, count: int):
-	print("MissionManager: Spawning ", count, " Objectives (Type ", type, ")...")
+	GameManager.log(LOG_PREFIX, "Spawning ", count, " Objectives (Type ", type, ")...")
 	
 	var successful_spawns = 0
 	for i in range(count):
 		var pos = _find_valid_loot_pos()
 		if pos == Vector2(-1, -1):
-			print("MissionManager: Could not find spot for objective ", i)
+			GameManager.log(LOG_PREFIX, "Could not find spot for objective ", i)
 			continue
 			
 		var obj_node = null
@@ -171,7 +172,7 @@ func _spawn_objectives(type: int, count: int):
 					var script = load(picked)
 					if script:
 						obj_node.loot_table.append(script.new())
-						print("MissionManager: Crate at ", pos, " contains loot: ", picked)
+						GameManager.log(LOG_PREFIX, "Crate at ", pos, " contains loot: ", picked)
 				
 		elif type == 1: # RESCUE
 			var h_script = load("res://scripts/entities/ObjectiveUnit.gd")
@@ -198,7 +199,7 @@ func _spawn_objectives(type: int, count: int):
 				if not path.is_empty():
 					best_pos = center
 				else:
-					print("MissionManager: Center (10,10) unreachable. Spiraling search...")
+					GameManager.log(LOG_PREFIX, "Center (10,10) unreachable. Spiraling search...")
 					var found = false
 					for r in range(1, 10): # Radius 1 to 9
 						for x in range(center.x - r, center.x + r + 1):
@@ -215,7 +216,7 @@ func _spawn_objectives(type: int, count: int):
 									if not p_path.is_empty():
 										best_pos = p
 										found = true
-										print("MissionManager: Found suitable Hydrant spot at ", p)
+										GameManager.log(LOG_PREFIX, "Found suitable Hydrant spot at ", p)
 										break
 							if found: break
 						if found: break
@@ -225,7 +226,7 @@ func _spawn_objectives(type: int, count: int):
 				else:
 					# Fallback to center and hope clearing works
 					pos = center
-					print("MissionManager: Could not find reachable spot? Forcing Center.")
+					GameManager.log(LOG_PREFIX, "Could not find reachable spot? Forcing Center.")
 
 				
 				# CRITICAL: Force clear the tile so it doesn't spawn in a wall
@@ -233,7 +234,7 @@ func _spawn_objectives(type: int, count: int):
 					grid_manager.grid_data[pos]["walkable"] = true
 					grid_manager.grid_data[pos]["cover"] = 0.0
 					grid_manager.grid_data[pos]["unit"] = null # Clear any existing unit placeholder
-					print("MissionManager: Force-cleared tile for Hydrant at ", pos)
+					GameManager.log(LOG_PREFIX, "Force-cleared tile for Hydrant at ", pos)
 					
 					# PHYSICS CLEANUP: Destroy any visual/collision walls here
 					var world_pos = grid_manager.get_world_position(pos)
@@ -249,7 +250,7 @@ func _spawn_objectives(type: int, count: int):
 					var results = space_state.intersect_point(query)
 					for res in results:
 						if res.collider and res.collider.is_class("StaticBody3D"):
-							print("MissionManager: Destroying Wall at Hydrant Point! ", res.collider)
+							GameManager.log(LOG_PREFIX, "Destroying Wall at Hydrant Point! ", res.collider)
 							res.collider.queue_free()
 
 
@@ -270,14 +271,14 @@ func _spawn_objectives(type: int, count: int):
 					obj_node.initialize(pos)
 			
 			obj_node.add_to_group("Objectives")
-			print("MissionManager: Spawned Objective (Type ", type, ") at ", pos)
+			GameManager.log(LOG_PREFIX, "Spawned Objective (Type ", type, ") at ", pos)
 			successful_spawns += 1
 		else:
-			print("MissionManager: Failed to create objective node for type ", type)
+			GameManager.log(LOG_PREFIX, "Failed to create objective node for type ", type)
 
 	# Desperation Spawn (Ensure at least 1)
 	if successful_spawns == 0 and count > 0:
-		print("MissionManager: CRITICAL! No valid spots found. Attempting ROBUST Desperation Spawn.")
+		GameManager.log(LOG_PREFIX, "CRITICAL! No valid spots found. Attempting ROBUST Desperation Spawn.")
 		# Search area around player start for ANY valid tile
 		var spawned_desperation = false
 		for x in range(1, 6):
@@ -300,36 +301,36 @@ func _spawn_objectives(type: int, count: int):
 						obj_node.add_to_group("Objectives")
 						successful_spawns += 1
 						spawned_desperation = true
-						print("MissionManager: Desperation Spawn Successful at ", fallback_pos)
+						GameManager.log(LOG_PREFIX, "Desperation Spawn Successful at ", fallback_pos)
 						break
 			if spawned_desperation:
 				break
 				
 	if successful_spawns < count:
-		print("MissionManager: WARN - Only spawned ", successful_spawns, "/", count, " objectives.")
+		GameManager.log(LOG_PREFIX, "WARN - Only spawned ", successful_spawns, "/", count, " objectives.")
 		
 		# Prevent Instant Win by ensuring target is at least 1 (unless count was 0)
 		var final_target = successful_spawns
 		if final_target == 0 and count > 0:
-			print("MissionManager: ERROR! Failed to spawn ANY objectives even with desperation. Forcing target to 1 to prevent instant win.")
+			GameManager.log(LOG_PREFIX, "ERROR! Failed to spawn ANY objectives even with desperation. Forcing target to 1 to prevent instant win.")
 			final_target = 1
 		
 		active_mission_config.objective_target_count = final_target
 		
 		var om = grid_manager.get_node_or_null("../ObjectiveManager")
 		if om:
-			print("MissionManager: Syncing ObjectiveManager to new count: ", final_target)
+			GameManager.log(LOG_PREFIX, "Syncing ObjectiveManager to new count: ", final_target)
 			om.target_count = final_target
 		else:
-			print("MissionManager: CRITICAL! Could not find ObjectiveManager to sync count! Main scene structure mismatch?")
+			GameManager.log(LOG_PREFIX, "CRITICAL! Could not find ObjectiveManager to sync count! Main scene structure mismatch?")
 	else:
-		print("MissionManager: All ", count, " objectives spawned successfully.")
+		GameManager.log(LOG_PREFIX, "All ", count, " objectives spawned successfully.")
 
 
 func _spawn_loot():
 	if not grid_manager:
 		return
-	print("MissionManager: Spawning Loot Crate...")
+	GameManager.log(LOG_PREFIX, "Spawning Loot Crate...")
 
 	valid_loot_pos = _find_valid_loot_pos()
 	if valid_loot_pos == Vector2(-1, -1):
@@ -393,7 +394,7 @@ func _spawn_loot():
 	# LootCrate should probably be in "Objectives" or "Interactables"
 	crate.add_to_group("Objectives")  # _try_interact scans this group
 
-	print("Spawned Loot Crate at ", valid_loot_pos)
+	GameManager.log(LOG_PREFIX, "Spawned Loot Crate at ", valid_loot_pos)
 
 
 var valid_loot_pos = Vector2(-1, -1)
@@ -427,7 +428,7 @@ func _find_valid_loot_pos() -> Vector2:
 			# Just ensure it's reachable, distance doesn't matter as much for fallback
 			var path = grid_manager.get_move_path(player_start, pos)
 			if not path.is_empty():
-				print("MissionManager: Using fallback reachable spawn pos at ", pos)
+				GameManager.log(LOG_PREFIX, "Using fallback reachable spawn pos at ", pos)
 				return pos
 			
 	return Vector2(-1, -1)
@@ -449,7 +450,7 @@ func _on_unit_died(unit):
 	
 	# 1. Player Death (Permadeath)
 	if "faction" in unit and unit.faction == "Player":
-		print("MissionManager: Player Unit Died! Registering death...")
+		GameManager.log(LOG_PREFIX, "Player Unit Died! Registering death...")
 		if GameManager:
 			var data = {
 				"name": unit.name,
@@ -464,7 +465,7 @@ func _on_unit_died(unit):
 		spawned_units.erase(unit)
 
 		if spawned_units.is_empty():
-			print("Wave Cleared!")
+			GameManager.log(LOG_PREFIX, "Wave Cleared!")
 			wave_cleared.emit(current_wave_index)
 			
 			if current_wave_index < active_mission_config.waves.size():
@@ -476,7 +477,7 @@ func _on_unit_died(unit):
 				if active_mission_config.objective_type == 0 or active_mission_config.objective_type == 4:
 					_complete_mission()
 				else:
-					print("MissionManager: Waves Clear. Waiting for Objective Completion...")
+					GameManager.log(LOG_PREFIX, "Waves Clear. Waiting for Objective Completion...")
 	
 	# 3. Generic Status Check
 	_check_mission_status()
@@ -496,13 +497,13 @@ func _check_mission_status(turn_num: int = -1):
 	# Pass current units list to status checker
 	# print("MissionManager: Checking Status... Turn:", turn_num)
 	var status = om.check_status(tm.units, turn_num if turn_num != -1 else om.current_turn)
-	print("MissionManager: Status Result -> ", status)
+	GameManager.log(LOG_PREFIX, "Status Result -> ", status)
 	
 	if status == "WIN":
-		print("MissionManager: Victory Condition Met!")
+		GameManager.log(LOG_PREFIX, "Victory Condition Met!")
 		_complete_mission()
 	elif status == "LOSS":
-		print("MissionManager: Defeat Condition Met!")
+		GameManager.log(LOG_PREFIX, "Defeat Condition Met!")
 		_handle_defeat(tm.units)
 		SignalBus.on_mission_ended.emit(false, 0)
 
@@ -517,7 +518,7 @@ func start_next_wave():
 	current_wave_index += 1
 	wave_started.emit(current_wave_index, active_mission_config.waves.size())
 
-	print(">>> WAVE ", current_wave_index, ": ", wave_def.wave_message)
+	GameManager.log(LOG_PREFIX, ">>> WAVE ", current_wave_index, ": ", wave_def.wave_message)
 	_spawn_wave(wave_def)
 
 
@@ -553,7 +554,7 @@ func _pick_random_archetype(wave_def: WaveDefinition) -> String:
 		pool = wave_def.allowed_archetypes
 		# print("Debug: using allowed archetypes: ", pool)
 	else:
-		print("Debug: allowed_archetypes EXPECTED but EMPTY! Falling back to defaults.")
+		GameManager.log(LOG_PREFIX, "Debug: allowed_archetypes EXPECTED but EMPTY! Falling back to defaults.")
 		# Fallback: Random key from ENEMIES (excluding Nemesis/Whisperer usually unless specified?)
 		pool = ["Rusher", "Sniper", "Spitter"]
 	
@@ -586,7 +587,7 @@ func _spawn_enemy(type_name: String):
 
 	var script_path = ENEMY_SCRIPTS.get(type_name)
 	if not script_path or not ResourceLoader.exists(script_path):
-		print("Error: Unknown enemy script for ", type_name)
+		GameManager.log(LOG_PREFIX, "Error: Unknown enemy script for ", type_name)
 		return
 
 	var script = load(script_path)
@@ -605,7 +606,7 @@ func _spawn_enemy(type_name: String):
 			break
 			
 	if spawn_pos == Vector2(-1, -1):
-		print("MissionManager: Could not find reachable spawn for ", type_name)
+		GameManager.log(LOG_PREFIX, "Could not find reachable spawn for ", type_name)
 		spawn_pos = grid_manager.get_random_valid_position() # Fallback
 
 
@@ -637,7 +638,7 @@ func _spawn_enemy(type_name: String):
 	if enemy.has_method("initialize"):
 		enemy.initialize(spawn_pos)
 
-	print("Spawned ", type_name, " at ", spawn_pos)
+	GameManager.log(LOG_PREFIX, "Spawned ", type_name, " at ", spawn_pos)
 
 
 func _configure_enemy(enemy, type_name: String):
@@ -724,7 +725,7 @@ func _complete_mission():
 		return
 	_mission_ended_flag = true
 
-	print("MissionManager: Mission Complete! Emitting Victory Signal.")
+	GameManager.log(LOG_PREFIX, "Mission Complete! Emitting Victory Signal.")
 	mission_completed.emit(active_mission_config)
 	
 	# Also notify global bus so Main.gd shows victory screen
@@ -740,7 +741,7 @@ func _handle_defeat(units: Array):
 		return
 	_mission_ended_flag = true
 
-	print("MissionManager: Processing Defeat Persistence...")
+	GameManager.log(LOG_PREFIX, "Processing Defeat Persistence...")
 	if not GameManager:
 		return
 
@@ -772,7 +773,7 @@ func _handle_defeat(units: Array):
 
 
 func setup_acidsplosion_scenario(grid_manager, unit_container):
-	print("MissionManager: Setting up ACIDSPLOSION Scenario!")
+	GameManager.log(LOG_PREFIX, "Setting up ACIDSPLOSION Scenario!")
 	
 	# 1. Spawn Spitters
 	# Center the action around 10,10

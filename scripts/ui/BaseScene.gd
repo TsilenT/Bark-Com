@@ -1,5 +1,6 @@
 extends Control
 class_name BaseScene
+const LOG_PREFIX = "BaseScene: "
 
 # Represents the UI for the Base
 var game_manager: _GameManager
@@ -104,20 +105,20 @@ func _show_hub():
 	var bg_tex = load(icon_path)
 	
 	if not bg_tex:
-		print("BaseScene: Standard load failed for ", icon_path, ". Trying direct load.")
+		GameManager.log(LOG_PREFIX, "Standard load failed for ", icon_path, ". Trying direct load.")
 		var img = Image.new()
 		var err = img.load(icon_path)
 		if err == OK:
 			bg_tex = ImageTexture.create_from_image(img)
-			print("BaseScene: Direct load successful.")
+			GameManager.log(LOG_PREFIX, "Direct load successful.")
 		else:
-			print("BaseScene: Direct load failed with error ", err)
+			GameManager.log(LOG_PREFIX, "Direct load failed with error ", err)
 	
 	if bg_tex:
 		bg_rect.texture = bg_tex
 		hub.add_child(bg_rect)
 	else:
-		print("BaseScene: FAILED to load Hub Background due to format/path issue.")
+		GameManager.log(LOG_PREFIX, "FAILED to load Hub Background due to format/path issue.")
 		# Fallback Color
 		var col_rect = ColorRect.new()
 		col_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -240,7 +241,7 @@ func _update_mascot(base_name: String):
 				if err == OK:
 					tex = ImageTexture.create_from_image(img)
 					final_path = try_path
-					print("DEBUG_MASCOT: Loaded via ImageTexture: ", final_path)
+					GameManager.log(LOG_PREFIX, "DEBUG_MASCOT: Loaded via ImageTexture: ", final_path)
 					break
 	
 	if tex:
@@ -251,9 +252,9 @@ func _update_mascot(base_name: String):
 		mascot_rect.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 		mascot_rect.offset_right = 0
 		mascot_rect.offset_bottom = 0
-		print("DEBUG_MASCOT: Loaded successfully: ", final_path)
+		GameManager.log(LOG_PREFIX, "DEBUG_MASCOT: Loaded successfully: ", final_path)
 	else:
-		print("BaseScene: Mascot texture not found for base: ", base_name, " suffix: ", suffix)
+		GameManager.log(LOG_PREFIX, "Mascot texture not found for base: ", base_name, " suffix: ", suffix)
 		mascot_rect.visible = false
 
 func _get_mascot_texture(base_name: String) -> Texture2D:
@@ -285,10 +286,10 @@ func _get_mascot_texture(base_name: String) -> Texture2D:
 			var err = img.load(try_path)
 			if err == OK:
 				tex = ImageTexture.create_from_image(img)
-				print("DEBUG_MASCOT: Loaded via ImageTexture: ", try_path)
+				GameManager.log(LOG_PREFIX, "DEBUG_MASCOT: Loaded via ImageTexture: ", try_path)
 				return tex
 				
-	print("BaseScene: Mascot texture not found for base: ", base_name, " suffix: ", suffix)
+	GameManager.log(LOG_PREFIX, "Mascot texture not found for base: ", base_name, " suffix: ", suffix)
 	return null
 
 func _hide_mascot():
@@ -469,10 +470,10 @@ func _on_unit_recruited(unit_data: Dictionary):
 
 
 func _on_skin_changed_refresh():
-	print("DEBUG: _on_skin_changed_refresh start. content_area children: ", content_area.get_child_count())
+	GameManager.log(LOG_PREFIX, "DEBUG: _on_skin_changed_refresh start. content_area children: ", content_area.get_child_count())
 	# Check active view
 	for child in content_area.get_children():
-		print("DEBUG: Checking child: ", child.name, " Meta: ", child.get_meta("ui_context") if child.has_meta("ui_context") else "None")
+		GameManager.log(LOG_PREFIX, "DEBUG: Checking child: ", child.name, " Meta: ", child.get_meta("ui_context") if child.has_meta("ui_context") else "None")
 		
 		# Metadata check is robust against renaming
 		if child.has_meta("ui_context"):
@@ -515,7 +516,7 @@ func _on_options_pressed():
 
 
 func _log(text: String, color: String = ""):
-	print(text)
+	GameManager.log(LOG_PREFIX, text)
 	if terminal_panel:
 		var c = Color.WHITE
 		if color == "red": c = Color.RED

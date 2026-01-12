@@ -1,6 +1,8 @@
 extends StatusEffect
 class_name DisorientedEffect
 
+const LOG_PREFIX = "DisorientedEffect: "
+
 var aim_penalty: int = 20
 
 func _init():
@@ -11,7 +13,7 @@ func _init():
 	icon = preload("res://assets/icons/status/disoriented.svg")
 
 func on_apply(unit: Node):
-	print("StatusEffect: ", unit.name, " is Disoriented!")
+	GameManager.log(LOG_PREFIX, unit.name, " is Disoriented!")
 	SignalBus.on_request_floating_text.emit(
 		unit.position + Vector3(0, 2.5, 0), "DISORIENTED", Color.ORANGE
 	)
@@ -22,7 +24,7 @@ func on_apply(unit: Node):
 		SignalBus.on_unit_stats_changed.emit(unit)
 
 func on_remove(unit: Node):
-	print("StatusEffect: ", unit.name, " recovers from disorientation.")
+	GameManager.log(LOG_PREFIX, unit.name, " recovers from disorientation.")
 	if unit.get("modifiers") != null and unit.modifiers.has("accuracy"):
 		unit.modifiers["accuracy"] += aim_penalty
 		SignalBus.on_unit_stats_changed.emit(unit)

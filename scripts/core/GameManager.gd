@@ -63,7 +63,36 @@ func _ready():
 		audio_manager.name = "AudioManager"
 		add_child(audio_manager)
 
+	# Settings Migration
+	if not "debug_logging" in settings:
+		settings["debug_logging"] = false
+
 	_initialize_shop()
+
+
+func log(a="", b="", c="", d="", e="", f="", g="", h="", i="", j=""):
+	if settings.get("debug_logging", false) == true:
+		# Filter out empty arguments to avoid extra spaces if desired, 
+		# but print(a,b) naturally adds spaces.
+		# Note: logic to only print if 'a' is not empty? print() can print empty lines.
+		# We'll just pass through.
+		if b == "" and c == "":
+			print("[LOG] ", a)
+		else:
+			# If we have multiple args, standard print adds spaces.
+			# We want to mimic that but prefix [LOG].
+			# But we can't easily spread args to print.
+			# So we construct the string.
+			var msg = str(a)
+			if str(b) != "": msg += " " + str(b)
+			if str(c) != "": msg += " " + str(c)
+			if str(d) != "": msg += " " + str(d)
+			if str(e) != "": msg += " " + str(e)
+			if str(f) != "": msg += " " + str(f)
+			if str(g) != "": msg += " " + str(g)
+			# ... reasonable limit
+			print("[LOG] ", msg)
+
 
 
 var name_gen_script = load("res://scripts/utils/NameGenerator.gd")

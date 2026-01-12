@@ -1,5 +1,6 @@
 extends "res://scripts/resources/StatusEffect.gd"
 
+const LOG_PREFIX = "FrozenEffect: "
 
 func _init():
 	display_name = "Frozen"
@@ -7,7 +8,7 @@ func _init():
 
 
 func on_apply(unit: Node):
-	print(unit.name, " is Frozen in fear! Cannot move.")
+	GameManager.log(LOG_PREFIX, unit.name, " is Frozen in fear! Cannot move.")
 	if "current_ap" in unit:
 		unit.current_ap = 0
 
@@ -18,4 +19,4 @@ func on_turn_start(unit: Node):
 	# Re-apply AP removal if it persists across turns
 	if "current_ap" in unit:
 		unit.current_ap = 0
-		print(unit.name, " is still Frozen.")
+		GameManager.log(LOG_PREFIX, unit.name, " is still Frozen.")

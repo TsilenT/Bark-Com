@@ -1,5 +1,7 @@
 extends StatusEffect
 
+const LOG_PREFIX = "ConfusedStatus: "
+
 
 func _init():
 	display_name = "Confused"
@@ -13,11 +15,11 @@ func on_turn_start(unit: Node):
 	# Fallback if no grid manager
 	if "current_ap" in unit:
 		unit.current_ap = 0
-	print(unit.name, " is CONFUSED! (No Grid Context)")
+	GameManager.log(LOG_PREFIX, unit.name, " is CONFUSED! (No Grid Context)")
 
 
 func on_turn_start_with_grid(unit: Node, grid_manager: Node):
-	print(unit.name, " is CONFUSED! Executing Friendly Fire logic.")
+	GameManager.log(LOG_PREFIX, unit.name, " is CONFUSED! Executing Friendly Fire logic.")
 
 	# Wait for Player Turn Banner
 	await SignalBus.on_turn_banner_finished
@@ -34,7 +36,7 @@ func on_turn_start_with_grid(unit: Node, grid_manager: Node):
 		var target = _find_nearest_ally(unit, grid_manager)
 
 		if not target:
-			print("Confused Unit: No allies found to betray.")
+			GameManager.log(LOG_PREFIX, "No allies found to betray.")
 			break
 
 		# 2. Check Range
@@ -45,14 +47,14 @@ func on_turn_start_with_grid(unit: Node, grid_manager: Node):
 
 		if dist <= weapon_range:
 			# ATTACK
-			print("Confused Unit: Attacking ", target.name)
+			GameManager.log(LOG_PREFIX, "Attacking ", target.name)
 			_perform_betrayal_attack(unit, target)
 			ap -= 1
 			await unit.get_tree().create_timer(1.0).timeout  # Pause for effect
 		else:
 			# MOVE
 			if ap >= 1:  # Move costs 1?
-				print("Confused Unit: Moving towards ", target.name)
+				GameManager.log(LOG_PREFIX, "Moving towards ", target.name)
 				# Simple move 1 tile closer
 				var path = grid_manager.get_move_path(unit.grid_pos, target.grid_pos)
 				if path.size() > 1:
@@ -101,7 +103,7 @@ func _perform_betrayal_attack(attacker, victim):
 		if attacker.get("primary_weapon"):
 			dmg = attacker.primary_weapon.damage
 
-		print("BETRAYAL! ", attacker.name, " hits ", victim.name, " for ", dmg, " damage!")
+		GameManager.log(LOG_PREFIX, "BETRAYAL! ", attacker.name, " hits ", victim.name, " for ", dmg, " damage!")
 		if victim.has_method("take_damage"):
 			victim.take_damage(dmg)
 
@@ -109,4 +111,5 @@ func _perform_betrayal_attack(attacker, victim):
 		if attacker.get_node_or_null("VFXManager"):  # Global?
 			pass  # Creating vfx is tricky without scene context
 	else:
-		print("BETRAYAL! ", attacker.name, " missed ", victim.name)
+		GameManager.log(LOG_PREFIX, "BETRAYAL! ", attacker.name, " missed ", victim.name)
+

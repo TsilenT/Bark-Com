@@ -2,6 +2,7 @@ extends Unit
 class_name EnemyUnit
 
 signal action_complete
+const LOG_PREFIX = "EnemyAI: "
 
 const EnemyDataScript = preload("res://scripts/resources/EnemyData.gd")
 
@@ -87,11 +88,11 @@ func initialize_from_data(data: EnemyData):
 			abilities.append(script_res.new())
 
 	if DEBUG_AI:
-		print("Initialized ", name, " with behavior ", data.ai_behavior)
+		GameManager.log(LOG_PREFIX, "Initialized ", name, " with behavior ", data.ai_behavior)
 
 
 func _end_action():
-	print(name, " [AI] Emitting action_complete signal.")
+	GameManager.log(LOG_PREFIX, name, " [AI] Emitting action_complete signal.")
 	action_complete.emit()
 
 
@@ -105,10 +106,10 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 	var turn_state_str = "UNKNOWN"
 	if tm:
 		turn_state_str = str(tm.current_turn)
-	print("ENEMY AI: ", name, " deciding acton. TM State: ", turn_state_str, " (Should be 1/ENEMY)")
+	GameManager.log(LOG_PREFIX, name, " deciding acton. TM State: ", turn_state_str, " (Should be 1/ENEMY)")
 
 	if DEBUG_AI:
-		print(name, " is deciding action...")
+		GameManager.log(LOG_PREFIX, name, " is deciding action...")
 	
 	# Refresh Pathfinding logic to include units as obstacles
 	grid_manager.refresh_pathfinding(_all_units, self)
@@ -174,7 +175,7 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 	if not target_unit:
 		state = State.IDLE
 		if DEBUG_AI:
-			print(" - No valid targets. Returning to IDLE.")
+			GameManager.log(LOG_PREFIX, "- No valid targets. Returning to IDLE.")
 		_end_action()
 		return
 
@@ -192,7 +193,7 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 	# 2. Tactical Movement (Utility AI)
 	var tiles = get_reachable_tiles(grid_manager)
 	if DEBUG_AI:
-		print(" - Analyzing ", tiles.size(), " reachable tiles.")
+		GameManager.log(LOG_PREFIX, "- Analyzing ", tiles.size(), " reachable tiles.")
 
 	var best_tile = grid_pos
 	var best_score = -9999.0
@@ -211,17 +212,17 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 			best_tile = tile
 
 	if DEBUG_AI:
-		print(" - Best Tile: ", best_tile, " Score: ", best_score)
+		GameManager.log(LOG_PREFIX, "- Best Tile: ", best_tile, " Score: ", best_score)
 
 	# Fallback Logic: If stuck locally and out of range, try long-distance path
 	if best_tile == grid_pos and grid_pos.distance_to(target_unit.grid_pos) > float(attack_range):
 		if DEBUG_AI:
-			print(" - Stuck locally. Attempting long-distance pathfinding...")
+			GameManager.log(LOG_PREFIX, "- Stuck locally. Attempting long-distance pathfinding...")
 		var long_move = get_long_distance_move(target_unit, grid_manager)
 		if long_move != grid_pos:
 			best_tile = long_move
 			if DEBUG_AI:
-				print(" - Long Distance Move Found: ", best_tile)
+				GameManager.log(LOG_PREFIX, "- Long Distance Move Found: ", best_tile)
 
 	# Debug Visual
 	if gv:
@@ -245,17 +246,17 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 
 			# 3. Execute
 			# grid_pos = best_tile # Removed immediate assignment
-			print(name, " [AI] Moving along path... (Length: ", world_path.size(), ")")
+			GameManager.log(LOG_PREFIX, name, " [AI] Moving along path... (Length: ", world_path.size(), ")")
 			move_along_path(world_path, grid_subset)
 
 			# WAIT FOR MOVEMENT
-			print(name, " [AI] Awaiting movement_finished...")
+			GameManager.log(LOG_PREFIX, name, " [AI] Awaiting movement_finished...")
 			await movement_finished
-			print(name, " [AI] Movement finished!")
+			GameManager.log(LOG_PREFIX, name, " [AI] Movement finished!")
 
 			# check death (e.g. Overwatch kill)
 			if current_hp <= 0:
-				print(name, " [AI] Died during movement.")
+				GameManager.log(LOG_PREFIX, name, " [AI] Died during movement.")
 				_end_action()
 				return  # Stop AI if we died moving
 
@@ -269,22 +270,22 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 		var dist = grid_pos.distance_to(target_unit.grid_pos)
 		if dist <= float(attack_range):  # Use dynamic variable
 			if DEBUG_AI:
-				print(" - Attacking from position.")
+				GameManager.log(LOG_PREFIX, "- Attacking from position.")
 			attack_target(grid_manager)
 
 			# WAIT FOR ATTACK ANIMATION/SPLA T
-			print(name, " [AI] Attacking/Waiting...")
+			GameManager.log(LOG_PREFIX, name, " [AI] Attacking/Waiting...")
 			await get_tree().create_timer(1.0).timeout
-			print(name, " [AI] Attack sequence done.")
+			GameManager.log(LOG_PREFIX, name, " [AI] Attack sequence done.")
 		else:
 			if DEBUG_AI:
-				print(" - Target out of range.")
+				GameManager.log(LOG_PREFIX, "- Target out of range.")
 	else:
 		state = State.IDLE
 		if DEBUG_AI:
-			print(" - No Target to attack. Ending turn.")
+			GameManager.log(LOG_PREFIX, "- No Target to attack. Ending turn.")
 	
-	print(name, " [AI] decide_action COMPLETE.")
+	GameManager.log(LOG_PREFIX, name, " [AI] decide_action COMPLETE.")
 	_end_action()
 
 
@@ -586,7 +587,7 @@ func attack_target(grid_manager: GridManager):
 		# Use CombatResolver
 		var result = CombatResolver.execute_attack(self, target_unit, grid_manager)
 		if DEBUG_AI:
-			print(" - Attack Result: ", result)
+			GameManager.log(LOG_PREFIX, "- Attack Result: ", result)
 
 
 func get_ideal_distance() -> int:
