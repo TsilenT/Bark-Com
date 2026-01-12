@@ -67,6 +67,7 @@ func test_base_hit_chance():
 	# Base 65, Def 0, Dist 1 (<= 5 optimal) -> 65%
 	var result = CombatResolver.calculate_hit_chance(attacker, target, gm)
 	assert_eq(int(result["hit_chance"]), 65, "Base Hit Chance (Close Range)")
+	TestUtils.free_node(gm)
 
 func test_range_falloff():
 	var gm = MockGridManager.new()
@@ -85,6 +86,7 @@ func test_range_falloff():
 	var result = CombatResolver.calculate_hit_chance(attacker, target, gm)
 	var expected = 65 - 10
 	assert_eq(int(result["hit_chance"]), expected, "Range Falloff (7 tiles)")
+	TestUtils.free_node(gm)
 
 func test_min_hit_chance():
 	var gm = MockGridManager.new()
@@ -100,6 +102,7 @@ func test_min_hit_chance():
 	
 	var result = CombatResolver.calculate_hit_chance(attacker, target, gm)
 	assert_eq(int(result["hit_chance"]), 5, "Minimum Hit Chance Clamp (5%)")
+	TestUtils.free_node(gm)
 
 func test_max_hit_chance():
 	var gm = MockGridManager.new()
@@ -111,6 +114,7 @@ func test_max_hit_chance():
 	
 	var result = CombatResolver.calculate_hit_chance(attacker, target, gm)
 	assert_eq(int(result["hit_chance"]), 100, "Maximum Hit Chance Clamp (100%)")
+	TestUtils.free_node(gm)
 	
 func test_null_target():
 	var gm = MockGridManager.new()
@@ -121,3 +125,4 @@ func test_null_target():
 	
 	assert_eq(int(result["hit_chance"]), 0, "Null Target Safety (Hit Chance)")
 	assert_eq(result["breakdown"], "No Target", "Null Target Safety (Breakdown)")
+	TestUtils.free_node(gm)

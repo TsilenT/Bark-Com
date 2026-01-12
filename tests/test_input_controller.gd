@@ -78,6 +78,9 @@ class MockUnit extends Node:
 	func get_item(slot): return null
 	# func has_method(m): return false # Removed override
 
+class MockTurnManager extends Node:
+	var is_handling_action = false
+
 func _ready():
 	print("🧪 Starting Input Controller UNIT TEST (Isolated)...")
 	# Standardized Safeguard
@@ -111,7 +114,8 @@ func setup():
 	
 	mock_gm = MockGridManager.new()
 	mock_ui = MockUI.new()
-	mock_tm = Node.new() 
+	mock_tm = MockTurnManager.new() 
+	add_child(mock_tm) 
 	var mock_sb = MockSignalBus.new() # Using the class defined above
 	
 	# 3. Initialize Controller
@@ -313,6 +317,16 @@ func run_tests() -> bool:
 	else:
 		printerr("❌ FAIL: No highlights for active unit.")
 		passed = false
+
+	# Explicitly clear references that might hold Scripts/Resources
+	if controller: controller.selected_ability = null
+	if mock_main: mock_main._last_execute_call = {}
+	
+	# Cleanup interact_obj (orphaned on root)
+	TestUtils.free_node(interact_obj)
+		
+	# Aggressive Cleanup of Mocks
+	TestUtils.free_children(self)
 
 	return passed
 

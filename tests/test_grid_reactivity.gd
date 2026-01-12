@@ -46,9 +46,19 @@ func test_reactivity():
 	
 	print("  -> Reactivity Confirmed: Visualizer updated via signal.")
 
-	# Cleanup
-	gm.queue_free()
-	gv.queue_free()
+	# Aggressive Cleanup
+	if is_instance_valid(gv): 
+		gv.grid_manager = null
+		gv.clear_visuals()
+	
+	if is_instance_valid(gm):
+		if gm.astar: gm.astar = null
+		gm.grid_data.clear()
+	
+	TestUtils.free_children(self)
+	
+	gm_script = null
+	gv_script = null
 
 func assert_check(condition, msg):
 	if not condition:

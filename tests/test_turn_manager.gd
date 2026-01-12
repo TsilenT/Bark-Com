@@ -58,6 +58,10 @@ func run_tests():
 	await test_turn_cycling()
 	
 	print("--- ALL TURN MANAGER TESTS PASSED ---")
+	
+	# Cleanup Managers (and any left over units)
+	TestUtils.free_children(self)
+
 	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func test_initialization():
@@ -83,7 +87,7 @@ func test_initialization():
 		print("FAIL: Turn Count mismatch: ", tm.turn_count)
 		await TestUtils.finalize_and_quit(get_tree(), 1)
 		
-	u1.queue_free()
+	TestUtils.free_node(u1)
 
 func test_turn_cycling():
 	print("\nTest: Turn Cycling (Player -> Enemy -> Env -> Player)...")
@@ -137,5 +141,5 @@ func test_turn_cycling():
 		print("FAIL: Player AP not refreshed.")
 		await TestUtils.finalize_and_quit(get_tree(), 1)
 
-	p1.queue_free()
-	e1.queue_free()
+	TestUtils.free_node(p1)
+	TestUtils.free_node(e1)

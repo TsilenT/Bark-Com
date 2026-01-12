@@ -23,9 +23,11 @@ func _ready():
 	
 	if failures > 0:
 		print("❌ FAILED: ", failures, " tests failed.")
+		TestUtils.free_children(self)
 		await TestUtils.finalize_and_quit(get_tree(), 1)
 	else:
 		print("✅ PASS: All tests passed.")
+		TestUtils.free_children(self)
 		await TestUtils.finalize_and_quit(get_tree(), 0)
 
 var failures = 0
@@ -41,16 +43,14 @@ func _run_tests():
 	await _test_save_load_cycle()
 	_test_mission_completion_roster_integrity()
 	_test_inventory_persistence_with_items()
-	_test_squad_selection_persistence()
-	_test_iron_dog_logic()
+	await _test_squad_selection_persistence()
+	await _test_iron_dog_logic()
 	print("--- Finished Persistence Tests ---")
 
 	if failures > 0:
 		print("❌ FAILED: " + str(failures) + " tests failed.")
-		await TestUtils.finalize_and_quit(get_tree(), 1)
 	else:
 		print("✅ ALL TASKS PASSED.")
-		await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func _test_save_load_cycle():
 	print("\n[TEST] Save/Load Cycle...")
@@ -89,7 +89,7 @@ func _test_save_load_cycle():
 		else:
 			fail("FAIL: Data mismatch. Kibble: " + str(gm.kibble) + " Roster: " + str(gm.roster.size()))
 			
-	gm.queue_free()
+	TestUtils.free_node(gm)
 	await get_tree().process_frame
 
 func _test_mission_completion_roster_integrity():
@@ -132,7 +132,7 @@ func _test_mission_completion_roster_integrity():
 	else:
 		fail("FAIL: Fail-Safe failed.")
 		
-	gm.queue_free()
+	TestUtils.free_node(gm)
 
 func _test_iron_dog_logic():
 	print("\n[TEST] Iron Dog Wipe...")
@@ -160,7 +160,7 @@ func _test_iron_dog_logic():
 	else:
 		pass_test("PASS: Save deleted.")
 		
-	gm.queue_free()
+	TestUtils.free_node(gm)
 
 func _test_inventory_persistence_with_items():
 	print("\n[TEST] Inventory Persistence (Real Items & Null Filtering)...")
@@ -210,7 +210,7 @@ func _test_inventory_persistence_with_items():
 	else:
 		pass_test("PASS: Inventory persistence handled used items correctly.")
 		
-	gm.queue_free()
+	TestUtils.free_node(gm)
 
 func _test_squad_selection_persistence():
 	print("\n[TEST] Squad Selection Persistence...")
@@ -241,7 +241,7 @@ func _test_squad_selection_persistence():
 		fail("FAIL: last_squad_ids missing correct names.")
 		
 	gm.save_game()
-	gm.queue_free()
+	TestUtils.free_node(gm)
 	
 	await get_tree().process_frame
 	
@@ -280,7 +280,7 @@ func _test_squad_selection_persistence():
 	else:
 		fail("FAIL: UI Logic verification failed. Selections: " + str(selected_names))
 		
-	gm.queue_free()
+	TestUtils.free_node(gm)
 
 
 func _find_in_roster(name):

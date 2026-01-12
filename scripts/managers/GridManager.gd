@@ -27,8 +27,10 @@ func generate_grid():
 	grid_data.clear()
 
 	# Use LevelGenerator
+	# Use LevelGenerator
 	var generator = load("res://scripts/core/LevelGenerator.gd").new()
 	grid_data = generator.generate_level()
+	generator.free() # Fix Leak: Generator is a Node but not in tree.
 
 	# Initialize 'items' array for every tile
 	for coord in grid_data:

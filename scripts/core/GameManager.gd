@@ -73,6 +73,7 @@ var name_gen = null
 func _get_random_name() -> String:
 	if not name_gen:
 		name_gen = name_gen_script.new()
+		add_child(name_gen)
 
 	# Get existing names to avoid duplicates
 	var existing = []
@@ -87,6 +88,7 @@ func _get_random_name() -> String:
 func get_enemy_name(type: String) -> String:
 	if not name_gen:
 		name_gen = name_gen_script.new()
+		add_child(name_gen)
 	return name_gen.get_random_enemy_name(type)
 
 
@@ -528,9 +530,12 @@ func complete_mission(
 				print("GameManager: Unit missing but NOT in Memorial? ", member["name"])
 
 	# IRON DOG MODE: Check for Total Party Wipe
+	if DEBUG_GAME:
+		print("DEBUG: IronDog Check: Mode=", iron_dog_mode, " Survivors=", surviving_corgis_data.size(), " RosterSize=", roster.size())
+
 	if (
 		iron_dog_mode
-		and is_instance_valid(surviving_corgis_data)
+		and surviving_corgis_data != null
 		and surviving_corgis_data.is_empty()
 		# And no one left at base? 
 		# If we have bench units, it's not a wipe unless we define "Mission Fail = Game Over" 

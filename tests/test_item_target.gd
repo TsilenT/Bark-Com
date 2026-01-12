@@ -60,11 +60,15 @@ func _ready():
 	# TEST 1: Unit Target (Object)
 	print("TEST 1: Unit Target (Object Ref)")
 	var attacker = MockUnit.new()
+	add_child(attacker)
 	var target = MockUnit.new()
 	target.name = "TargetUnit"
+	add_child(target)
+	
 	target.current_hp = 1
 	var item = MockItem.new()
 	var gm = MockGridManager.new()
+	add_child(gm)
 	
 	# Execute
 	var result = CombatResolver.execute_item_effect(attacker, item, target, gm)
@@ -85,9 +89,15 @@ func _ready():
 	# However, the CRITICAL fix was that passing an OBJECT didn't crash.
 	# So Test 1 is unique coverage.
 	
-	# Let's clean up
-	attacker.free()
-	target.free()
+	# Cleanup (Aggressive)
+	TestUtils.free_children(self)
+	# item is RefCounted (default class), will be freed automatically when ref lost.
+	# But setting references to null helps.
+	item = null
+	
+	CombatResolver_Script = null
+	Unit_Script = null
+	GridManager_Script = null
 	
 	if passed:
 		print("--- ALL ITEM TARGET TESTS PASSED ---")

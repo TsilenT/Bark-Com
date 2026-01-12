@@ -153,8 +153,8 @@ func test_movement_towards_enemy():
 	else:
 		fail("FAIL: Enemy did not move. Pos: " + str(enemy.grid_pos))
 		
-	enemy.queue_free()
-	target.queue_free()
+	TestUtils.free_node(enemy)
+	TestUtils.free_node(target)
 
 func test_attack_in_range():
 	print("\nTest: Attack In Range...")
@@ -186,5 +186,5 @@ func test_attack_in_range():
 	else:
 		fail("FAIL: Enemy did not damage target.")
 
-	enemy.queue_free()
-	target.queue_free()
+	TestUtils.free_node(enemy)
+	TestUtils.free_node(target)

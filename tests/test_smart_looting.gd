@@ -146,3 +146,12 @@ func test_auto_pickup():
 		# But we waited 1.0s. It should be invalid.
 	else:
 		print("Crate destroyed successfully.")
+		
+	# Aggressive Cleanup
+	TestUtils.free_children(self)
+	
+	# Clear Resource References
+	GridManager_Script = null
+	Unit_Script = null
+	LootCrate_Script = null
+

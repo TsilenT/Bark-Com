@@ -2259,3 +2259,10 @@ func _on_unit_death(unit):
 		# Iron Dog check happens in GameManager on mission complete, but we need to trigger mission end.
 		_on_mission_ended_handler(false)
 		return
+	# End of file
+	
+func _exit_tree():
+	# Cleanup cyclic references to prevent leaks
+	var gv = get_node_or_null("GridVisualizer")
+	if gv:
+		gv.grid_manager = null

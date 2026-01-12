@@ -12,7 +12,7 @@ func _ready():
 	_test_step_up_logic()
 	_test_ladder_cost()
 	
-	gm.queue_free()
+	TestUtils.free_node(gm)
 	await TestUtils.finalize_and_quit(get_tree(), 0)
 
 func _test_flat_connectivity():

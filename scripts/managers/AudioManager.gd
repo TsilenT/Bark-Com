@@ -1,5 +1,5 @@
 extends Node
-class_name AudioManager
+
 
 # Audio Buses
 var music_bus_index: int
@@ -119,6 +119,13 @@ func play_music(playlist_key: String, fade_duration: float = 2.0):
 
 	current_playlist_key = playlist_key
 	_play_random_track_from_playlist(playlist_key, false, fade_duration)
+
+
+func stop_music():
+	if music_player_1: music_player_1.stop()
+	if music_player_2: music_player_2.stop()
+	current_playlist_key = ""
+
 
 
 func _play_random_track_from_playlist(

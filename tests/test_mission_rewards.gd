@@ -9,6 +9,7 @@ func _ready():
 	
 	var GM_Script = load("res://scripts/core/GameManager.gd")
 	var GM = GM_Script.new()
+	add_child(GM)
 	# Mock UI manager requirement? GM uses SignalBus.
 	
 	# 1. Test Generation
@@ -89,5 +90,11 @@ func _ready():
 		printerr("FAIL: Roster size mismatch. Expected 2, Got: ", GM.roster.size())
 		
 	print("--- MISSION REWARDS TEST COMPLETE ---")
-	GM.free()
+
+	# Aggressive Cleanup
+	TestUtils.free_node(GM)
+	TestUtils.free_children(self)
+
+	GM_Script = null
+
 	await TestUtils.finalize_and_quit(get_tree(), 0)

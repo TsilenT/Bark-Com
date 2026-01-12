@@ -19,7 +19,16 @@ static func finalize_and_quit(tree: SceneTree, exit_code: int = 0):
 	# Args: time, process_always(true), process_in_physics(false), ignore_time_scale(true)
 	await tree.create_timer(0.1, true, false, true).timeout
 	
-	# Optional: Force garbage collection?
-	# GC is automatic in GDScript usually.
-	
 	tree.quit(exit_code)
+
+# Helper to empty a node's children (Aggressive Cleanup)
+static func free_children(node: Node):
+	if not is_instance_valid(node): return
+	for child in node.get_children():
+		child.queue_free()
+
+# Helper to safely queue_free a node if valid
+static func free_node(node: Node):
+	if is_instance_valid(node):
+		node.queue_free()
+

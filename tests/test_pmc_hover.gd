@@ -69,4 +69,5 @@ func test_hover_blocked_by_action():
 	# Let's rely on the code modification being simple enough.
 	# But to be safe, I'll verifying syntax by loading.
 	print("PASS: PMC Script loaded with new logic.")
+	pmc.main_node.free() # MockMain is an orphan Node, must be freed manually
 	pmc.free()

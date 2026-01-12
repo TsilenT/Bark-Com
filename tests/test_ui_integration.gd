@@ -101,7 +101,7 @@ func test_signal_connection_and_processing():
 		printerr("FAIL [Selection]: Expected unit selection not applied.")
 		failed = true
 
-	gui.queue_free()
+	TestUtils.free_node(gui)
 	await get_tree().process_frame # Flush old GUI
 
 	if failed:
@@ -176,7 +176,7 @@ func test_squad_sync():
 		await TestUtils.finalize_and_quit(get_tree(), 1)
 		return
 	
-	gui.queue_free()
-	squad_frame.queue_free()
+	TestUtils.free_node(gui)
+	TestUtils.free_node(squad_frame)
 	print("--- ALL UI TESTS PASSED ---")
 	await TestUtils.finalize_and_quit(get_tree(), 0)
