@@ -39,6 +39,7 @@ var settings: Dictionary = {"music_vol": 1.0, "sfx_vol": 1.0, "mascot_style": 0,
 # Shop Definition
 var shop_stock: Array[ItemData] = []
 var active_nemeses: Array[Dictionary] = []  # List of Nemesis Data
+var last_squad_ids: Array = [] # Persistence for Deployment Screen (Stores unit names)
 
 # Relationship System
 var relationships: Dictionary = {}  # "Name1_Name2" -> int (Score)
@@ -607,7 +608,12 @@ func save_game():
 			"settings": settings,
 			"inventory": []
 		},
-		"squad": {"roster": [], "fallen_heroes": fallen_heroes, "relationships": relationships},
+		"squad": {
+			"roster": [], 
+			"fallen_heroes": fallen_heroes, 
+			"relationships": relationships,
+			"last_squad_ids": last_squad_ids
+		},
 		"world": {"active_nemeses": active_nemeses, "invasion_progress": invasion_progress},
 		"bark_trees": BarkTreeManager.get_save_data() if BarkTreeManager else {}
 	}
@@ -706,6 +712,7 @@ func load_game():
 
 		# Load SQUAD
 		var squad = data.get("squad", {})
+		last_squad_ids = squad.get("last_squad_ids", [])
 		roster.clear()
 		relationships = squad.get("relationships", {})
 		for mem_data in squad.get("roster", []):
@@ -995,6 +1002,12 @@ func start_mission(mission: MissionData, custom_squad: Array = []):
 		deploying_squad = custom_squad
 	else:
 		deploying_squad = get_ready_corgis()
+	
+	# Persist Selection for Next Mission
+	last_squad_ids.clear()
+	for unit in deploying_squad:
+		if "name" in unit:
+			last_squad_ids.append(unit["name"])
 
 	SignalBus.on_mission_selected.emit(mission)
 

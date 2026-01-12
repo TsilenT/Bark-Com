@@ -41,8 +41,10 @@ func execute(user, target, target_grid, grid_manager):
 		# Apply Effects
 		if target.has_method("apply_effect"):
 			var slow = load("res://scripts/resources/statuses/SlowedStatus.gd").new()
+			slow.duration = 2
 			target.apply_effect(slow)
 			var vuln = load("res://scripts/resources/statuses/VulnerableStatus.gd").new()
+			vuln.duration = 2
 			target.apply_effect(vuln)
 			
 		if SignalBus:

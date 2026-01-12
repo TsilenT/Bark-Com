@@ -40,7 +40,8 @@ func _run_tests():
 	print("--- Starting Persistence Tests ---")
 	await _test_save_load_cycle()
 	_test_mission_completion_roster_integrity()
-	_test_inventory_null_filtering()
+	_test_inventory_persistence_with_items()
+	_test_squad_selection_persistence()
 	_test_iron_dog_logic()
 	print("--- Finished Persistence Tests ---")
 
@@ -161,37 +162,126 @@ func _test_iron_dog_logic():
 		
 	gm.queue_free()
 
-func _test_inventory_null_filtering():
-	print("\n[TEST] Inventory Null Filtering (Unknown Item Fix)...")
+func _test_inventory_persistence_with_items():
+	print("\n[TEST] Inventory Persistence (Real Items & Null Filtering)...")
 	gm = game_manager_script.new()
-	gm.save_file_path = "user://test_savegame.dat" # CRITICAL: Isolation
+	gm.save_file_path = "user://test_savegame.dat"
 	add_child(gm)
 	
 	gm.roster.clear()
-	gm._add_recruit("LooterDog", 1, "Scout")
 	
-	# Mock Deployment
+	# Load Real Resources to simulate actual game behavior
+	var medkit = load("res://scripts/resources/items/Medkit.gd").new()
+	var grenade = load("res://scripts/resources/items/GrenadeItem.gd").new()
+	
+	# Initial State: [Medkit, Grenade]
+	# We mock the roster entry manually to avoid needing a full Unit instance
+	var recruit_data = {
+		"name": "Lt. Items",
+		"level": 1, 
+		"class": "Scout",
+		"hp": 10,
+		"max_hp": 10,
+		"inventory": [medkit, grenade]
+	}
+	gm.roster.append(recruit_data)
 	gm.deploying_squad = [gm.roster[0]]
 	
-	# Create a Mock Item (Dictionary since we are simulating serialized data passed from Main)
-	# Or Resources if Main passes resources. Main passes unit.inventory (Resources).
-	# But here we pass a dictionary simulating what Main passes in 'survivors_data'
-	# 'survivors_data' expects 'inventory' array.
-	# We'll pass [Resource, null] logic.
-	# Since we can't easily create a real Resource here without loading one, we use a Helper or Mock.
-	# GameManager save logic can handle Dictionaries too.
-	var mock_item = {"display_name": "TestBone"}
-	var survivors = [{"name": "LooterDog", "hp": 10, "inventory": [mock_item, null]}]
+	# Simulate Mission: Medkit Used (Slot 0 -> null), Grenade Kept (Slot 1)
+	# Main.gd captures this as [null, Grenade] (GameManager should filter nulls)
+	# OR [Grenade] if Main pre-filtered. 
+	# GameManager.complete_mission handles the filtering if raw array passed.
+	var survivor_data = [{
+		"name": "Lt. Items", 
+		"hp": 10, 
+		"inventory": [null, grenade]
+	}]
 	
-	gm.complete_mission(survivors, true, [], 0)
+	gm.complete_mission(survivor_data, true, [], 0)
 	
 	var unit = gm.roster[0]
-	if unit["inventory"].size() == 1 and unit["inventory"][0]["display_name"] == "TestBone":
-		pass_test("PASS: Null item filtered from inventory.")
+	
+	# 1. Check Size (Should be 1, null removed)
+	if unit["inventory"].size() != 1:
+		fail("FAIL: Inventory filtering failed. Expected size 1. Got: " + str(unit["inventory"].size()))
+	# 2. Check Item Identity
+	elif unit["inventory"][0].display_name != "Tennis Ball Grenade":
+		fail("FAIL: Wrong item persisted. Expected Grenade. Got: " + unit["inventory"][0].display_name)
 	else:
-		fail("FAIL: Inventory not filtered correctly. Got: " + str(unit["inventory"]))
+		pass_test("PASS: Inventory persistence handled used items correctly.")
 		
 	gm.queue_free()
+
+func _test_squad_selection_persistence():
+	print("\n[TEST] Squad Selection Persistence...")
+	var test_path = "user://test_savegame.dat"
+	
+	# Phase 1: Setup & Saving
+	gm = game_manager_script.new()
+	gm.save_file_path = test_path
+	add_child(gm)
+	
+	gm.roster.clear()
+	gm._add_recruit("SquadLeader", 1, "Scout")
+	gm._add_recruit("SquadMember", 1, "Heavy")
+	gm._add_recruit("BenchWarmer", 1, "Sniper")
+	
+	# Mock Mission Start (Deployment)
+	# MissionSelectUI calls start_mission(mission, squad_data)
+	var mission = load("res://scripts/resources/MissionData.gd").new()
+	mission.mission_name = "Test Mission"
+	var custom_squad = [gm.roster[0], gm.roster[1]] # Leader & Member
+	
+	gm.start_mission(mission, custom_squad)
+	
+	# Verify Initial State
+	if gm.last_squad_ids.size() != 2:
+		fail("FAIL: last_squad_ids not populated on start_mission.")
+	if not gm.last_squad_ids.has("SquadLeader") or not gm.last_squad_ids.has("SquadMember"):
+		fail("FAIL: last_squad_ids missing correct names.")
+		
+	gm.save_game()
+	gm.queue_free()
+	
+	await get_tree().process_frame
+	
+	# Phase 2: Loading & Validation
+	gm = game_manager_script.new()
+	gm.save_file_path = test_path
+	add_child(gm)
+	
+	# Ensure clean state before load
+	gm.roster.clear()
+	gm.last_squad_ids.clear()
+	
+	gm.load_game()
+	
+	# Check Persistence
+	if gm.last_squad_ids.size() != 2:
+		fail("FAIL: last_squad_ids did not load correctly. Got: " + str(gm.last_squad_ids))
+	elif not gm.last_squad_ids.has("SquadLeader"):
+		fail("FAIL: SquadLeader missing from persisted selection.")
+	else:
+		pass_test("PASS: Squad Selection persisted correctly.")
+		
+	# Check UI Selection Logic (Simulation)
+	# MissionSelectUI Step 1: Restore Previous Squad
+	var selected_names = []
+	var ready_units = gm.get_ready_corgis()
+	
+	for name in gm.last_squad_ids:
+		for unit in ready_units:
+			if unit["name"] == name:
+				selected_names.append(name)
+				break
+				
+	if selected_names.size() == 2 and selected_names.has("SquadLeader"):
+		pass_test("PASS: UI Selection Logic restores squad correctly.")
+	else:
+		fail("FAIL: UI Logic verification failed. Selections: " + str(selected_names))
+		
+	gm.queue_free()
+
 
 func _find_in_roster(name):
 	for u in gm.roster:

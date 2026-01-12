@@ -3,7 +3,7 @@ class_name MissionSelectUI
 
 var mission_container: HBoxContainer
 var game_manager: _GameManager
-var selected_indices: Array = []  # Indices of units in GameManager.roster that are selected
+var selected_names: Array = []  # Names of selected units
 var max_squad_size = 4
 var doom_meter: ProgressBar
 var doom_label: Label
@@ -85,23 +85,31 @@ func _setup_ui():
 
 func initialize(gm: GameManager):
 	game_manager = gm
-	# Default Selection: First 4 Ready units
-	selected_indices.clear()
-	var ready = gm.get_ready_corgis()
-	var count = 0
-
-	# We need to map 'ready' back to roster indices or just store the unit objects/names.
-	# Storing Names is safer for persistence/lookup.
-	# Actually, get_ready_corgis returns references to the dicts in roster.
-	# So we can just store the dicts references.
-
-	# Let's find indices in the main roster to be precise.
-	for i in range(gm.roster.size()):
-		if gm.roster[i]["status"] == "Ready" and count < max_squad_size:
-			selected_indices.append(i)
-			count += 1
-
-			count += 1
+	# Default Selection strategy:
+	# 1. Prioritize units from 'last_squad_ids' if they are Ready.
+	# 2. Fill remaining slots with other Ready units.
+	
+	selected_names.clear()
+	var ready_units = gm.get_ready_corgis()
+	
+	# Step 1: Restore Previous Squad
+	for name in gm.last_squad_ids:
+		# Verify they are still ready
+		for unit in ready_units:
+			if unit["name"] == name:
+				selected_names.append(name)
+				break
+		if selected_names.size() >= max_squad_size:
+			break
+			
+	# Step 2: Auto-Fill
+	if selected_names.size() < max_squad_size:
+		for unit in ready_units:
+			if not selected_names.has(unit["name"]):
+				selected_names.append(unit["name"])
+				
+			if selected_names.size() >= max_squad_size:
+				break
 
 	_refresh_squad_preview()
 	_update_doomsday_ui()
@@ -148,18 +156,16 @@ func _refresh_squad_preview():
 	# Filter Roster for "Ready" + currently selected (if status changes?)
 	# Just show all "Ready" units for potential selection.
 
-	var all_ready_indices = []
-	for i in range(game_manager.roster.size()):
-		if game_manager.roster[i]["status"] == "Ready":
-			all_ready_indices.append(i)
+	# Show ALL Ready units
+	var ready_units = game_manager.get_ready_corgis()
 
 	var portrait_script = load("res://scripts/ui/UnitPortraitConfig.gd")
 	if not portrait_script:
 		return
 
-	for idx in all_ready_indices:
-		var unit_data = game_manager.roster[idx]
-		var is_selected = selected_indices.has(idx)
+	for unit_data in ready_units:
+		var u_name = unit_data["name"]
+		var is_selected = selected_names.has(u_name)
 
 		# Card Container
 		var card = PanelContainer.new()
@@ -185,7 +191,7 @@ func _refresh_squad_preview():
 					and ev.pressed
 					and ev.button_index == MOUSE_BUTTON_LEFT
 				):
-					_toggle_unit_selection(idx)
+					_toggle_unit_selection(u_name)
 		)
 
 		var vbox = VBoxContainer.new()
@@ -208,16 +214,16 @@ func _refresh_squad_preview():
 	var lbl = find_child("SquadLabel", true, false)
 	if lbl:
 		lbl.text = (
-			"DEPLOYMENT SQUAD (" + str(selected_indices.size()) + "/" + str(max_squad_size) + ")"
+			"DEPLOYMENT SQUAD (" + str(selected_names.size()) + "/" + str(max_squad_size) + ")"
 		)
 
 
-func _toggle_unit_selection(idx):
-	if selected_indices.has(idx):
-		selected_indices.erase(idx)
+func _toggle_unit_selection(u_name):
+	if selected_names.has(u_name):
+		selected_names.erase(u_name)
 	else:
-		if selected_indices.size() < max_squad_size:
-			selected_indices.append(idx)
+		if selected_names.size() < max_squad_size:
+			selected_names.append(u_name)
 		else:
 			print("Squad Full!")
 			# Feedback?
@@ -301,12 +307,16 @@ func _create_mission_card(mission: MissionData):
 
 func _on_mission_selected(mission: MissionData):
 	if game_manager:
-		if selected_indices.is_empty():
+		if selected_names.is_empty():
 			print("Select at least one unit!")
 			return
 
 		var squad_data = []
-		for idx in selected_indices:
-			squad_data.append(game_manager.roster[idx])
+		# We need to get the full dict from the name
+		for name in selected_names:
+			for unit in game_manager.roster:
+				if unit["name"] == name:
+					squad_data.append(unit)
+					break
 
 		game_manager.start_mission(mission, squad_data)

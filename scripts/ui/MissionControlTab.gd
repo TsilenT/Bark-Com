@@ -244,7 +244,7 @@ func _create_base_defense_mission():
 
 	
 	var btn = Button.new()
-	btn.custom_minimum_size = Vector2(0, 100)
+	btn.custom_minimum_size = Vector2(0, 150) # Increased from 100
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.text = ">>> DEFEND THE BASE <<<\nSURVIVE 10 WAVES"
 	btn.modulate = Color.GOLD
@@ -256,7 +256,9 @@ func _create_base_defense_mission():
 
 func _create_mission_card(mission: MissionData):
 	var btn = Button.new()
-	btn.custom_minimum_size = Vector2(150, 100)
+	# Increased size for better visibility (User Request)
+	# Was: Vector2(150, 100)
+	btn.custom_minimum_size = Vector2(250, 150)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.toggle_mode = true
 

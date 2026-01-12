@@ -149,11 +149,39 @@ func _setup_ui():
 	# Init Overlay Logic
 	_setup_overlay_elements()
 
-	# 2. BOTTOM PANEL (Card + Actions)
+	# 2. BOTTOM LAYOUT (Container for Button + Actions)
+	var bottom_layout = VBoxContainer.new()
+	bottom_layout.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	bottom_layout.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	# bottom_layout.alignment = BoxContainer.ALIGNMENT_END # Push everything down
+	bottom_layout.add_theme_constant_override("separation", 0) # Gap between button and panel
+	root.add_child(bottom_layout)
+
+	# 2A. END TURN BUTTON AREA (Row above panel)
+	var end_turn_row = HBoxContainer.new()
+	end_turn_row.alignment = BoxContainer.ALIGNMENT_END # Right Aligned
+	# Add slight padding or margin right?
+	var et_margin = MarginContainer.new()
+	et_margin.add_theme_constant_override("margin_right", 20)
+	et_margin.add_theme_constant_override("margin_bottom", 10) # Gap above panel
+	end_turn_row.add_child(et_margin)
+	
+	# Create Button Early
+	var end_turn_btn = Button.new()
+	end_turn_btn.text = "END TURN"
+	end_turn_btn.modulate = Color(1.0, 0.8, 0.2)  # Gold
+	end_turn_btn.custom_minimum_size = Vector2(150, 60)
+	end_turn_btn.focus_mode = Control.FOCUS_NONE
+	end_turn_btn.pressed.connect(_on_end_turn_clicked)
+	et_margin.add_child(end_turn_btn)
+	bottom_layout.add_child(end_turn_row)
+
+	# 2B. BOTTOM PANEL (Card + Actions)
 	var bottom_panel = PanelContainer.new()
-	bottom_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	bottom_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	root.add_child(bottom_panel)
+	# Size flags to fill width, but height based on content
+	bottom_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bottom_panel.size_flags_vertical = Control.SIZE_SHRINK_END
+	bottom_layout.add_child(bottom_panel)
 
 	var h_split = HBoxContainer.new()
 	h_split.custom_minimum_size.y = 140
@@ -328,7 +356,12 @@ func _setup_ui():
 	objective_label.text = "Obj: Unknown"
 	objective_label.fit_content = true
 	objective_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	objective_label.custom_minimum_size = Vector2(200, 0)
+	# "EVEN BIGGER" visibility (User Request)
+	objective_label.custom_minimum_size = Vector2(400, 0)
+	objective_label.add_theme_font_size_override("normal_font_size", 36) # MASSIVE
+	objective_label.add_theme_constant_override("outline_size", 6) # Bold outline
+	objective_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	objective_label.modulate = Color.GOLD # "Eye catching" (User Request)
 	obj_margin.add_child(objective_label)
 
 	# Menu Button (Beside Objective)
@@ -360,26 +393,20 @@ func _setup_ui():
 	abort_btn.pressed.connect(func(): action_requested.emit("Abort"))
 	# print("GameUI: Abort Button Created.")
 
-	# END TURN BUTTON (Bottom Right - Fixed)
-	var end_turn_btn = Button.new()
-	end_turn_btn.text = "END TURN"
-	end_turn_btn.modulate = Color(1.0, 0.8, 0.2)  # Gold
-	end_turn_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	end_turn_btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	end_turn_btn.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	end_turn_btn.offset_right = -20
-	end_turn_btn.offset_bottom = -20
-	end_turn_btn.custom_minimum_size = Vector2(150, 60)
-	end_turn_btn.focus_mode = Control.FOCUS_NONE
-	root.add_child(end_turn_btn)
-	end_turn_btn.pressed.connect(_on_end_turn_clicked)
+	# END TURN BUTTON (Anchored to Top-Right of Bottom Panel)
+	# end_turn_btn creation logic MOVED to Step 2A (Wrapped in layout)
 
 	# MISSION END
 	mission_end_panel = Panel.new()
 	mission_end_panel.visible = false
 	root.add_child(mission_end_panel)
-	mission_end_panel.set_anchors_preset(Control.PRESET_CENTER)
-	mission_end_panel.custom_minimum_size = Vector2(400, 200)
+	
+	# Centering Logic (Robust)
+	mission_end_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	mission_end_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	mission_end_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	
+	mission_end_panel.custom_minimum_size = Vector2(1200, 450)
 
 	var end_center = VBoxContainer.new()
 	end_center.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -390,13 +417,19 @@ func _setup_ui():
 	end_label.name = "Title"
 	end_label.text = "MISSION COMPLETE"
 	end_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	end_label.add_theme_font_size_override("font_size", 32)
+	end_label.add_theme_font_size_override("font_size", 96)
+	end_label.add_theme_constant_override("outline_size", 16)
+	end_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	end_label.modulate = Color(1.0, 0.8, 0.2) # Gold
 	end_center.add_child(end_label)
 
 	var sub_label = Label.new()
 	sub_label.name = "Sub"
 	sub_label.text = "Press SPACE to Return"
 	sub_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub_label.add_theme_font_size_override("font_size", 48)
+	sub_label.add_theme_constant_override("outline_size", 8)
+	sub_label.add_theme_color_override("font_outline_color", Color.BLACK)
 	end_center.add_child(sub_label)
 
 
@@ -854,18 +887,26 @@ func log_message(msg: String):
 
 
 func show_victory(rewards: int = 50):
-	_show_end_screen("VICTORY!", "Rewards: " + str(rewards) + " Kibble\nPress SPACE to Extract.")
+	# Color: Gold/Cyan Mix
+	_show_end_screen("MISSION SUCCESS", "Rewards: " + str(rewards) + " Kibble\nPress SPACE to Return", Color(1.0, 0.8, 0.2))
 
 
 func show_defeat():
-	_show_end_screen("DEFEAT...", "Your squad has fallen.\nPress SPACE to Retreat.")
+	_show_end_screen("MISSION FAILED", "Your squad has fallen.\nPress SPACE to Return", Color(1.0, 0.2, 0.2))
 
 
-func _show_end_screen(title: String, subtitle: String):
+func _show_end_screen(title: String, subtitle: String, color: Color = Color.WHITE):
+	if not mission_end_panel: return
+	
 	mission_end_panel.visible = true
+	mission_end_panel.get_parent().move_child(mission_end_panel, -1)
+	
 	# Structure is Panel -> VBox -> Labels
 	var container = mission_end_panel.get_child(0)
-	container.get_node("Title").text = title
+	var t_lbl = container.get_node("Title")
+	t_lbl.text = title
+	t_lbl.modulate = color
+	
 	container.get_node("Sub").text = subtitle
 
 

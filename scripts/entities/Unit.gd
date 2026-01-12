@@ -963,6 +963,18 @@ func _update_effects_start():
 	process_turn_start_effects()
 
 
+
+func add_item(item: Resource) -> bool:
+	# Try to find an empty slot first
+	for i in range(inventory.size()):
+		if inventory[i] == null:
+			inventory[i] = item
+			return true
+	
+	print("Unit: Inventory Full! Cannot add ", item.display_name if "display_name" in item else "Item")
+	return false
+
+
 func use_item(slot_index: int, target_or_pos, grid_manager) -> bool:
 	if slot_index < 0 or slot_index >= inventory.size():
 		return false

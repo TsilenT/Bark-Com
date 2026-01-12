@@ -306,7 +306,7 @@
                 let globalLog = [];
                 let matchCount = 0;
 
-                const testStartRegex = /Running: (.+)/;
+                const testStartRegex = /(?:Running: (.+)|🧪 (.+)|--- TEST START: (.+) ---)/;
 
                 for (let line of lines) {
                     const matchStart = line.match(testStartRegex);
@@ -318,8 +318,10 @@
                             this.tests.push(currentTest);
                         }
 
+                        // match[1]=Running, match[2]=Emoji, match[3]=Header
+                        const rawName = matchStart[1] || matchStart[2] || matchStart[3];
                         currentTest = {
-                            name: matchStart[1].trim(),
+                            name: rawName.trim(),
                             logs: [],
                             status: 'UNKNOWN',
                             errors: 0
@@ -344,11 +346,36 @@
 
                 debugLog(`Parsed ${this.tests.length} tests total.`);
 
+                // ALWAYS add "All Output" as the first item
+                this.tests.unshift({
+                    name: "All Output (Raw Log)",
+                    logs: lines,
+                    status: failuresInRaw(lines) ? 'FAIL' : 'PASS',
+                    errors: 0 // Could count globally if needed
+                });
+
+                function failuresInRaw(allLines) {
+                    for (const l of allLines) {
+                        if (l.includes("FAILURE") || l.includes("SCRIPT ERROR")) return true;
+                    }
+                    return false;
+                }
+
                 // Render List
                 this.renderList();
 
-                if (this.tests.length > 0) this.selectTest(0);
-                else debugLog("WARNING: No tests found! Check regex/content.");
+                if (this.tests.length === 0) {
+                    debugLog("WARNING: No tests found! Using Global Log.");
+                    // Create a fallback test
+                    this.tests.push({
+                        name: "Full Log (Parsing Failed)",
+                        logs: globalLog,
+                        status: 'UNKNOWN',
+                        errors: 0
+                    });
+                }
+
+                this.selectTest(0);
             },
 
             finalizeTest(test) {
@@ -396,19 +423,21 @@
             },
 
             renderCurrent() {
-                if (this.currentTestIndex === -1) return;
                 const test = this.tests[this.currentTestIndex];
                 const showErrors = document.getElementById('chk-show-errors').checked;
 
                 let html = '';
 
                 test.logs.forEach(line => {
-                    let cls = '';
-                    if (showErrors && (line.includes("ERROR") || line.includes("FAIL"))) cls = 'highlight-error';
-                    else if (line.includes("PASS")) cls = 'highlight-pass';
-                    else if (line.includes("DEBUG")) cls = 'highlight-info';
+                    // Strip ANSI first to avoid clutter
+                    const cleanLine = this.stripAnsi(line);
 
-                    html += `<div class="${cls}">${this.escapeHtml(line)}</div>`;
+                    let cls = '';
+                    if (showErrors && (cleanLine.includes("ERROR") || cleanLine.includes("FAIL"))) cls = 'highlight-error';
+                    else if (cleanLine.includes("PASS")) cls = 'highlight-pass';
+                    else if (cleanLine.includes("DEBUG")) cls = 'highlight-info';
+
+                    html += `<div class="${cls}">${this.escapeHtml(cleanLine)}</div>`;
                 });
 
                 logDisplayEl.innerHTML = html;
@@ -416,6 +445,11 @@
 
             escapeHtml(str) {
                 return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            },
+
+            stripAnsi(str) {
+                // regex to remove ansi escape codes
+                return str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
             },
 
             toggleWrap() {
@@ -427,7 +461,6 @@
             }
         };
     </script>
-
 </body>
 
 </html>
