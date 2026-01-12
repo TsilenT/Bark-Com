@@ -8,4 +8,5 @@ func _init():
 	effect_type = EffectType.HEAL
 	value = 5
 	range_tiles = 1
+	icon = preload("res://assets/icons/items/medkit.svg")
 	consume_on_use = true

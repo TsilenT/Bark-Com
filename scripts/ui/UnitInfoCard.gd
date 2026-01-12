@@ -12,6 +12,7 @@ var status_label: Label
 # "Mega Nerd" Labels
 var stats_label: RichTextLabel
 var weapon_details: RichTextLabel
+var w_vbox_ref: VBoxContainer
 var talents_label: RichTextLabel
 var bond_label: RichTextLabel
 
@@ -53,6 +54,11 @@ func _on_perk_learned(u_name, p_id):
 			
 		if my_name == u_name:
 			setup(current_raw_data)
+
+func _on_item_dropped(item, target_unit, slot_idx):
+	if GameManager:
+		GameManager.transfer_item_from_stash_to_unit(item, target_unit, slot_idx)
+		# UI Refresh happens via SignalBus.on_unit_stats_changed emitted by GM
 
 func _setup_ui():
 	var style = StyleBoxFlat.new()
@@ -179,20 +185,22 @@ func _setup_ui():
 	col2.add_child(row2)
 	
 	# Weapon (Left)
-	var w_vbox = VBoxContainer.new()
-	w_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row2.add_child(w_vbox)
+	w_vbox_ref = VBoxContainer.new()
+	w_vbox_ref.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row2.add_child(w_vbox_ref)
 	var w_lbl = Label.new()
 	w_lbl.text = "PRIMARY WEAPON"
 	w_lbl.add_theme_color_override("font_color", Color.GOLD)
-	w_vbox.add_child(w_lbl)
+	w_vbox_ref.add_child(w_lbl)
 	
-	weapon_details = RichTextLabel.new()
-	weapon_details.fit_content = true
-	weapon_details.bbcode_enabled = true
-	weapon_details.add_theme_font_size_override("normal_font_size", 16)
-	weapon_details.add_theme_font_size_override("bold_font_size", 16)
-	w_vbox.add_child(weapon_details)
+	# Weapon Slot Placeholder (Populated in setup)
+	# We rely on setup() to refresh this area.
+	weapon_details = null # No longer using RichTextLabel for details here, or maybe as tooltip?
+	# Actually, we need to add a container for the slot that setup() can target.
+	var w_slot_container = PanelContainer.new()
+	w_slot_container.name = "WeaponSlotContainer"
+	w_slot_container.mouse_filter = Control.MOUSE_FILTER_PASS
+	w_vbox_ref.add_child(w_slot_container)
 	
 	row2.add_child(VSeparator.new())
 	
@@ -346,44 +354,62 @@ func setup(data):
 	txt += "[/table]"
 	stats_label.text = txt
 
-	# --- WEAPON & ITEMS ---
-	var w_text = ""
-	if d.primary_weapon:
-		var w = d.primary_weapon # Resource or Dict
-		var w_name = w.display_name if "display_name" in w else "Unknown"
-		var w_dmg = str(w.damage) if "damage" in w else "?"
-		var w_rng = str(w.weapon_range) if "weapon_range" in w else "?"
-		var w_ammo_val = -1
-		if w.get("ammo_capacity"): w_ammo_val = w.ammo_capacity
-		elif "ammo_capacity" in w: w_ammo_val = w.ammo_capacity
-		
-		# Traits logic if available?
-		
-		w_text += "[b]" + w_name + "[/b]\n"
-		w_text += "Damage: [color=red]" + str(w_dmg) + "[/color]\n"
-		w_text += "Range: [color=yellow]" + str(w_rng) + "[/color] Tiles\n"
-		var ammo_str = "Infinite" if w_ammo_val < 0 else str(w_ammo_val)
-		w_text += "Ammo: " + ammo_str + "\n"
-	else:
-		w_text = "[color=gray]No Weapon Equipped[/color]\n"
+	# weapon_details is null now (replaced by Slot logic)
+	# w_text logic removed. Stats should be viewed via tooltip or details panel.
 
 	# Items
-	var items = d.get("inventory", [])
-	if items.size() > 0:
-		w_text += "\n[b]Carried Items:[/b]\n"
-		for it in items:
-			if it == null: continue
-			var i_name = "Unknown Item"
-			if it is Resource or it is Object:
-				i_name = it.display_name if "display_name" in it else "Item"
-			elif it is Dictionary:
-				i_name = it.get("display_name", "Item")
-				
-			w_text += "• " + i_name + "\n"
-	else:
-		w_text += "\n[color=gray]No Items Carried[/color]"
 	
-	weapon_details.text = w_text
+	# --- POPULATE WEAPON SLOT ---
+	var is_read_only = false
+	if GameManager and GameManager.current_state != GameManager.GameState.BASE:
+		is_read_only = true
+		
+	var w_cont = w_vbox_ref.find_child("WeaponSlotContainer", true, false)
+	if w_cont:
+		for c in w_cont.get_children():
+			c.queue_free()
+		
+		# Load Script (Dynamic or Preload)
+		var WeaponSlotScript = load("res://scripts/ui/UnitWeaponSlot.gd")
+		if WeaponSlotScript:
+			var slot = WeaponSlotScript.new()
+			w_cont.add_child(slot)
+			slot.setup(d) # Pass the parsed data (which includes 'primary_weapon')
+			slot.read_only = is_read_only
+	
+	# Make sure to clear old children first (Weapon Slot is at index 1)
+	while w_vbox_ref.get_child_count() > 2:
+		w_vbox_ref.get_child(2).queue_free()
+		w_vbox_ref.remove_child(w_vbox_ref.get_child(2))
+
+	var item_lbl = Label.new()
+	item_lbl.text = "Inventory"
+	item_lbl.add_theme_color_override("font_color", Color.GOLD)
+	
+	w_vbox_ref.add_child(HSeparator.new())
+	w_vbox_ref.add_child(item_lbl)
+	
+	var items = d.get("inventory", [])
+	# Ensure at least 2 slots visible for interaction
+	while items.size() < 2:
+		items.append(null)
+		
+	var slot_hbox = HBoxContainer.new()
+	slot_hbox.add_theme_constant_override("separation", 10)
+	w_vbox_ref.add_child(slot_hbox)
+	
+	# is_read_only already computed above
+
+	var UnitInventorySlotScript = load("res://scripts/ui/UnitInventorySlot.gd")
+	for i in range(items.size()):
+		var slot = UnitInventorySlotScript.new()
+		slot_hbox.add_child(slot)
+		slot.setup(d, i, items[i])
+		slot.read_only = is_read_only
+		# signal connection remains for debug/other uses
+		slot.on_item_dropped.connect(_on_item_dropped)
+		
+	# weapon_details.text += ... (Removed text list)
 
 	# --- TALENTS ---
 	var t_text = ""
@@ -441,6 +467,7 @@ func _parse_data(data) -> Dictionary:
 		if "is_dead" in data and data.is_dead: d["status"] = "KIA"
 		elif "current_panic_state" in data and data.current_panic_state > 0: d["status"] = "Panicked"
 		d["tech"] = data.tech_score if "tech_score" in data else 0
+		d["inventory"] = data.inventory if "inventory" in data else []
 		
 		# Effective Armor (Base + Modifiers)
 		var base_armor = data.armor if "armor" in data else 0

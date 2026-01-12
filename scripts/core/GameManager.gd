@@ -140,21 +140,12 @@ func _initialize_shop():
 
 	# 1. DEFINE ITEMS
 	# Weapons (Hardcoded/Manual for now)
-	var w1 = WeaponData.new()
-	w1.display_name = "Tennis Ball Launcher"
-	w1.description = "Heavy artillery. Launches balls at high velocity."
-	w1.cost = 100
-	w1.damage = 4
-	w1.weapon_range = 6
+	# Weapons (Hardcoded/Manual for now)
+	var w1 = load("res://resources/weapons/TennisBallLauncher.tres")
 	
 	var hammer = load("res://resources/weapons/SqueakyHammer.tres")
-	if hammer:
-		hammer.description = "Melee weapon. Squeaks on impact, causing annoyance."
 
 	var syringe = load("res://resources/weapons/SyringeGun.tres")
-	if syringe:
-		syringe.description = "Bio-weapon. Heals allies on hit, damages enemies."
-		syringe.cost = 250
 
 	# Consumables (Scripts)
 	var medkit_script = load("res://scripts/resources/items/Medkit.gd")
@@ -999,6 +990,143 @@ func get_active_bonds_for_unit(unit_name: String) -> Array:
 	return bonds
 
 
+
+func transfer_item_from_stash_to_unit(item, unit_dict, slot_index):
+	var u_name = unit_dict.get("name", "")
+	print("GameManager: Transfer requested: ", item.display_name, " -> ", u_name, " Slot ", slot_index)
+	
+	# FIND REAL UNIT IN ROSTER
+	var real_unit = null
+	for r in roster:
+		if r["name"] == u_name:
+			real_unit = r
+			break
+			
+	if not real_unit:
+		print("ERROR: Unit not found in roster!")
+		return false
+	
+	# 1. Validation
+	if not item in inventory:
+		print("ERROR: Item not in Stash!")
+		return false
+		
+	# 2. Check Capacity (Using Real Unit)
+	var u_inv = real_unit.get("inventory", [])
+	
+	# Ensure capacity
+	if u_inv.size() <= slot_index:
+		u_inv.resize(slot_index + 1)
+		
+	# 3. Handle Swap
+	var current_item_at_slot = u_inv[slot_index]
+	
+	inventory.erase(item)
+	
+	if current_item_at_slot:
+		inventory.append(current_item_at_slot) # Return to stash
+		
+	u_inv[slot_index] = item
+	real_unit["inventory"] = u_inv
+	
+	# Signal Update (Pass Real Unit)
+	SignalBus.on_unit_stats_changed.emit(real_unit)
+	SignalBus.on_inventory_changed.emit()
+	return true
+	
+func unequip_item_to_stash(unit_dict: Dictionary, slot_index: int):
+	# Unequip Item and return to Stash
+	var u_name = unit_dict.get("name", "")
+	print("GameManager: Unequip requested: ", u_name, " Slot ", slot_index)
+	
+	# FIND REAL UNIT
+	var real_unit = null
+	for r in roster:
+		if r["name"] == u_name:
+			real_unit = r
+			break
+			
+	if not real_unit:
+		print("ERROR: Unit not found in roster!")
+		return false
+		
+	var u_inv = real_unit.get("inventory", [])
+	if slot_index >= u_inv.size():
+		return false
+		
+	var item = u_inv[slot_index]
+	if item == null:
+		return false
+		
+	# Execute
+	inventory.append(item)
+	u_inv[slot_index] = null
+	
+	# Cleanup nulls? Or keep slot fixed?
+	# Keeping slot fixed (null) is better for drag/drop slot stability.
+	
+	real_unit["inventory"] = u_inv
+	
+	SignalBus.on_unit_stats_changed.emit(real_unit)
+	SignalBus.on_inventory_changed.emit()
+	return true
+	
+func transfer_item_unit_to_unit(item, source_unit, source_slot_idx, target_unit, target_slot_idx):
+	var s_name = source_unit.get("name", "")
+	var t_name = target_unit.get("name", "")
+	print("GameManager: Unit-to-Unit Transfer: ", item.display_name, " from ", s_name, " to ", t_name)
+	
+	# FIND REAL UNITS
+	var real_s = null
+	var real_t = null
+	
+	for r in roster:
+		if r["name"] == s_name: real_s = r
+		if r["name"] == t_name: real_t = r
+		
+	if not real_s or not real_t:
+		print("ERROR: Source or Target unit not found in roster.")
+		return false
+	
+	if real_s == real_t and source_slot_idx == target_slot_idx:
+		print("GM: Ignoring self-drop.")
+		return false
+		
+	var s_inv = real_s.get("inventory", [])
+	var t_inv = real_t.get("inventory", [])
+	
+	# Resize Target if needed
+	if t_inv.size() <= target_slot_idx:
+		t_inv.resize(target_slot_idx + 1)
+		
+	var item_at_target = t_inv[target_slot_idx]
+	
+	# Swap Logic
+	
+	# If internal swap (same unit)
+	if real_s == real_t:
+		s_inv[source_slot_idx] = item_at_target
+		s_inv[target_slot_idx] = item
+		
+		real_s["inventory"] = s_inv
+		SignalBus.on_unit_stats_changed.emit(real_s)
+		return true
+		
+	# Cross-Unit Swap
+	if s_inv.size() <= source_slot_idx:
+		s_inv.resize(source_slot_idx + 1)
+		
+	s_inv[source_slot_idx] = item_at_target
+	t_inv[target_slot_idx] = item
+	
+	real_s["inventory"] = s_inv
+	real_t["inventory"] = t_inv
+	
+	SignalBus.on_unit_stats_changed.emit(real_s)
+	SignalBus.on_unit_stats_changed.emit(real_t)
+	SignalBus.on_inventory_changed.emit()
+	return true
+
 func start_mission(mission: MissionData, custom_squad: Array = []):
 	active_mission = mission
 	print("GameManager: Starting Mission -> ", mission.mission_name)
@@ -1072,3 +1200,82 @@ func _process_nemesis_candidates(candidates: Array):
 
 			active_nemeses.append(new_nemesis)
 			print(" - All Hail " + new_nemesis.name + ", " + new_nemesis.title + "!")
+
+
+# --- WEAPON LOGIC ---
+
+func equip_weapon_from_stash(unit_dict, weapon_item):
+	print("GameManager: Equip Weapon Request - ", weapon_item.display_name, " -> ", unit_dict.get("name"))
+	
+	var u_name = unit_dict.get("name", "")
+	var real_unit = null
+	for r in roster:
+		if r["name"] == u_name:
+			real_unit = r
+			break
+			
+	if not real_unit: return false
+	
+	if not weapon_item in inventory:
+		print("ERROR: Weapon not in stash.")
+		return false
+		
+	# UNEQUIP CURRENT
+	var current = real_unit.get("primary_weapon", null)
+	if current:
+		inventory.append(current)
+		
+	# EQUIP NEW
+	inventory.erase(weapon_item)
+	real_unit["primary_weapon"] = weapon_item
+	
+	SignalBus.on_unit_stats_changed.emit(real_unit)
+	SignalBus.on_inventory_changed.emit()
+	return true
+	
+func unequip_weapon_to_stash(unit_dict):
+	print("GameManager: Unequip Weapon Request -> ", unit_dict.get("name"))
+	
+	var u_name = unit_dict.get("name", "")
+	var real_unit = null
+	for r in roster:
+		if r["name"] == u_name:
+			real_unit = r
+			break
+			
+	if not real_unit: return false
+	
+	var current = real_unit.get("primary_weapon", null)
+	if not current:
+		return false # Nothing to unequip
+		
+	# RETURN TO STASH
+	inventory.append(current)
+	real_unit["primary_weapon"] = null
+	
+	SignalBus.on_unit_stats_changed.emit(real_unit)
+	SignalBus.on_inventory_changed.emit()
+	return true
+
+func swap_weapons_between_units(unit_dict_a, unit_dict_b):
+	var name_a = unit_dict_a.get("name", "")
+	var name_b = unit_dict_b.get("name", "")
+	var unit_a = null
+	var unit_b = null
+	
+	for r in roster:
+		if r.name == name_a: unit_a = r
+		if r.name == name_b: unit_b = r
+		
+	if not unit_a or not unit_b: return
+	
+	# Swap
+	var w_a = unit_a.get("primary_weapon")
+	var w_b = unit_b.get("primary_weapon")
+	
+	unit_a["primary_weapon"] = w_b
+	unit_b["primary_weapon"] = w_a
+	
+	SignalBus.on_roster_updated.emit()
+	SignalBus.on_unit_stats_changed.emit(unit_a)
+	SignalBus.on_unit_stats_changed.emit(unit_b)

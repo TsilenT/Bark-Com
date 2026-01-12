@@ -12,6 +12,8 @@ var kibble_label: Label
 var active_mission_node: Node = null
 var content_area: VBoxContainer
 var saved_roster_scroll: int = 0
+var stash_weapons_grid: GridContainer = null
+var stash_items_grid: GridContainer = null
 
 
 func _process(_delta):
@@ -61,6 +63,8 @@ func _connect_signals():
 	SignalBus.on_unit_recruited.connect(func(_unit): _show_roster())
 	SignalBus.on_mission_selected.connect(_on_mission_start_signal)
 	SignalBus.on_skin_changed.connect(_on_skin_changed_refresh)
+	SignalBus.on_inventory_changed.connect(_refresh_stash_sidebar)
+	SignalBus.on_roster_updated.connect(func(): _show_roster())
 
 
 func _load_initial_state():
@@ -623,7 +627,65 @@ func _show_roster():
 	right_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(right_col)
 	
+	# --- STASH SIDEBAR (Far Right) ---
+	var stash_panel = VBoxContainer.new()
+	stash_panel.custom_minimum_size = Vector2(200, 0)
+	stash_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	
+	# Load Drop Target Script
+	var StashDropScript = load("res://scripts/ui/StashDropTarget.gd")
+	var stash_bg = StashDropScript.new() # BG + Drop Logic
+	stash_bg.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(stash_bg)
+	stash_bg.add_child(stash_panel)
+	
+	var s_lbl = Label.new()
+	s_lbl.text = "QUICK STASH"
+	s_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stash_panel.add_child(s_lbl)
+	stash_panel.add_child(HSeparator.new())
+	
+	# WEAPONS SECTION
+	var w_lbl = Label.new()
+	w_lbl.text = "WEAPONS"
+	w_lbl.add_theme_color_override("font_color", Color.LIGHT_CORAL)
+	w_lbl.add_theme_font_size_override("font_size", 12)
+	w_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stash_panel.add_child(w_lbl)
+	
+	var sw_scroll = ScrollContainer.new()
+	sw_scroll.custom_minimum_size.y = 150 # Fixed height for weapons? Or flex?
+	sw_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stash_panel.add_child(sw_scroll)
+	
+	var sw_grid = GridContainer.new()
+	sw_grid.columns = 3
+	sw_scroll.add_child(sw_grid)
+	stash_weapons_grid = sw_grid # New Member
+	
+	stash_panel.add_child(HSeparator.new())
+	
+	# ITEMS SECTION
+	var i_lbl = Label.new()
+	i_lbl.text = "ITEMS"
+	i_lbl.add_theme_color_override("font_color", Color.LIGHT_GREEN)
+	i_lbl.add_theme_font_size_override("font_size", 12)
+	i_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stash_panel.add_child(i_lbl)
+	
+	var si_scroll = ScrollContainer.new()
+	si_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stash_panel.add_child(si_scroll)
+	
+	var si_grid = GridContainer.new()
+	si_grid.columns = 3
+	si_scroll.add_child(si_grid)
+	stash_items_grid = si_grid # New Member
+	
+	_refresh_stash_sidebar()
+	
 	var title = Label.new()
+	
 	title.text = "BARRACKS (The Bed)"
 	title.add_theme_font_size_override("font_size", 24)
 	right_col.add_child(title)
@@ -1431,6 +1493,14 @@ func _show_inventory(status_msg: String = "", status_color: String = "white"):
 			weapons.append(item)
 		elif item is ConsumableData:
 			consumables.append(item)
+			
+	var sorter = func(a, b):
+		var name_a = a.display_name if "display_name" in a else "Unknown"
+		var name_b = b.display_name if "display_name" in b else "Unknown"
+		return name_a.naturalnocasecmp_to(name_b) < 0
+		
+	weapons.sort_custom(sorter)
+	consumables.sort_custom(sorter)
 
 	# --- CONTENT CONTAINER ---
 	# ScrollContainer works best with a single child.
@@ -1494,20 +1564,38 @@ func _create_stash_item_card(parent, item, index):
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(row)
 	
-	# 1. Icon (Placeholder - Neutral)
-	var icon_rect = ColorRect.new()
+	# 1. Icon
+	var icon_rect = TextureRect.new()
 	icon_rect.custom_minimum_size = Vector2(64, 64)
-	icon_rect.color = Color(0.2, 0.2, 0.25) # Dark Slate Blue/Grey
-	row.add_child(icon_rect)
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	
-	# Icon Label
-	var icon_lbl = Label.new()
-	icon_lbl.text = "WPN" if item is WeaponData else "ITEM"
-	icon_lbl.add_theme_font_size_override("font_size", 10)
-	icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	icon_lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
-	icon_rect.add_child(icon_lbl)
+	if item is Object and "icon" in item and item.icon:
+		if item.icon is Texture2D:
+			icon_rect.texture = item.icon
+		elif item.icon is String and item.icon != "":
+			icon_rect.texture = load(item.icon)
+	elif item is Dictionary and item.get("icon"):
+		icon_rect.texture = load(item.icon)
+	else:
+		# Fallback
+		var ph = GradientTexture2D.new()
+		ph.width = 64; ph.height = 64
+		ph.fill_from = Vector2(0,0); ph.fill_to = Vector2(1,1)
+		ph.gradient = Gradient.new()
+		ph.gradient.colors = [Color.TEAL]
+		icon_rect.texture = ph
+		
+		# Overlay Label only if no icon
+		var icon_lbl = Label.new()
+		icon_lbl.text = "WPN" if item is WeaponData else "ITEM"
+		icon_lbl.add_theme_font_size_override("font_size", 10)
+		icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		icon_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		icon_lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
+		icon_rect.add_child(icon_lbl)
+		
+	row.add_child(icon_rect)
 	
 	var spacer1 = Control.new()
 	spacer1.custom_minimum_size.x = 10
@@ -1526,7 +1614,20 @@ func _create_stash_item_card(parent, item, index):
 	v_info.add_child(name_lbl)
 	
 	var desc_lbl = Label.new()
-	desc_lbl.text = item.description
+	var full_desc = item.description
+	
+	# Append Stats
+	if item is WeaponData:
+		full_desc += "\n[Damage: " + str(item.damage) + "] [Range: " + str(item.weapon_range) + "]"
+		if item.ammo_capacity > 0:
+			full_desc += " [Ammo: " + str(item.ammo_capacity) + "]"
+	elif item is ConsumableData:
+		if item.value > 0:
+			full_desc += "\n[Power: " + str(item.value) + "]"
+		if item.range_tiles > 0:
+			full_desc += " [Range: " + str(item.range_tiles) + "]"
+			
+	desc_lbl.text = full_desc
 	desc_lbl.add_theme_font_size_override("font_size", 10)
 	desc_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1840,3 +1941,47 @@ func _on_mission_start_signal(mission_data):
 	
 	if terminal_panel:
 		terminal_panel.println("Deployment Initialized. Good luck.", Color.GREEN)
+
+func _refresh_stash_sidebar():
+	# Validate Both
+	if not stash_weapons_grid or not is_instance_valid(stash_weapons_grid):
+		return
+	if not stash_items_grid or not is_instance_valid(stash_items_grid):
+		return
+		
+	# Clear existing
+	for c in stash_weapons_grid.get_children(): c.queue_free()
+	for c in stash_items_grid.get_children(): c.queue_free()
+		
+	var DraggableItemIconScript = load("res://scripts/ui/DraggableItemIcon.gd")
+	
+	# Split Inventory
+	var weapons = []
+	var items = []
+	
+	for item in game_manager.inventory:
+		if item is WeaponData:
+			weapons.append(item)
+		else:
+			items.append(item) # Consumables/Misc
+	
+	# Sort
+	var sorter = func(a, b):
+		var name_a = a.display_name if "display_name" in a else "Unknown"
+		var name_b = b.display_name if "display_name" in b else "Unknown"
+		return name_a.naturalnocasecmp_to(name_b) < 0
+	
+	weapons.sort_custom(sorter)
+	items.sort_custom(sorter)
+
+	# Populate Weapons
+	for w in weapons:
+		var icon = DraggableItemIconScript.new()
+		stash_weapons_grid.add_child(icon)
+		icon.setup(w, "stash")
+
+	# Populate Items
+	for i in items:
+		var icon = DraggableItemIconScript.new()
+		stash_items_grid.add_child(icon)
+		icon.setup(i, "stash")

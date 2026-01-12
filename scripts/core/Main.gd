@@ -1426,7 +1426,7 @@ func _on_item_requested(item, slot_index):
 
 	var gv = get_node("GridVisualizer")
 	if gv:
-		gv.show_highlights(valid_tiles, Color.CYAN)
+		gv.show_highlights(valid_tiles, Color.YELLOW)
 
 	SignalBus.on_combat_log_event.emit("Select Target for " + item.display_name, Color.WHITE)
 
@@ -1472,12 +1472,33 @@ func _execute_item(user, item, slot_index, target, grid_pos):
 	
 	var result = "Used Item"
 	
-	if item.has_method("execute"):
+	if item.get("ability_ref"):
+		var ability_script = item.ability_ref
+		if ability_script:
+			var ability = ability_script.new()
+			# Execute Wrapper
+			# Note: Ability.execute handles AP deduction inside key abilities like GrenadeToss
+			result = await ability.execute(user, target, grid_pos, grid_manager)
+			
+			# Check for success based on typical return strings or return type
+			# GrenadeToss returns "Grenade Tossed!" on success.
+			# Failures are "Not enough AP!", "No Charges!"
+			if result != "Not enough AP!" and result != "No Charges!":
+				# Consume Item Logic
+				if item.get("consume_on_use"):
+					if user.has_method("remove_item_by_ref"):
+						user.remove_item_by_ref(item) # Need to implement this or use inventory array
+					elif "inventory" in user and user.inventory is Array:
+						var idx = user.inventory.find(item)
+						if idx != -1:
+							user.inventory[idx] = null
+							print("Main: Consumed item ", item.display_name)
+							SignalBus.on_inventory_changed.emit() # Refresh UI
+			
+	elif item.has_method("execute"):
 		result = await item.execute(user, target, grid_pos, grid_manager)
 	elif user.has_method("use_item"):
 		# Fallback to Unit method
-		# But passing target/grid_pos might be tricky if use_item index based.
-		# Ideally item.execute is the way.
 		result = user.use_item(slot_index, target, grid_manager)
 		
 	print("Item Result: ", result)

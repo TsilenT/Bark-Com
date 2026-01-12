@@ -8,4 +8,6 @@ damage = 3
 weapon_range = 4
 ammo_capacity = -1
 display_name = "Syringe Gun"
-cost = 40
+description = "Bio-weapon. Heals allies on hit, damages enemies."
+icon = "res://assets/icons/weapons/icon_syringe_gun.svg"
+cost = 250

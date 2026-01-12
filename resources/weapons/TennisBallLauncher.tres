@@ -4,8 +4,10 @@
 
 [resource]
 script = ExtResource("1_script")
-damage = 2
-range = 6
+damage = 4
+weapon_range = 6
 ammo_capacity = -1
 display_name = "Tennis Ball Launcher"
+description = "Heavy artillery. Launches balls at high velocity."
+icon = "res://assets/icons/weapons/icon_tennis_ball_launcher.svg"
 cost = 50

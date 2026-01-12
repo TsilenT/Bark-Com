@@ -30,9 +30,11 @@ signal on_mission_selected(mission_id: String)
 signal on_skin_changed()
 signal on_xp_gained(unit_name: String, amount: int)
 signal on_level_up(unit_name: String, new_level: int)
+signal on_inventory_changed()
 
 # UI Events
 signal on_ui_force_update  # Catch-all for full refresh if needed
+signal on_roster_updated # Refresh Barracks/Roster UI
 signal on_squad_list_initialized(units_array)
 signal on_objectives_updated(new_text: String)
 signal on_request_pause

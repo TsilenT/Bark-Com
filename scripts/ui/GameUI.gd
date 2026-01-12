@@ -593,7 +593,7 @@ func _refresh_action_bar(unit):
 			for i in range(unit.inventory.size()):
 				var item = unit.inventory[i]
 				if item:
-					var btn_text = item.display_name + "\n(1 AP)"
+					var btn_text = item.display_name + " (Item)\n(1 AP)"
 					var btn = _create_action_button(btn_text, func(): _on_item_clicked(item, i))
 					if unit.current_ap < 1:
 						btn.disabled = true
@@ -745,6 +745,21 @@ func _update_unit_card():
 			var desc = eff.description if "description" in eff else ""
 			rect.tooltip_text = eff.display_name + "\n" + desc
 			status_container.add_child(rect)
+
+	# WEAPON SLOT (Added)
+	var w_slot_node = v_card.get_node_or_null("MiniWeaponSlot")
+	if not w_slot_node:
+		var slot_script = load("res://scripts/ui/UnitWeaponSlot.gd")
+		if slot_script:
+			w_slot_node = slot_script.new()
+			w_slot_node.name = "MiniWeaponSlot"
+			w_slot_node.read_only = true # Always read only in HUD
+			w_slot_node.custom_minimum_size = Vector2(120, 40) # Smaller
+			# Insert before Bonds?
+			v_card.add_child(w_slot_node)
+			
+	if w_slot_node and w_slot_node.has_method("setup"):
+		w_slot_node.setup(selected_unit)
 
 	# BONDS DISPLAY
 	# v_card is already declared at top

@@ -352,14 +352,36 @@ func _handle_item_click(grid_pos: Vector2):
 	var item = pending_item_action
 	var target = _get_unit_at(grid_pos)
 	
-	# Validate Range
-	var range_val = 1
-	if "range" in item:
-		range_val = item.range
-	elif "ability_range" in item:
-		range_val = item.ability_range
-		
-	if selected_unit.grid_pos.distance_to(grid_pos) > range_val: # Simple distance check for now
+	# Robust Ability-Based Validation (Matches _preview_item)
+	var is_valid_range = false
+	
+	if item.get("ability_ref"):
+		var ability_res = item.ability_ref
+		if ability_res is Script or ability_res is Resource:
+			var ability = ability_res.new()
+			if selected_unit and ability.has_method("update_stats"):
+				ability.update_stats(selected_unit)
+				
+			var valid_tiles = ability.get_valid_tiles(grid_manager, selected_unit)
+			if valid_tiles.has(grid_pos):
+				is_valid_range = true
+			else:
+				print("PMC: Tile ", grid_pos, " not in ability valid tiles.")
+	
+	if not is_valid_range:
+		# Fallback: Simple Range Check (for non-ability items)
+		var range_val = 1
+		if "range_tiles" in item: # Standard ConsumableData property
+			range_val = item.range_tiles
+		elif "range" in item:
+			range_val = item.range
+		elif "ability_range" in item:
+			range_val = item.ability_range
+			
+		if selected_unit.grid_pos.distance_to(grid_pos) <= range_val:
+			is_valid_range = true
+			
+	if not is_valid_range:
 		print("PMC: Item Out of Range.")
 		if _signal_bus:
 			_signal_bus.on_combat_log_event.emit("Out of Range", Color.RED)
@@ -482,29 +504,37 @@ func _preview_item(grid_pos: Vector2, gv: Node):
 	
 	if pending_item_action:
 		var item = pending_item_action
-		var r = item.aoe_radius if "aoe_radius" in item else 0
 		
-		if r > 0:
-			var aoe_tiles = [] 
-			var r_tiles = ceil(r) + 1
-			for x in range(grid_pos.x - r_tiles, grid_pos.x + r_tiles + 1):
-				for y in range(grid_pos.y - r_tiles, grid_pos.y + r_tiles + 1):
-					var t = Vector2(x, y)
-					if grid_manager.grid_data.has(t) and grid_pos.distance_to(t) <= r:
-						aoe_tiles.append(t)
-			gv.preview_aoe(aoe_tiles, Color(0.2, 1.0, 0.2, 0.4)) # Green for Items
-		else:
-			gv.clear_preview_aoe()
-			
-		# Hit Chance Helper for Items (e.g. Grenades)
+		# 1. Ability-Based Items (Grenades) - Match Ability Logic Exactly
 		if item.get("ability_ref"):
-			var ability_res = item.get("ability_ref")
-			# Check if it's a script or resource class
+			var ability_res = item.ability_ref
 			if ability_res is Script or ability_res is Resource:
-				var ab = ability_res.new()
-				# Use refactored check
-				var info = ab.get_hit_chance_breakdown(grid_manager, selected_unit, null)
+				var ability = ability_res.new()
 				
+				# Initialize Perks/Stats
+				if selected_unit and ability.has_method("update_stats"):
+					ability.update_stats(selected_unit)
+
+				# A. Valid Tiles Helper (Yellow to match Standard Ability)
+				var valid = ability.get_valid_tiles(grid_manager, selected_unit)
+				gv.show_highlights(valid, Color(1, 1, 0, 0.4)) 
+				
+				# B. AOE Helper
+				if "aoe_radius" in ability:
+					var r = ability.aoe_radius
+					var aoe_tiles = []
+					var r_tiles = ceil(r) + 1
+					for x in range(grid_pos.x - r_tiles, grid_pos.x + r_tiles + 1):
+						for y in range(grid_pos.y - r_tiles, grid_pos.y + r_tiles + 1):
+							var t = Vector2(x, y)
+							if grid_manager.grid_data.has(t) and grid_pos.distance_to(t) <= r:
+								aoe_tiles.append(t)
+					gv.preview_aoe(aoe_tiles, Color(1, 0.4, 0.4, 0.4)) # Red Tint
+				else:
+					gv.clear_preview_aoe()
+					
+				# C. Hit Chance Helper
+				var info = ability.get_hit_chance_breakdown(grid_manager, selected_unit, null)
 				if not info.is_empty() and info.has("hit_chance"):
 					var breakdown_str = ""
 					if info.has("breakdown") and info["breakdown"] is Dictionary:
@@ -518,12 +548,31 @@ func _preview_item(grid_pos: Vector2, gv: Node):
 						_signal_bus.on_show_hit_chance.emit(info["hit_chance"], breakdown_str, world_target + Vector3(0, 1.0, 0))
 				else:
 					if _signal_bus: _signal_bus.on_hide_hit_chance.emit()
-				
-				# Cleanup temp instance (GDScript is ref counted usually but explict free if Object?) 
-				# ReferenceCounted (Resource/Ability) automatically freed.
+					
+				return # Done handling ability-based item
 		
+		# 2. Fallback: Simple Radius Items
+		var r = 0.0
+		if "radius" in item: r = item.radius
+		
+		# Default Green Highlight for non-aggressive items
+		if r > 0:
+			var aoe_tiles = [] 
+			var r_tiles = ceil(r) + 1
+			for x in range(grid_pos.x - r_tiles, grid_pos.x + r_tiles + 1):
+				for y in range(grid_pos.y - r_tiles, grid_pos.y + r_tiles + 1):
+					var t = Vector2(x, y)
+					if grid_manager.grid_data.has(t) and grid_pos.distance_to(t) <= r:
+						aoe_tiles.append(t)
+			gv.preview_aoe(aoe_tiles, Color(0.2, 1.0, 0.2, 0.4)) 
+		else:
+			gv.clear_preview_aoe()
+		
+		if _signal_bus: _signal_bus.on_hide_hit_chance.emit()
+			
 	else:
 		gv.clear_preview_aoe()
+		if _signal_bus: _signal_bus.on_hide_hit_chance.emit()
 
 
 # --- Actions ---

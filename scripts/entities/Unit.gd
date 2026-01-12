@@ -144,6 +144,7 @@ func _ready():
 		primary_weapon.display_name = "Bark"
 		primary_weapon.damage = 3
 		primary_weapon.weapon_range = 3
+		primary_weapon.icon = "res://assets/icons/weapons/icon_bark.svg"
 
 	SignalBus.on_unit_stats_changed.emit(self)
 

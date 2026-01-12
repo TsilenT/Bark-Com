@@ -7,5 +7,6 @@ func _init():
 	cost = 100
 	effect_type = EffectType.ABILITY
 	range_tiles = 5
+	icon = preload("res://assets/icons/items/grenade.svg")
 	consume_on_use = true
 	ability_ref = load("res://scripts/abilities/ItemGrenadeToss.gd")

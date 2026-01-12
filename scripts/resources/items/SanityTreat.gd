@@ -8,5 +8,6 @@ func _init():
 	effect_type = EffectType.STRESS_RELIEF
 	value = 20  # Restores 20 Sanity
 	range_tiles = 1
+	icon = preload("res://assets/icons/items/treat.svg")
 	consume_on_use = true
 	# No VFX needed here, handled by CombatResolver (Floating Text)
