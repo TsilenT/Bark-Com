@@ -29,6 +29,11 @@ const ENEMY_SCRIPTS = {
 	"Sniper": "res://scripts/entities/EnemyUnit.gd", 
 	"Spitter": "res://scripts/entities/SpitterUnit.gd",
 	"Whisperer": "res://scripts/entities/WhispererUnit.gd",
+	"Exploder": "res://scripts/entities/enemies/ExploderEnemy.gd",
+	"Tank": "res://scripts/entities/enemies/TankEnemy.gd",
+	"Flying": "res://scripts/entities/enemies/FlyingEnemy.gd",
+	"Infiltrator": "res://scripts/entities/enemies/InfiltratorEnemy.gd",
+	"Boss": "res://scripts/entities/enemies/DogthulhuBoss.gd",
 	"Nemesis": "res://scripts/entities/EnemyUnit.gd" # Placeholder
 }
 func generate_mission_config(level: int) -> MissionConfig:
@@ -78,7 +83,7 @@ func generate_mission_config(level: int) -> MissionConfig:
 		var w2 = _create_wave(10, ["Rusher", "Sniper", "Spitter"])
 		config.waves.append(w2)
 		
-		var w3 = _create_wave(12 + (level * 2), ["Rusher", "Sniper", "Spitter", "Whisperer"])
+		var w3 = _create_wave(12 + (level * 2), ["Rusher", "Sniper", "Spitter", "Whisperer", "Exploder", "Tank", "Flying", "Infiltrator"])
 		config.waves.append(w3)
 	
 	# Randomize Objective Type (Level 1 is always Deathmatch for simplicity)
@@ -556,7 +561,7 @@ func _pick_random_archetype(wave_def: WaveDefinition) -> String:
 	else:
 		GameManager.log(LOG_PREFIX, "Debug: allowed_archetypes EXPECTED but EMPTY! Falling back to defaults.")
 		# Fallback: Random key from ENEMIES (excluding Nemesis/Whisperer usually unless specified?)
-		pool = ["Rusher", "Sniper", "Spitter"]
+		pool = ["Rusher", "Sniper", "Spitter", "Exploder", "Flying", "Tank"]
 	
 	if pool.is_empty():
 		return ""
@@ -575,6 +580,16 @@ func _get_cost(type_name: String) -> int:
 			return 3
 		"Whisperer":
 			return 4
+		"Exploder":
+			return 2
+		"Tank":
+			return 4
+		"Flying":
+			return 3
+		"Infiltrator":
+			return 4
+		"Boss":
+			return 99 # Boss wave only
 		"Nemesis":
 			return 5
 		_:
@@ -590,8 +605,15 @@ func _spawn_enemy(type_name: String):
 		GameManager.log(LOG_PREFIX, "Error: Unknown enemy script for ", type_name)
 		return
 
-	var script = load(script_path)
-	var enemy = script.new()
+	# 1. Determine Resource Type
+	var resource = load(script_path)
+	var enemy = null
+	
+	if resource is PackedScene:
+		enemy = resource.instantiate()
+	else:
+		# Assume GDScript
+		enemy = resource.new()
 
 	# Find Spawn Position
 	var spawn_pos = Vector2(-1, -1)

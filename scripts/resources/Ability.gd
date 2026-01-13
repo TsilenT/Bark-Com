@@ -2,6 +2,8 @@ extends Resource
 class_name Ability
 
 @export var display_name: String = "Ability"
+@export var description: String = ""
+@export var icon_path: String = ""
 @export var ap_cost: int = 1
 @export var ability_range: int = 1
 @export var cooldown_turns: int = 0

@@ -7,7 +7,22 @@ class_name EnemyData
 @export var visual_color: Color = Color.RED
 @export var primary_weapon: WeaponData
 
-enum AIBehavior { RUSHER, SNIPER, GENERIC }
+enum AIBehavior { 
+	RUSHER, 
+	SNIPER, 
+	GENERIC, 
+	AREA_DENIAL, 
+	CONTROLLER, 
+	EXPLODER, 
+	TANK, 
+	FLYING, 
+	INFILTRATOR, 
+	BOSS 
+}
 @export var ai_behavior: AIBehavior = AIBehavior.GENERIC
+
+@export var action_points: int = 2
+@export var min_skills: int = 0
+@export var max_skills: int = 1
 
 @export var abilities: Array[Script] = []  # List of Ability scripts to attach

@@ -45,6 +45,12 @@ class MockPlayerUnit extends Node3D:
 		
 	func has_perk(p): return false
 	
+	func get_data_snapshot():
+		return {
+			"hp": current_hp,
+			"pos": grid_pos
+		}
+	
 func _ready():
 	print("--- TEST START: Enemy AI ---")
 	add_child(load("res://tests/TestSafeGuard.gd").new())
@@ -89,8 +95,9 @@ func setup_env():
 func run_tests():
 	await test_movement_towards_enemy()
 	await test_attack_in_range()
-	# await test_cover_preference() # Complex to setup cover data in mock grid, maybe later
-	
+	await test_rusher_behavior()
+	await test_sniper_behavior()
+	await test_exploder_behavior()
 	
 	if failures > 0:
 		print("❌ FAILED: ", failures, " tests failed.")
@@ -101,22 +108,23 @@ func run_tests():
 
 var failures = 0
 func fail(msg):
-	print(msg)
+	print("❌ " + msg)
 	failures += 1
 	
 func pass_test(msg):
-	print(msg)
+	print("✅ " + msg)
 
 func test_movement_towards_enemy():
-	print("\nTest: Movement Towards Enemy...")
+	print("\nTest: Movement Towards Enemy (Generic)...")
 	
 	# Setup
 	var enemy = load("res://scripts/entities/EnemyUnit.gd").new()
-	enemy.name = "AI_Rusher"
+	enemy.name = "AI_Generic"
 	add_child(enemy)
 	enemy.initialize(Vector2(0,0))
 	enemy.mobility = 4
 	enemy.attack_range = 1 # Melee
+	enemy.current_ap = 2 
 	
 	mock_tm.units.append(enemy)
 	
@@ -128,19 +136,9 @@ func test_movement_towards_enemy():
 	mock_tm.units.append(target)
 	
 	# Execute
-	# We want to spy on movement. EnemyUnit calls move_along_path -> state_machine.transition
-	# But EnemyUnit.move_along_path prints and updates grid_pos eventually?
-	# Actual movement is async and visual.
-	# For logic test, we care about the DECISION.
-	# But decide_action does everything.
-	
-	# Verify Start
 	if enemy.grid_pos != Vector2(0,0):
-		fail("FAIL: Enemy not at start.")
+		fail("Enemy not at start.")
 		return
-	
-	# We expect AI to move CLOSER to (8,0). 
-	# Max move 4. Should end at (4,0).
 	
 	print("Running decide_action...")
 	await enemy.decide_action([target, enemy], grid_manager)
@@ -149,9 +147,9 @@ func test_movement_towards_enemy():
 	print("Enemy End Pos: ", enemy.grid_pos)
 	
 	if enemy.grid_pos.x > 0:
-		pass_test("PASS: Enemy moved towards target.")
+		pass_test("Enemy moved towards target.")
 	else:
-		fail("FAIL: Enemy did not move. Pos: " + str(enemy.grid_pos))
+		fail("Enemy did not move. Pos: " + str(enemy.grid_pos))
 		
 	TestUtils.free_node(enemy)
 	TestUtils.free_node(target)
@@ -182,9 +180,116 @@ func test_attack_in_range():
 	await enemy.decide_action([target, enemy], grid_manager)
 	
 	if target.current_hp < start_hp:
-		pass_test("PASS: Enemy attacked target (HP Dropped: " + str(start_hp) + " -> " + str(target.current_hp) + ")")
+		pass_test("Enemy attacked target (HP Dropped: " + str(start_hp) + " -> " + str(target.current_hp) + ")")
 	else:
-		fail("FAIL: Enemy did not damage target.")
+		fail("Enemy did not damage target.")
+
+	TestUtils.free_node(enemy)
+	TestUtils.free_node(target)
+
+func test_rusher_behavior():
+	print("\nTest: Rusher Behavior (Aggression)...")
+	# Rushers should prefer getting ADJACENT (Dist 1.0) over just getting in range (Dist 1.5+)
+	
+	var enemy = load("res://scripts/entities/EnemyUnit.gd").new()
+	add_child(enemy)
+	enemy.initialize(Vector2(0,0))
+	enemy.mobility = 5
+	# Load Rusher Behavior manually
+	enemy._load_behavior(0) # RUSHER
+	
+	var target = MockPlayerUnit.new()
+	target.grid_pos = Vector2(5,0)
+	target.position = Vector3(5,0,0)
+	add_child(target)
+	
+	# Evaluate Tile scores manually to verify logic
+	var gm = grid_manager
+	var beh = enemy.behavior_resource
+	
+	# Tile (4,0) is Adjacent (Dist 1). Tile (3,0) is Dist 2.
+	var score_adj = beh.evaluate_position(enemy, Vector2(4,0), target, gm)
+	var score_near = beh.evaluate_position(enemy, Vector2(3,0), target, gm)
+	
+	print("Score Adjacent (4,0): ", score_adj)
+	print("Score Near (3,0): ", score_near)
+	
+	if score_adj > score_near:
+		pass_test("Rusher prefers adjacency.")
+	else:
+		fail("Rusher failed to classify adjacency as better.")
+		
+	TestUtils.free_node(enemy)
+	TestUtils.free_node(target)
+
+func test_sniper_behavior():
+	print("\nTest: Sniper Behavior (Range Preference)...")
+	
+	var enemy = load("res://scripts/entities/EnemyUnit.gd").new()
+	add_child(enemy)
+	enemy.initialize(Vector2(0,0))
+	enemy._load_behavior(1) # SNIPER
+	
+	var target = MockPlayerUnit.new()
+	target.grid_pos = Vector2(15,0) # Far away
+	target.position = Vector3(15,0,0)
+	add_child(target)
+	
+	var beh = enemy.behavior_resource
+	var gm = grid_manager # No cover in this mock grid, so purely distance check
+	
+	# Range 8-12 is ideal.
+	# Tile (5,0) -> Dist 10 (Ideal)
+	# Tile (10,0) -> Dist 5 (Too close)
+	# Tile (0,0) -> Dist 15 (Too far)
+	
+	var score_ideal = beh.evaluate_position(enemy, Vector2(5,0), target, gm)
+	var score_close = beh.evaluate_position(enemy, Vector2(10,0), target, gm)
+	
+	print("Score Ideal Dist 10: ", score_ideal)
+	print("Score Close Dist 5: ", score_close)
+	
+	if score_ideal > score_close:
+		pass_test("Sniper prefers ideal range.")
+	else:
+		fail("Sniper logic failed range preference.")
+		
+	TestUtils.free_node(enemy)
+	TestUtils.free_node(target)
+
+func test_exploder_behavior():
+	print("\nTest: Exploder Behavior (Suicide Rush)...")
+	
+	var enemy = load("res://scripts/entities/enemies/ExploderEnemy.gd").new()
+	add_child(enemy)
+	enemy.initialize(Vector2(0,0))
+	enemy.mobility = 10
+	
+	var target = MockPlayerUnit.new()
+	target.grid_pos = Vector2(8,0)
+	target.position = Vector3(8,0,0)
+	add_child(target)
+	
+	# Verify Behavior Loaded
+	if not enemy.behavior_resource:
+		fail("Exploder did not load behavior on init.")
+	
+	var beh = enemy.behavior_resource
+	var gm = grid_manager
+	
+	# Tile (7,0) -> Dist 1. Should be HUGE score.
+	# Tile (6,0) -> Dist 2. Should be much lower.
+	
+	var score_suicide = beh.evaluate_position(enemy, Vector2(7,0), target, gm)
+	var score_approach = beh.evaluate_position(enemy, Vector2(6,0), target, gm)
+	
+	print("Score Suicide (Dist 1): ", score_suicide)
+	print("Score Approach (Dist 2): ", score_approach)
+	
+	if score_suicide > (score_approach + 100):
+		pass_test("Exploder massively prefers suicide range.")
+	else:
+		fail("Exploder not suicidal enough.")
 
 	TestUtils.free_node(enemy)
 	TestUtils.free_node(target)

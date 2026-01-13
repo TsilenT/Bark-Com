@@ -112,4 +112,3 @@ func _perform_betrayal_attack(attacker, victim):
 			pass  # Creating vfx is tricky without scene context
 	else:
 		GameManager.log(LOG_PREFIX, "BETRAYAL! ", attacker.name, " missed ", victim.name)
-
