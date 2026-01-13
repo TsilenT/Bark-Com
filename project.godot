@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 SignalBus="*res://scripts/managers/SignalBus.gd"
 GameManager="*res://scripts/core/GameManager.gd"
+AIDebugger="*res://scripts/utils/AIDebugger.gd"
 InputManager="*res://scripts/managers/InputManager.gd"
 CosmeticManager="*res://scripts/managers/CosmeticManager.gd"
 BarkTreeManager="*res://scripts/managers/BarkTreeManager.gd"

@@ -4,7 +4,8 @@ class_name EnemyUnit
 signal action_complete
 const LOG_PREFIX = "EnemyAI: "
 
-const EnemyDataScript = preload("res://scripts/resources/EnemyData.gd")
+# const EnemyDataScript - Removed, using Global Class EnemyData directly
+
 
 enum State { IDLE, CHASE, ATTACK }
 
@@ -98,7 +99,11 @@ func initialize_from_data(data: EnemyData):
 	_load_behavior(data.ai_behavior)
 
 	if DEBUG_AI:
-		GameManager.log(LOG_PREFIX, "Initialized ", name, " with behavior ", data.ai_behavior)
+		var gm = get_node_or_null("/root/GameManager")
+		if gm:
+			gm.log(LOG_PREFIX, "Initialized ", name, " with behavior ", data.ai_behavior)
+		else:
+			print(LOG_PREFIX, "Initialized ", name, " with behavior ", data.ai_behavior)
 
 
 func _load_behavior(type: int):
@@ -165,7 +170,9 @@ func check_los(tile: Vector2, target, gm: GridManager) -> bool:
 
 
 func _end_action():
-	GameManager.log(LOG_PREFIX, name, " [AI] Emitting action_complete signal.")
+	var gm = get_node_or_null("/root/GameManager")
+	if gm:
+		gm.log(LOG_PREFIX, name, " _end_action() called. Emitting action_complete.")
 	action_complete.emit()
 
 
@@ -174,9 +181,14 @@ func _end_action():
 func decide_action(_all_units: Array, grid_manager: GridManager):
 	# ASYNC GUARD
 	await get_tree().process_frame
+	
+	var gm = get_node_or_null("/root/GameManager")
+	if gm:
+		gm.log(LOG_PREFIX, name, " decide_action START. AP: ", current_ap)
 
 	if DEBUG_AI:
-		GameManager.log(LOG_PREFIX, name, " starting turn. AP: ", current_ap)
+		if gm:
+			gm.log(LOG_PREFIX, name, " starting turn. AP: ", current_ap)
 	
 	# Current AP is managed by Unit.gd (refreshed by TurnManager or on_turn_start)
 	# Safety: Ensure we have at least 1 AP to start? No, respect current_ap.
@@ -191,11 +203,11 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 		# If no target, Idle
 		if not target_unit:
 			state = State.IDLE
-			if DEBUG_AI: GameManager.log(LOG_PREFIX, "- No valid targets. Ending turn.")
+			if DEBUG_AI and gm: gm.log(LOG_PREFIX, "- No valid targets. Ending turn.")
 			break
 			
-		if DEBUG_AI:
-			GameManager.log(LOG_PREFIX, "- Target: ", target_unit.name, " AP: ", current_ap)
+		if DEBUG_AI and gm:
+			gm.log(LOG_PREFIX, "- Target: ", target_unit.name, " AP: ", current_ap)
 
 		# 2. Decide: Move vs Attack vs Ability
 		# Simple FSM for v1:
@@ -227,7 +239,7 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 				# Loop continues to see if we can attack now
 			else:
 				# Stuck or no valid moves
-				if DEBUG_AI: GameManager.log(LOG_PREFIX, "- No valid moves or decided to wait.")
+				if DEBUG_AI and gm: gm.log(LOG_PREFIX, "- No valid moves or decided to wait.")
 				spend_ap(current_ap) # End turn
 				break
 	
@@ -286,6 +298,7 @@ func _perform_move(gm: GridManager, all_units: Array) -> bool:
 			# Check Unit Occupancy
 			var occupied = false
 			for u in all_units:
+				if not is_instance_valid(u): continue
 				if u.grid_pos == tile and u != self and u.current_hp > 0:
 					occupied = true; break
 			if occupied: continue

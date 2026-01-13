@@ -2,7 +2,7 @@ extends "res://scripts/fsm/State.gd"
 
 
 func enter(_msg: Dictionary = {}):
-	var unit = context as Unit
+	var unit = context
 	if unit.visuals:
 		unit.visuals.play_animation("Idle")
 

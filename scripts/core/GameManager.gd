@@ -63,6 +63,13 @@ func _ready():
 		audio_manager.name = "AudioManager"
 		add_child(audio_manager)
 
+	# Nemesis Manager
+	if not get_node_or_null("NemesisManager"):
+		var nm_script = load("res://scripts/managers/NemesisManager.gd")
+		var nm = nm_script.new()
+		nm.name = "NemesisManager"
+		add_child(nm)
+
 	# Settings Migration
 	if not "debug_logging" in settings:
 		settings["debug_logging"] = false
@@ -1178,57 +1185,13 @@ func start_mission(mission: MissionData, custom_squad: Array = []):
 
 
 func _process_nemesis_candidates(candidates: Array):
+	var nm = get_node_or_null("NemesisManager")
+	if not nm:
+		print("GameManager: NemesisManager not found!")
+		return
+		
 	for c in candidates:
-		# Check if already a nemesis
-		var existing = null
-		for n in active_nemeses:
-			if n.name == c.name:
-				existing = n
-				break
-
-		if existing:
-			# Evolution: Upgrade existing
-			print("GameManager: Nemesis " + existing.name + " survived again! Upgrading...")
-			existing["level"] += 1
-			if c.victim_log.size() > 0:
-				existing["title"] = existing["title"].split(",")[0] + ", the Double-Eater"  # Tacky Append
-		else:
-			# Promotion
-			print("GameManager: New Nemesis Promoted! " + c.name)
-
-			var victim_name = "the Unlucky"
-			if c.victim_log.size() > 0:
-				victim_name = c.victim_log[0]
-
-			# Requested Titles
-			var titles = [
-				"Corrupter of",
-				"Melter of",
-				"Mindbreaker of",
-				"Eater of",
-				"Bane of",
-				"Nightmare of",
-				"End of",
-				"Slayer of",
-				"Hunter of",
-				"Silencer of"
-			]
-			var title_prefix = titles.pick_random()
-
-			var new_nemesis = {
-				"name": c.name,
-				"title": title_prefix + " " + victim_name,
-				"base_type": c.base_type,  # e.g. "Rusher"
-				"level": 1,
-				"buffs": []
-			}
-
-			# Assign Random Buff
-			var buff_options = ["Bone Plating", "Vile Strength", "Unnatural Speed"]
-			new_nemesis["buffs"].append(buff_options.pick_random())
-
-			active_nemeses.append(new_nemesis)
-			print(" - All Hail " + new_nemesis.name + ", " + new_nemesis.title + "!")
+		nm.register_survivor(c)
 
 
 # --- WEAPON LOGIC ---

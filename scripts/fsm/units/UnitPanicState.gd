@@ -3,7 +3,7 @@ extends "res://scripts/fsm/State.gd"
 
 func enter(msg: Dictionary = {}):
 	var type = msg.get("type", "FREEZE")
-	var unit = context as Unit
+	var unit = context
 
 	print(unit.name, " entered PANIC state: ", type)
 
@@ -22,7 +22,7 @@ func enter(msg: Dictionary = {}):
 			_panic_berserk(unit)
 
 
-func _panic_run(unit: Unit):
+func _panic_run(unit):
 	var gm = unit.get_node_or_null("../GridManager")
 	if not gm:
 		state_machine.transition_to("Idle")
@@ -75,7 +75,7 @@ func _panic_run(unit: Unit):
 	SignalBus.on_unit_stats_changed.emit(unit)
 
 
-func _panic_berserk(unit: Unit):
+func _panic_berserk(unit):
 	var gm = unit.get_node_or_null("../GridManager")
 	var all_units = unit.get_tree().get_nodes_in_group("Units")
 

@@ -28,6 +28,15 @@ func _ready():
 	SignalBus.on_unit_stats_changed.connect(_on_status_changed_wrapper)
 
 	_refresh_full()
+	
+func _exit_tree():
+	if SignalBus:
+		if SignalBus.on_status_applied.is_connected(_on_status_changed):
+			SignalBus.on_status_applied.disconnect(_on_status_changed)
+		if SignalBus.on_status_removed.is_connected(_on_status_changed):
+			SignalBus.on_status_removed.disconnect(_on_status_changed)
+		if SignalBus.on_unit_stats_changed.is_connected(_on_status_changed_wrapper):
+			SignalBus.on_unit_stats_changed.disconnect(_on_status_changed_wrapper)
 
 
 func _on_status_changed(_u, _id):

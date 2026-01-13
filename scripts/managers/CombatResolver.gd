@@ -1,4 +1,4 @@
-extends Node
+extends RefCounted
 class_name CombatResolver
 const LOG_PREFIX = "CombatResolver: "
 
@@ -208,7 +208,11 @@ static func calculate_hit_chance(
 static func execute_item_effect(
 	attacker, item, target_or_pos, grid_manager: GridManager
 ) -> bool:
-	GameManager.log(LOG_PREFIX, "Executing Item ", item.display_name)
+	var gm = (attacker as Node).get_node_or_null("/root/GameManager") if (attacker is Node) else null
+	if gm:
+		gm.log(LOG_PREFIX, "Executing Item ", item.display_name)
+	else:
+		print(LOG_PREFIX, "Executing Item ", item.display_name)
 
 	var target_pos = Vector3.ZERO
 	var target_unit = null
@@ -239,7 +243,8 @@ static func execute_item_effect(
 				break
 
 	if not target_unit:
-		GameManager.log(LOG_PREFIX, "No target unit found for item execution.")
+		if gm:
+			gm.log(LOG_PREFIX, "No target unit found for item execution.")
 		return false
 
 	if item.effect_type == ConsumableData.EffectType.HEAL:
@@ -256,9 +261,11 @@ static func execute_item_effect(
 	elif item.effect_type == ConsumableData.EffectType.STRESS_RELIEF:
 		if target_unit.has_method("heal_sanity"):
 			target_unit.heal_sanity(item.value)
-			SignalBus.on_request_floating_text.emit(
-				target_unit.position, "+%d SANITY" % item.value, Color.AZURE
-			)
+			var sb = (target_unit as Node).get_node_or_null("/root/SignalBus") if (target_unit is Node) else null
+			if sb:
+				sb.on_request_floating_text.emit(
+					target_unit.position, "+%d SANITY" % item.value, Color.AZURE
+				)
 			return true
 
 	return false

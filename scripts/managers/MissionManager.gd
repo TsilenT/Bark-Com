@@ -534,6 +534,19 @@ func _spawn_wave(wave_def: WaveDefinition):
 		for _i in range(count):
 			_spawn_enemy(type)
 
+
+	# 0. Check for Nemesis Invasions (NemesisManager)
+	if GameManager:
+		var nm = GameManager.get_node_or_null("NemesisManager")
+		if nm:
+			# Ask for candidates
+			var invaders = nm.get_invasion_candidates(wave_def.budget_points)
+			for invader_data in invaders:
+				if wave_def.budget_points >= 4: # Min budget check to ensure slot
+					_spawn_nemesis(invader_data)
+					wave_def.budget_points -= 5 # Explicit cost for Nemesis
+					GameManager.log(LOG_PREFIX, "WARNING: Nemesis Invasion! ", invader_data.display_name)
+	
 	# 2. Budget Spawns
 	var budget = wave_def.budget_points
 	var attempts = 0
@@ -664,82 +677,15 @@ func _spawn_enemy(type_name: String):
 
 
 func _configure_enemy(enemy, type_name: String):
-	# This requires GameManager to access EnemyData helper if needed.
-	# Or we manually construct data here.
-
-	var data_script = load("res://scripts/resources/EnemyData.gd")
-	if not data_script:
-		return
-	var data = data_script.new()
-
-	# Weapon Data Helper
-	var weapon_script = load("res://scripts/resources/WeaponData.gd")
-
-	# GameManager Access
-	# GameManager is Autoload, so capable of direct access
 	var gm_global = null
 	if has_node("/root/GameManager"):
 		gm_global = get_node("/root/GameManager")
 
-	match type_name:
-		"Rusher":
-			var theme = ["Fleshy", "Suburbia"].pick_random()
-			if gm_global:
-				data.display_name = gm_global.get_enemy_name(theme)
-			else:
-				data.display_name = "Feral Rusher"
+	var data = EnemyFactory.create_enemy_data(type_name, gm_global)
+	if data:
+		enemy.initialize_from_data(data)
 
-			data.ai_behavior = data.AIBehavior.RUSHER
-			data.max_hp = 8
-			data.mobility = 6
-			data.visual_color = Color.ORANGE
-			if weapon_script:
-				var w = weapon_script.new()
-				w.display_name = "Bite"
-				w.damage = 3
-				w.weapon_range = 1
-				data.primary_weapon = w
-			enemy.initialize_from_data(data)
 
-		"Sniper":
-			var theme = ["Abstract", "Aquatic"].pick_random()
-			if gm_global:
-				data.display_name = gm_global.get_enemy_name(theme)
-			else:
-				data.display_name = "Eldritch Sniper"
-
-			data.ai_behavior = data.AIBehavior.SNIPER
-			data.max_hp = 6
-			data.mobility = 3
-			data.visual_color = Color.CYAN
-			if weapon_script:
-				var w = weapon_script.new()
-				w.display_name = "Eye Rifle"
-				w.damage = 4
-				w.weapon_range = 10
-				data.primary_weapon = w
-			enemy.initialize_from_data(data)
-
-		"Spitter":
-			var theme = ["Fleshy", "Abstract"].pick_random()
-			if gm_global:
-				data.display_name = gm_global.get_enemy_name(theme)
-			else:
-				data.display_name = "Acid Spitter"
-			enemy.initialize_from_data(data)
-
-		"Whisperer":
-			var theme = ["Abstract"].pick_random()
-			if gm_global:
-				data.display_name = gm_global.get_enemy_name(theme)
-			else:
-				data.display_name = "Whisperer"
-
-			# Needs resource data
-			var w_path = "res://assets/data/enemies/WhispererData.tres"
-			if ResourceLoader.exists(w_path):
-				var w_data = load(w_path)
-				enemy.initialize_from_data(w_data)
 
 
 func _complete_mission():
@@ -798,6 +744,12 @@ func setup_acidsplosion_scenario(grid_manager, unit_container):
 	GameManager.log(LOG_PREFIX, "Setting up ACIDSPLOSION Scenario!")
 	
 	# 1. Spawn Spitters
+	# ... logic existing ...
+	pass
+
+	# 1. Spawn Spitters
+	# (Logic continues below)
+
 	# Center the action around 10,10
 	var spitter_positions = [
 		Vector2(8, 8), Vector2(12, 8), Vector2(8, 12), Vector2(12, 12), Vector2(10, 6)
@@ -863,3 +815,46 @@ func setup_acidsplosion_scenario(grid_manager, unit_container):
 					grid_manager.grid_data[pos]["unit"] = barrel
 
 	print("MissionManager: Acidsplosion setup complete.")
+
+func _spawn_nemesis(data: Resource):
+	if not grid_manager: return
+	
+	# Determine Script
+	var script_path = ENEMY_SCRIPTS.get(data.archetype_name, "res://scripts/entities/EnemyUnit.gd")
+	var enemy_res = load(script_path)
+	var enemy = null
+	if enemy_res is PackedScene:
+		enemy = enemy_res.instantiate()
+	else:
+		enemy = enemy_res.new()
+	
+	var spawn_pos = grid_manager.get_random_valid_position()
+	for i in range(20):
+		var candidate = grid_manager.get_random_valid_position()
+		var path = grid_manager.get_move_path(Vector2(1,1), candidate)
+		if not path.is_empty():
+			spawn_pos = candidate
+			break
+			
+	enemy.position = grid_manager.get_world_position(spawn_pos)
+	enemy.grid_pos = spawn_pos
+	
+	if grid_manager.grid_data.has(spawn_pos):
+		grid_manager.grid_data[spawn_pos]["unit"] = enemy
+		
+	enemy.visible = false
+	grid_manager.get_parent().add_child(enemy)
+	enemy.add_to_group("Units")
+	enemy.add_to_group("Enemies")
+	spawned_units.append(enemy)
+	
+	var tm = grid_manager.get_node_or_null("../TurnManager")
+	if tm: tm.register_unit(enemy)
+	
+	enemy.initialize_from_data(data)
+	enemy.set_meta("is_nemesis", true)
+	
+	if enemy.has_method("initialize"):
+		enemy.initialize(spawn_pos)
+		
+	GameManager.log(LOG_PREFIX, "🚨 SPAWNED NEMESIS: ", data.display_name, " at ", spawn_pos)

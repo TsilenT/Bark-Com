@@ -229,7 +229,13 @@ func start_enemy_turn():
 				unit.decide_action(units, gm)
 				
 				if unit.has_signal("action_complete"):
-					await unit.action_complete
+					# Wait for signal OR timeout (safety)
+					GameManager.log(LOG_PREFIX, "Awaiting action_complete for ", unit.name)
+					var result = await _wait_for_unit_action(unit, 10.0)
+					if result == "timeout":
+						GameManager.log(LOG_PREFIX, "WARNING: Action timed out for ", unit.name, "! Forcing continuation.")
+					else:
+						GameManager.log(LOG_PREFIX, "Received action_complete for ", unit.name)
 				else:
 					await get_tree().create_timer(1.0).timeout
 
@@ -238,8 +244,13 @@ func start_enemy_turn():
 				# SAFETY CHECK: If unit is still moving, force wait
 				if unit.get("is_moving"):
 					# print("TM: WARNING! Unit ", unit.name, " is still moving after decide_action! Forcing wait.")
-					while unit.get("is_moving"):
+					var move_wait_time = 0.0
+					while unit.get("is_moving") and move_wait_time < 5.0:
 						await get_tree().process_frame
+						move_wait_time += get_process_delta_time()
+					
+					if move_wait_time >= 5.0:
+						GameManager.log(LOG_PREFIX, "WARNING: Unit ", unit.name, " stuck in is_moving state! Forcing continuation.")
 					# print("TM: Unit ", unit.name, " finished forced move wait.")
 
 	# Enemy End Turn Effects
@@ -522,3 +533,32 @@ func _build_survivor_data(u) -> Dictionary:
 		data["inventory"] = u.inventory
 		
 	return data
+
+
+func _wait_for_unit_action(unit, timeout: float) -> String:
+	var state = {"status": "waiting"}
+	var timer = get_tree().create_timer(timeout)
+	
+	var on_complete = func():
+		state.status = "done"
+	
+	var on_timeout = func():
+		if state.status == "waiting":
+			state.status = "timeout"
+			
+	unit.action_complete.connect(on_complete, CONNECT_ONE_SHOT)
+	timer.timeout.connect(on_timeout, CONNECT_ONE_SHOT)
+	
+	while state.status == "waiting":
+		await get_tree().process_frame
+		# If unit died or invalid, abort
+		if not is_instance_valid(unit):
+			return "invalid"
+			
+	# Cleanup (Signal is oneshot, but good practice to ensure disconnect if timeout happened first? 
+	# If timeout happened, connection remains until signal fires later. That's fine for OneShot.)
+	if state.status == "timeout":
+		if unit.is_connected("action_complete", on_complete):
+			unit.action_complete.disconnect(on_complete)
+			
+	return state.status

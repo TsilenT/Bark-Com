@@ -464,9 +464,9 @@ func _preview_attack(grid_pos: Vector2):
 			# So if it's in valid_tiles, it should be fine.
 			
 	# Fallback legacy check (if ability validation fails or isn't perfect)
-	if not is_valid_target and target_obj and ("visible" in target_obj and target_obj.visible):
+	if not is_valid_target and is_instance_valid(target_obj) and ("visible" in target_obj and target_obj.visible):
 		# Fallback Faction/Interaction Logic
-		if "faction" in target_obj and "faction" in selected_unit:
+		if is_instance_valid(selected_unit) and "faction" in target_obj and "faction" in selected_unit:
 			if target_obj.faction != selected_unit.faction:
 				is_valid_target = true
 		elif target_obj.has_method("take_damage"):

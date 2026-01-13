@@ -19,7 +19,10 @@ func enter(msg: Dictionary = {}):
 
 func _start_movement():
 	is_moving = true
-	var unit = context as Unit
+	var unit = context
+	
+	# Prevent synchronous completion race:
+	await unit.get_tree().process_frame
 
 	if unit.visuals:
 		unit.visuals.play_animation("Run")
@@ -88,7 +91,9 @@ func _start_movement():
 			active_tween.tween_property(unit, "position", world_target, 0.25)
 			
 		# Wait for tween (BOTH paths must wait)
-		await active_tween.finished
+		if active_tween and active_tween.is_valid():
+			await active_tween.finished
+		active_tween = null
 		
 		# --- AUTO INTERACT (Smart Looting) ---
 		# --- AUTO INTERACT (Smart Looting) ---
@@ -122,5 +127,7 @@ func _start_movement():
 
 func exit():
 	is_moving = false
-	if active_tween and active_tween.is_valid():
-		active_tween.kill()
+	if active_tween:
+		if active_tween.is_valid():
+			active_tween.kill()
+		active_tween = null

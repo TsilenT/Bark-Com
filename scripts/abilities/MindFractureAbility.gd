@@ -1,12 +1,12 @@
 extends "res://scripts/resources/Ability.gd"
 
 # Custom fields not in base Ability
-var description: String = "Psionic attack that exploits low Sanity. Causes Confusion."
 var vfx_scene_path: String = "res://scenes/vfx/MindFracture.tscn"
 
 
 func _init():
 	display_name = "Mind Fracture"
+	description = "Psionic attack that exploits low Sanity. Causes Confusion."
 	ap_cost = 2
 	ability_range = 5
 	cooldown_turns = 2

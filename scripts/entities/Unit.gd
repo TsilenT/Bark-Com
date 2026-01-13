@@ -19,17 +19,18 @@ signal on_death(unit)
 var mobility: int:
 	get:
 		var val = base_mobility
-		if BarkTreeManager:
-			if BarkTreeManager.has_perk(name, "recruit_cardio"):
+		var btm = get_node_or_null("/root/BarkTreeManager")
+		if btm:
+			if btm.has_perk(name, "recruit_cardio"):
 				val += 2
 			
-			if BarkTreeManager.has_perk(name, "scout_zoomies"):
+			if btm.has_perk(name, "scout_zoomies"):
 				# Zoomies: +2 for first 2 turns
 				var tm = get_tree().get_first_node_in_group("TurnManager")
 				if tm and tm.turn_count <= 2:
 					val += 2
 			
-			if BarkTreeManager.has_perk(name, "paramedic_field_medic"):
+			if btm.has_perk(name, "paramedic_field_medic"):
 				val += 1
 					
 		# Status Modifiers
@@ -42,17 +43,22 @@ var mobility: int:
 var max_sanity: int:
 	get:
 		var val = base_max_sanity
-		if BarkTreeManager and BarkTreeManager.has_perk(name, "recruit_good_boy"):
-			val += 10
-		if BarkTreeManager and BarkTreeManager.has_perk(name, "paramedic_field_medic"):
-			val += 10
+		var btm = get_node_or_null("/root/BarkTreeManager")
+		if btm:
+			if btm.has_perk(name, "recruit_good_boy"):
+				val += 10
+			if btm.has_perk(name, "paramedic_field_medic"):
+				val += 10
 		return val
 @export var current_sanity: int = 100
 @export var max_ap: int = 3
 @export var current_ap: int = 2:
 	set(value):
 		current_ap = value
-		SignalBus.on_unit_stats_changed.emit(self)
+		if is_inside_tree():
+			var sb = get_node_or_null("/root/SignalBus")
+			if sb:
+				sb.on_unit_stats_changed.emit(self)
 @export var accuracy: int = 65
 @export var defense: int = 10
 @export var armor: int = 0
@@ -109,15 +115,16 @@ enum PanicState { NONE, FREEZE, RUN, BERSERK }
 var current_panic_state = PanicState.NONE:
 	set(value):
 		if value != current_panic_state:
+			var sb = get_node_or_null("/root/SignalBus")
 			# Remove Old Status
 			if current_panic_state != PanicState.NONE:
-				SignalBus.on_status_removed.emit(self, PanicState.keys()[current_panic_state])
+				if sb: sb.on_status_removed.emit(self, PanicState.keys()[current_panic_state])
 
 			current_panic_state = value
 
 			# Add New Status
 			if current_panic_state != PanicState.NONE:
-				SignalBus.on_status_applied.emit(self, PanicState.keys()[current_panic_state])
+				if sb: sb.on_status_applied.emit(self, PanicState.keys()[current_panic_state])
 
 var panic_turn_count: int = 0
 
@@ -146,7 +153,8 @@ func _ready():
 		primary_weapon.weapon_range = 3
 		primary_weapon.icon = "res://assets/icons/weapons/icon_bark.svg"
 
-	SignalBus.on_unit_stats_changed.emit(self)
+	var sb = get_node_or_null("/root/SignalBus")
+	if sb: sb.on_unit_stats_changed.emit(self)
 
 	# Attach Status UI
 	var status_ui = load("res://scripts/ui/UnitStatusUI.gd").new()
@@ -274,9 +282,11 @@ func apply_class_stats(cls_name: String):
 	current_hp = max_hp
 	
 	# Perk Abilities
-	if BarkTreeManager:
+	# Perk Abilities
+	var btm = get_node_or_null("/root/BarkTreeManager") if is_inside_tree() else null
+	if btm:
 		print("DEBUG_UNIT: Checking Perks for ", name)
-		var unlocked = BarkTreeManager.get_unlocked_perks(name)
+		var unlocked = btm.get_unlocked_perks(name)
 		print("DEBUG_UNIT: Unlocked Perks: ", unlocked)
 		
 		# Iterate all unlocked perks to find specific behaviors or re-inject logic?
