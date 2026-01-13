@@ -28,18 +28,11 @@ func _ready():
 	name = "Eldritch Beast"
 
 	# Visuals: Red Cube (Only if no mesh exists from Scene)
-	if not has_node("Mesh"):
-		var mesh = MeshInstance3D.new()
-		var box = BoxMesh.new()
-		box.size = Vector3(1.0, 1.0, 1.0)
-		mesh.mesh = box
-		var mat = StandardMaterial3D.new()
-		mat.albedo_color = Color.RED
-		mesh.material_override = mat
-		mesh.name = "Mesh"
-		# Adjust position (Box origin is center)
-		mesh.position.y = 0.5
-		add_child(mesh)
+	# Visuals: Procedural Horror
+	if not has_node("ModelRoot") and not has_node("Mesh"):
+		var Factory = preload("res://scripts/utils/EnemyModelFactory.gd")
+		var model = Factory.create_model(self)
+		add_child(model)
 
 	# Debug Label
 	var label = Label3D.new()
@@ -79,11 +72,15 @@ func initialize_from_data(data: EnemyData):
 		attack_range = 4  # Default
 
 	# Apply Visuals
-	var mesh = get_node_or_null("Mesh")
-	if mesh:
-		var mat = StandardMaterial3D.new()
-		mat.albedo_color = data.visual_color
-		mesh.material_override = mat
+	var old_root = get_node_or_null("ModelRoot")
+	if old_root:
+		old_root.queue_free()
+		
+	# Re-generate with correct data
+	var Factory = preload("res://scripts/utils/EnemyModelFactory.gd")
+	var model = Factory.create_model(self)
+	add_child(model)
+
 
 	var label = get_node_or_null("Label3D")
 	if label:

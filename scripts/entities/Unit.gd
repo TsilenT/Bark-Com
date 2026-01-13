@@ -366,7 +366,8 @@ func refresh_ap():
 func spend_ap(amount: int) -> bool:
 	if current_ap >= amount:
 		current_ap -= amount
-		SignalBus.on_unit_stats_changed.emit(self)
+		var sb = get_node_or_null("/root/SignalBus")
+		if sb: sb.on_unit_stats_changed.emit(self)
 		if DEBUG_UNIT:
 			print(name, " spent ", amount, " AP. Remaining: ", current_ap)
 		

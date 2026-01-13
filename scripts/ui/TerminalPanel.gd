@@ -247,6 +247,18 @@ func _process_command(cmd_str: String):
 				GameManager.save_game()
 				SignalBus.on_skin_changed.emit() # Force UI Refresh
 				println("Gave " + str(amount) + " XP to " + str(count) + " units.", Color.GREEN)
+		"all_enemies":
+			if _require_context(GameManager.GameState.MISSION):
+				var mm = get_tree().root.find_child("MissionManager", true, false)
+				if mm:
+					println("Spawning ALL enemy types for visual inspection...", Color.ORANGE)
+					var types = ["Rusher", "Sniper", "Spitter", "Exploder", "Flying", "Tank", "Infiltrator", "Whisperer", "Boss"]
+					for t in types:
+						if mm.has_method("_spawn_enemy"):
+							mm._spawn_enemy(t)
+							println("Spawned " + t, Color.GRAY)
+				else:
+					println("Error: MissionManager not found active.", Color.RED)
 		_:
 			println("Unknown command: " + cmd, Color.RED)
 

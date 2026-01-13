@@ -9,6 +9,6 @@ display_name = "The Whisperer"
 max_hp = 40
 mobility = 6
 visual_color = Color(0.5, 0, 0.8, 1)
-ai_behavior = 2
+ai_behavior = 4
 abilities = Array[Script]([ExtResource("2_ability")])
 primary_weapon = null
