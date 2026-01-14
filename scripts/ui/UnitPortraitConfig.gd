@@ -46,7 +46,14 @@ func update_portrait(unit_data: Variant):
 		child.queue_free()
 
 	# 1. Generate Corgi Model
-	var visual_data = PlaceholderCorgiGenerator.generate_corgi(model_root)
+	var cls_name = "Recruit"
+	if unit_data is Dictionary:
+		cls_name = unit_data.get("class", "Recruit")
+	elif unit_data is Object and "unit_class" in unit_data:
+		cls_name = unit_data.unit_class
+
+	var Factory = load("res://scripts/utils/CorgiModelFactory.gd")
+	var visual_data = Factory.generate_corgi(cls_name, model_root)
 	# Rotate 180 to face camera
 	model_root.rotation.y = deg_to_rad(180)
 	var sockets = visual_data.sockets

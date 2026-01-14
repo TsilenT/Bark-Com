@@ -252,7 +252,7 @@ func setup(data):
 	else: status_label.modulate = Color.ORANGE
 
 	if portrait_viewport and portrait_viewport.has_method("update_portrait"):
-		portrait_viewport.update_portrait(raw_obj)
+		portrait_viewport.update_portrait(data)
 	if ClassIconManager:
 		class_icon_rect.texture = ClassIconManager.get_class_icon(d.class)
 

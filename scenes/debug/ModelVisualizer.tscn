@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://modelviz123"]
+
+[ext_resource type="Script" path="res://scripts/debug/ModelVisualizer.gd" id="1_viz"]
+
+[node name="ModelVisualizer" type="Node3D"]
+script = ExtResource("1_viz")

@@ -12,26 +12,43 @@ func _ready():
 
 func _setup_visuals():
 	# Use UnitVisuals
-	visuals = UnitVisuals.new()
-	visuals.name = "UnitVisuals"
-	add_child(visuals)
+	if not visuals:
+		visuals = UnitVisuals.new()
+		visuals.name = "UnitVisuals"
+		add_child(visuals)
+	
+	# Clear Existing (for class changes)
+	for c in visuals.get_children():
+		c.queue_free()
 
 	# Generate Model
-	var gen_data = PlaceholderCorgiGenerator.generate_corgi(visuals)
+	var Factory = load("res://scripts/utils/CorgiModelFactory.gd")
+	# Pass unit_class (e.g. Recruit, Scout) to generate specific accessories
+	var gen_data = Factory.generate_corgi(unit_class, visuals)
 
 	# Pass data to Visuals
 	visuals.setup(gen_data["anim_player"], gen_data["sockets"])
 
 	# COLLISION SHAPE (Essential for Raycast Selection)
-	var col = CollisionShape3D.new()
-	var col_shape = CapsuleShape3D.new()
-	col_shape.height = 1.0
-	col_shape.radius = 0.3
-	col.shape = col_shape
-	col.position.y = 0.5
-	add_child(col)
+	# Only add if missing (CollisionShape is distinct from Visuals usually, but here it was mixed?)
+	# Originally, col was added to 'self' (CorgiUnit), not visuals.
+	# So we don't need to re-add collision. 
+	# But original code added it here. Check if it already exists.
+	if not has_node("CollisionShape3D"):
+		var col = CollisionShape3D.new()
+		col.name = "CollisionShape3D"
+		var col_shape = CapsuleShape3D.new()
+		col_shape.height = 1.0
+		col_shape.radius = 0.3
+		col.shape = col_shape
+		col.position.y = 0.5
+		add_child(col)
 
-	name = "Corgi"
+
+# Override to update visuals when class changes
+func apply_class_stats(cls_name: String):
+	super.apply_class_stats(cls_name)
+	_setup_visuals()
 
 
 # --- Abilities ---

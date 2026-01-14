@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://blu8icph0fahp"]
+
+[ext_resource type="Script" path="res://tests/test_corgi_visuals.gd" id="1_corgi_test"]
+
+[node name="TestRunner" type="Node"]
+script = ExtResource("1_corgi_test")

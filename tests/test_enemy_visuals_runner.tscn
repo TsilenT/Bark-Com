@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://visualtest123"]
+[gd_scene load_steps=2 format=3 uid="uid://b6ricb74ytoba"]
 
 [ext_resource type="Script" path="res://tests/test_enemy_visuals.gd" id="1_visual_test"]
 
