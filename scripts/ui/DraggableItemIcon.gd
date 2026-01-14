@@ -14,6 +14,7 @@ func setup(item, source: String):
 	expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	custom_minimum_size = Vector2(48, 48)
+	mouse_filter = MOUSE_FILTER_PASS # Ensure drops propagate to parent slot container
 	
 	# Load Icon
 	if item is Object and "icon" in item:

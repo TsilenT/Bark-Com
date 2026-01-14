@@ -3,6 +3,8 @@ class_name UnitWeaponSlot
 
 var unit_data
 var current_weapon
+var style_box: StyleBoxFlat
+var is_highlighted: bool = false
 var read_only: bool = false
 
 func setup(unit):
@@ -16,15 +18,17 @@ func setup(unit):
 		current_weapon = null
 	
 	# Style
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.15, 0.15, 0.2) # Slightly different bg for weapon
-	style.border_width_bottom = 2
-	style.border_color = Color(0.4, 0.4, 0.5)
-	style.corner_radius_top_left = 4
-	style.corner_radius_top_right = 4
-	add_theme_stylebox_override("panel", style)
+	style_box = StyleBoxFlat.new()
+	style_box.bg_color = Color(0.15, 0.15, 0.2)
+	style_box.border_width_bottom = 2
+	style_box.border_color = Color(0.4, 0.4, 0.5)
+	style_box.corner_radius_top_left = 4
+	style_box.corner_radius_top_right = 4
+	add_theme_stylebox_override("panel", style_box)
 	
-	custom_minimum_size = Vector2(150, 50) # Wider for weapon name?
+	set_process(false)
+	
+	custom_minimum_size = Vector2(180, 70) # Wider and taller for easier drop
 	
 	# Clear previous
 	for c in get_children():
@@ -56,9 +60,31 @@ func setup(unit):
 		# Optional: Add label next to it? Or just Tooltip (handled by Icon)
 		# User requested "show that in the weapon slot". Icon is standard.
 
+
+
+var is_drag_target_valid: bool = false
+
+func _notification(what):
+	if what == NOTIFICATION_DRAG_BEGIN:
+		var data = get_viewport().gui_get_drag_data()
+		if _is_valid_drop_data(data):
+			is_drag_target_valid = true
+			_update_visual_state(false) # Hint state
+			
+	elif what == NOTIFICATION_DRAG_END:
+		if is_drag_target_valid:
+			is_drag_target_valid = false
+			_update_visual_state(false)
+
 func _can_drop_data(_at_position, data):
 	if read_only: return false
 	
+	if _is_valid_drop_data(data):
+		_set_highlight(true)
+		return true
+	return false
+
+func _is_valid_drop_data(data):
 	if typeof(data) == TYPE_DICTIONARY:
 		if data.get("type") == "item":
 			var item = data.get("item_data")
@@ -68,6 +94,7 @@ func _can_drop_data(_at_position, data):
 	return false
 
 func _drop_data(_at_position, data):
+	_set_highlight(false)
 	if read_only: return
 	
 	var item = data.get("item_data")
@@ -80,3 +107,23 @@ func _drop_data(_at_position, data):
 		var src_unit = data.get("_unit_ref")
 		if GameManager and src_unit:
 			GameManager.swap_weapons_between_units(src_unit, unit_data) 
+			
+func _set_highlight(hovering: bool):
+	if hovering == is_highlighted: return
+	is_highlighted = hovering
+	set_process(hovering)
+	_update_visual_state(hovering)
+
+func _update_visual_state(hovering: bool):
+	if hovering:
+		# Hovering State (Gold)
+		style_box.border_color = Color(0.9, 0.8, 0.2)
+		style_box.bg_color = Color(0.25, 0.25, 0.3)
+	elif is_drag_target_valid:
+		# Global Drag Hint (Cyan)
+		style_box.border_color = Color(0.2, 0.6, 1.0, 0.8)
+		style_box.bg_color = Color(0.15, 0.2, 0.25)
+	else:
+		# Idle
+		style_box.border_color = Color(0.4, 0.4, 0.5)
+		style_box.bg_color = Color(0.15, 0.15, 0.2) 
