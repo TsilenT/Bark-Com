@@ -87,15 +87,29 @@ func _finalize(code):
 	else:
 		print("❌ FAILED")
 	
-	if enemy: enemy.queue_free()
-	if grid_manager: grid_manager.queue_free()
+	# Aggressive Cleanup to prevent Tween/Resource Leaks
+	if is_instance_valid(enemy):
+		# Kill any active tweens on the enemy if we can reach them, 
+		# but usually free() handles it if bound correctly.
+		if enemy.get_parent():
+			enemy.get_parent().remove_child(enemy)
+		enemy.free()
+		
+	if is_instance_valid(grid_manager):
+		if grid_manager.get_parent():
+			grid_manager.get_parent().remove_child(grid_manager)
+		grid_manager.free()
 	
-	# Cleanup safeguard
 	for c in get_children():
 		if c.name == "TestSafeGuard":
 			c.queue_free()
 			
-	# Wait for cleanup
+	# 5. Clear Static Caches (EnemyModelFactory)
+	var Factory = load("res://scripts/utils/EnemyModelFactory.gd")
+	if Factory and "mat_cache" in Factory:
+		Factory.mat_cache.clear()
+
+	# Wait for any lingering deferred calls
 	await get_tree().process_frame
 	await get_tree().process_frame
 	

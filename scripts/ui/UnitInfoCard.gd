@@ -117,6 +117,7 @@ func _setup_ui():
 	level_label.text = "Lvl 1"
 	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col1.add_child(level_label)
+	level_label.mouse_filter = Control.MOUSE_FILTER_STOP # Enable Tooltip
 	
 	status_label = Label.new()
 	status_label.text = "Active"
@@ -242,7 +243,21 @@ func setup(data):
 	# Identity
 	name_label.text = str(d.get("name", "Unknown"))
 	class_label.text = str(d.get("class", "Recruit"))
-	level_label.text = "Rank " + str(d.get("level", 1))
+	var current_xp = int(d.get("xp", 0))
+	var lvl = int(d.get("level", 1))
+	level_label.text = "Rank " + str(lvl)
+	
+	# XP Tooltip Calculation
+	# Thresholds: 1:0, 2:100, 3:300, 4:600, 5:1000
+	var thresholds = {1: 0, 2: 100, 3: 300, 4: 600, 5: 1000}
+	var next_xp = thresholds.get(lvl + 1, 9999)
+	var prev_xp = thresholds.get(lvl, 0)
+	
+	if next_xp == 9999:
+		level_label.tooltip_text = "Max Rank\nTotal XP: %d" % current_xp
+	else:
+		var needed = next_xp - current_xp
+		level_label.tooltip_text = "XP: %d / %d\nNeeded: %d" % [current_xp, next_xp, needed]
 	status_label.text = str(d.get("status", "Active"))
 	
 	var stat = d.get("status", "Active")
@@ -468,6 +483,7 @@ func _parse_data(data) -> Dictionary:
 		elif "current_panic_state" in data and data.current_panic_state > 0: d["status"] = "Panicked"
 		d["tech"] = data.tech_score if "tech_score" in data else 0
 		d["inventory"] = data.inventory if "inventory" in data else []
+		d["xp"] = data.current_xp if "current_xp" in data else 0
 		
 		# Effective Armor (Base + Modifiers)
 		var base_armor = data.armor if "armor" in data else 0

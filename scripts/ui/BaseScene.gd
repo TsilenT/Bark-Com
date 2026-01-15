@@ -1,5 +1,6 @@
 extends Control
 class_name BaseScene
+const FieldManual = preload("res://scripts/ui/FieldManual.gd")
 const LOG_PREFIX = "BaseScene: "
 
 # Represents the UI for the Base
@@ -1262,7 +1263,6 @@ func _show_mission_control():
 
 func _show_tutorial():
 	_clear_content()
-	# input_field.visible = false REMOVED
 	
 	var title = Label.new()
 	title.text = "FIELD MANUAL"
@@ -1271,72 +1271,19 @@ func _show_tutorial():
 	content_area.add_child(title)
 	content_area.add_child(HSeparator.new())
 	
-	var scroll = ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content_area.add_child(scroll)
+	var tabs = TabContainer.new()
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_area.add_child(tabs)
 	
-	var vbox = VBoxContainer.new()
-	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(vbox)
-	
-	# CONTROLS SECTION
-	var c_lbl = Label.new()
-	c_lbl.text = "TACTICAL CONTROLS"
-	c_lbl.add_theme_color_override("font_color", Color.GOLD)
-	c_lbl.add_theme_font_size_override("font_size", 24)
-	vbox.add_child(c_lbl)
-	
-	var controls = [
-		"LEFT CLICK: Select Unit / Move / Interact",
-		"RIGHT CLICK: Cancel Action",
-		"WASD / ARROWS: Pan Camera",
-		"Q / E: Rotate Camera",
-		"SCROLL WHEEL: Zoom Camera",
-		"~ (TILDE): Toggle Command Terminal"
-	]
-	
-	for c in controls:
-		var l = Label.new()
-		l.text = " • " + c
-		vbox.add_child(l)
-		
-	vbox.add_child(HSeparator.new())
-	
-	# GAME LOOP SECTION
-	var g_lbl = Label.new()
-	g_lbl.text = "OPERATIONAL GUIDE"
-	g_lbl.add_theme_color_override("font_color", Color.CYAN)
-	g_lbl.add_theme_font_size_override("font_size", 24)
-	vbox.add_child(g_lbl)
-	
-	var guide = """
-The Golden Hydrant is under siege by Eldritch Monsters.
-Your duty is to command the Bark-Commandos to hold the line.
-
-1. DEPLOY: Choosing missions wisely.
-   - [Retrieval]: Secure Treat Bags for supplies.
-   - [Hacker]: Corrupt their terminals.
-   - [Deathmatch]: Clear the sector.
-   
-2. PREPARE: Use Kibble to recruit new specialized dogs and buy gear.
-   - Visit the [Quartermaster] for weapons and grenades.
-   - Visit [Therapy] if your dogs are losing their minds (Low Sanity).
-   
-3. DEFEND: The Eldritch Invasion meter fills over time.
-   - When it hits 100%, they will attack the Base.
-   - You MUST be ready.
-   
-4. TERMINAL:
-   - Press ~ (Tilde) anytime to access the Command Terminal.
-   - Use 'help' to see context-aware commands.
-   - Example: 'recruit' (Base Only) or 'suicide' (Mission Only).
-   
-Good luck, Commander.
-"""
-	var g_text = Label.new()
-	g_text.text = guide
-	g_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(g_text)
+	for topic in FieldManual.TOPICS:
+		var lbl = RichTextLabel.new()
+		lbl.name = topic
+		lbl.text = FieldManual.get_content(topic)
+		lbl.bbcode_enabled = true
+		lbl.add_theme_font_size_override("normal_font_size", 18)
+		# Add some padding/margins if needed, but RichTextLabel default is okay
+		tabs.add_child(lbl)
 
 
 # --- COSMETIC UI ---

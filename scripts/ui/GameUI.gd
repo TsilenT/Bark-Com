@@ -1,5 +1,6 @@
 extends CanvasLayer
 class_name GameUI
+const FieldManual = preload("res://scripts/ui/FieldManual.gd")
 
 # References
 var turn_manager
@@ -1337,12 +1338,18 @@ func _setup_pause_menu(root_node):
 	
 	
 	
-	# Tab 3: Help
-	var t_help = RichTextLabel.new()
-	t_help.name = "Help"
-	t_help.text = "\n[b]CONTROLS[/b]\n\n[color=yellow]Select Unit:[/color] Left Click\n[color=yellow]Move:[/color] Click 'Move' or Press '1' -> Hover Tile -> Click\n[color=yellow]Attack:[/color] Click 'Attack' or Press '2' -> Click Target\n[color=yellow]Camera:[/color] WASD / Arrow Keys\n[color=yellow]Rotate:[/color] Q / E\n[color=yellow]Menu:[/color] ESC"
-	t_help.bbcode_enabled = true
+	# Tab 3: Field Manual (Help)
+	var t_help = TabContainer.new()
+	t_help.name = "Field Manual"
 	tabs.add_child(t_help)
+	
+	for topic in FieldManual.TOPICS:
+		var lbl = RichTextLabel.new()
+		lbl.name = topic
+		lbl.text = FieldManual.get_content(topic)
+		lbl.bbcode_enabled = true
+		lbl.add_theme_font_size_override("normal_font_size", 18)
+		t_help.add_child(lbl)
 	
 	# Buttons (Resume / Quit)
 	var footer = HBoxContainer.new()
