@@ -156,8 +156,17 @@ func handle_mouse_hover(grid_pos: Vector2):
 			if unit and unit != selected_unit and unit.get("faction") == "Enemy":
 				_preview_attack(grid_pos)
 			else:
+				# Show Volatile Range if hovering explosive
+				var vol = _resolve_volatile_at(grid_pos)
+				if vol:
+					var radius = 2 # Default
+					if "explosion_range" in vol: radius = vol.explosion_range
+					var r_tiles = _get_aoe_tiles(grid_pos, radius)
+					gv.preview_aoe(r_tiles, Color(1, 0.5, 0, 0.4)) # Orange Warning
+				else:
+					gv.clear_preview_aoe()
+				
 				gv.clear_preview_path()
-				gv.clear_preview_aoe()
 				if _signal_bus:
 					_signal_bus.on_hide_hit_chance.emit()
 
@@ -420,16 +429,10 @@ func _preview_ability(grid_pos: Vector2, gv: Node):
 	gv.clear_preview_path()
 	
 	# 2. AOE Preview
+	# 2. AOE Preview
 	if selected_ability and "aoe_radius" in selected_ability:
 		var r = selected_ability.aoe_radius
-		var aoe_tiles = [] 
-		# Simple AOE logic
-		var r_tiles = ceil(r) + 1
-		for x in range(grid_pos.x - r_tiles, grid_pos.x + r_tiles + 1):
-			for y in range(grid_pos.y - r_tiles, grid_pos.y + r_tiles + 1):
-				var t = Vector2(x, y)
-				if grid_manager.grid_data.has(t) and grid_pos.distance_to(t) <= r:
-					aoe_tiles.append(t)
+		var aoe_tiles = _get_aoe_tiles(grid_pos, r)
 		gv.preview_aoe(aoe_tiles, Color(1, 0.4, 0.4, 0.4))
 	else:
 		gv.clear_preview_aoe()
@@ -439,12 +442,28 @@ func _preview_ability(grid_pos: Vector2, gv: Node):
 
 func _preview_attack(grid_pos: Vector2):
 	# Replaces Main._handle_hover logic for hit chance display
-	# Replaces Main._handle_hover logic for hit chance display
+	var gv = _get_grid_visualizer()
 	var is_valid_target = false
 	var target_obj = null
 	
 	# 1. Resolve potential target (Unit, Prop, Terminal, or generic position)
 	target_obj = _resolve_target_at(grid_pos)
+	
+	# NEW: Show Barrel AOE if Targeting
+	var show_barrel_aoe = false
+	if current_input_state == InputState.TARGETING:
+		var vol = _resolve_volatile_at(grid_pos)
+		if vol:
+			var radius = 2
+			if "explosion_range" in vol: radius = vol.explosion_range
+			var tiles = _get_aoe_tiles(grid_pos, radius)
+			if gv: gv.preview_aoe(tiles, Color(1, 0.5, 0, 0.4))
+			show_barrel_aoe = true
+			
+	if not show_barrel_aoe and gv:
+		# Don't clear if coming from Ability Preview (which sets its own AOE)
+		if current_input_state != InputState.ABILITY_TARGETING:
+			gv.clear_preview_aoe()
 	
 	# 2. Identify Ability
 	var ability_to_check = selected_ability
@@ -523,13 +542,7 @@ func _preview_item(grid_pos: Vector2, gv: Node):
 				# B. AOE Helper
 				if "aoe_radius" in ability:
 					var r = ability.aoe_radius
-					var aoe_tiles = []
-					var r_tiles = ceil(r) + 1
-					for x in range(grid_pos.x - r_tiles, grid_pos.x + r_tiles + 1):
-						for y in range(grid_pos.y - r_tiles, grid_pos.y + r_tiles + 1):
-							var t = Vector2(x, y)
-							if grid_manager.grid_data.has(t) and grid_pos.distance_to(t) <= r:
-								aoe_tiles.append(t)
+					var aoe_tiles = _get_aoe_tiles(grid_pos, r)
 					gv.preview_aoe(aoe_tiles, Color(1, 0.4, 0.4, 0.4)) # Red Tint
 				else:
 					gv.clear_preview_aoe()
@@ -557,14 +570,9 @@ func _preview_item(grid_pos: Vector2, gv: Node):
 		if "radius" in item: r = item.radius
 		
 		# Default Green Highlight for non-aggressive items
+		# Default Green Highlight for non-aggressive items
 		if r > 0:
-			var aoe_tiles = [] 
-			var r_tiles = ceil(r) + 1
-			for x in range(grid_pos.x - r_tiles, grid_pos.x + r_tiles + 1):
-				for y in range(grid_pos.y - r_tiles, grid_pos.y + r_tiles + 1):
-					var t = Vector2(x, y)
-					if grid_manager.grid_data.has(t) and grid_pos.distance_to(t) <= r:
-						aoe_tiles.append(t)
+			var aoe_tiles = _get_aoe_tiles(grid_pos, r)
 			gv.preview_aoe(aoe_tiles, Color(0.2, 1.0, 0.2, 0.4)) 
 		else:
 			gv.clear_preview_aoe()
@@ -647,6 +655,30 @@ func _get_interactive_at(grid_pos: Vector2):
 	return null
 
 # --- Public Methods (Called by Main/UI) ---
+
+func _resolve_volatile_at(grid_pos: Vector2):
+	if not main_node: return null
+	# Check Destructibles/Props for 'Explosive' traits
+	var props = main_node.get_tree().get_nodes_in_group("Destructible")
+	for p in props:
+		var obj = p
+		if p is StaticBody3D: obj = p.get_parent()
+		if is_instance_valid(obj) and "grid_pos" in obj and obj.grid_pos == grid_pos:
+			# Check typical explosive properties
+			if "explosion_range" in obj or "is_burning" in obj:
+				return obj
+	return null
+
+func _get_aoe_tiles(center: Vector2, radius: float) -> Array:
+	var tiles = []
+	if not grid_manager: return tiles
+	var r_tiles = ceil(radius) + 1
+	for x in range(center.x - r_tiles, center.x + r_tiles + 1):
+		for y in range(center.y - r_tiles, center.y + r_tiles + 1):
+			var t = Vector2(x, y)
+			if grid_manager.grid_data.has(t) and center.distance_to(t) <= radius:
+				tiles.append(t)
+	return tiles
 
 func enter_movement_mode():
 	if not selected_unit: return
