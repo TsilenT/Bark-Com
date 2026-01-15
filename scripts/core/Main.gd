@@ -578,6 +578,13 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 	# Initialize list before spawning anything
 	spawned_units = []
 
+	# CLEANUP: Remove Hazards from previous mission (Acid, etc)
+	# Since they are parented to Main (Scene Root), they persist unless freed.
+	var old_hazards = get_tree().get_nodes_in_group("Hazards")
+	for h in old_hazards:
+		if is_instance_valid(h):
+			h.queue_free()
+
 	# Spawn Explosive Barrels
 	# Spawn Explosive Barrels (Randomized 1-20)
 	var num_barrels = randi_range(1, 20)
