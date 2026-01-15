@@ -78,10 +78,6 @@ func take_damage(_amount: int):
 
 
 func _give_item_to_unit(unit, item) -> bool:
-	if "inventory" in unit:
-		for i in range(unit.inventory.size()):
-			if unit.inventory[i] == null:
-				unit.inventory[i] = item
-				print("Added ", item.display_name, " to ", unit.name, " slot ", i)
-				return true
+	if unit.has_method("add_item"):
+		return unit.add_item(item)
 	return false

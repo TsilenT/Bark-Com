@@ -981,6 +981,7 @@ func add_item(item: Resource) -> bool:
 	for i in range(inventory.size()):
 		if inventory[i] == null:
 			inventory[i] = item
+			SignalBus.on_unit_stats_changed.emit(self)
 			return true
 	
 	print("Unit: Inventory Full! Cannot add ", item.display_name if "display_name" in item else "Item")
