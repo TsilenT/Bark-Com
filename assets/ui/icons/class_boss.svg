@@ -1,0 +1,41 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Enemy Theme: Dark Purple/Black Background -->
+  <circle cx="256" cy="256" r="240" fill="#1A0033" stroke="#7E57C2" stroke-width="16"/>
+  
+  <!-- Eldritch Aura -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#4A148C" stroke-width="8" stroke-dasharray="20 10" opacity="0.6"/>
+
+  <!-- The Ancient One (Silhouette) -->
+  <g transform="translate(256, 280) scale(0.85) translate(-256, -260)">
+    <!-- Corgi Head Outline (Ears) -->
+    <path d="M120 100 
+             Q150 20 200 80 
+             Q256 60 312 80 
+             Q362 20 392 100 
+             Q420 150 420 200 
+             L92 200 
+             Q92 150 120 100 Z" 
+             fill="#311B92" stroke="#4527A0" stroke-width="8"/>
+
+    <!-- Mass of Tentacles (Replacing Snout/Lower Jaw) -->
+    <g transform="translate(0, 20)">
+        <!-- Center Tentacle -->
+        <path d="M256 180 Q290 250 240 350 Q220 400 260 420" fill="none" stroke="#7E57C2" stroke-width="20" stroke-linecap="round"/>
+        <!-- Left Tentacles -->
+        <path d="M220 180 Q180 250 160 320 Q150 380 120 400" fill="none" stroke="#673AB7" stroke-width="16" stroke-linecap="round"/>
+        <path d="M180 180 Q140 220 100 300" fill="none" stroke="#5E35B1" stroke-width="14" stroke-linecap="round"/>
+        <!-- Right Tentacles -->
+        <path d="M292 180 Q330 250 350 320 Q360 380 390 400" fill="none" stroke="#673AB7" stroke-width="16" stroke-linecap="round"/>
+        <path d="M332 180 Q370 220 410 300" fill="none" stroke="#5E35B1" stroke-width="14" stroke-linecap="round"/>
+    </g>
+
+    <!-- Glowing Eyes (Multidimensional) -->
+    <!-- Main Eyes -->
+    <circle cx="200" cy="140" r="20" fill="#FFEB3B"/>
+    <circle cx="312" cy="140" r="20" fill="#FFEB3B"/>
+    <!-- Extra Eyes (Scary) -->
+    <circle cx="256" cy="120" r="15" fill="#FFC107"/>
+    <circle cx="160" cy="170" r="10" fill="#FBC02D"/>
+    <circle cx="352" cy="170" r="10" fill="#FBC02D"/>
+  </g>
+</svg>

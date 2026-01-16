@@ -1,0 +1,12 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Enemy Theme: Dark Background (Circle) -->
+  <circle cx="256" cy="256" r="240" fill="#212121" stroke="#424242" stroke-width="16"/>
+  
+  <!-- Infiltrator Eye/Dagger Icon -->
+  <g transform="translate(256, 256) scale(0.8) translate(-256, -256)">
+    <path d="M100 256 Q256 360 412 256" fill="none" stroke="#BDBDBD" stroke-width="16" stroke-linecap="round"/>
+    <path d="M256 120 L300 350 L256 450 L212 350 Z" fill="#616161" stroke="#757575" stroke-width="16"/>
+    <circle cx="256" cy="256" r="30" fill="#212121"/>
+    <path d="M256 120 L256 450" stroke="#757575" stroke-width="8"/>
+  </g>
+</svg>

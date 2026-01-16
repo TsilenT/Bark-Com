@@ -1,0 +1,19 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Player Ally Theme: Light Background -->
+  <circle cx="256" cy="256" r="240" fill="#FFF3E0" stroke="#FF6D00" stroke-width="16"/>
+  
+  <!-- Icon: Bomb/Grenade -->
+  <g transform="translate(256, 266) scale(0.8)">
+      <!-- Bomb Body -->
+      <circle cx="0" cy="20" r="100" fill="#212121" stroke="#3E2723" stroke-width="8"/>
+      <!-- Fuse Neck -->
+      <rect x="-30" y="-110" width="60" height="40" fill="#424242"/>
+      <!-- Fuse Cord -->
+      <path d="M0 -110 Q0 -160 40 -180" fill="none" stroke="#8D6E63" stroke-width="12" stroke-linecap="round"/>
+      <!-- Spark -->
+      <path d="M40 -180 L50 -210 M40 -180 L70 -190 M40 -180 L60 -160" stroke="#FFAB00" stroke-width="8"/>
+      
+      <!-- Shine -->
+      <path d="M-50 -20 Q-20 -60 20 -20" fill="none" stroke="#616161" stroke-width="8" stroke-linecap="round"/>
+  </g>
+</svg>

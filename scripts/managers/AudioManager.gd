@@ -122,8 +122,12 @@ func play_music(playlist_key: String, fade_duration: float = 2.0):
 
 
 func stop_music():
-	if music_player_1: music_player_1.stop()
-	if music_player_2: music_player_2.stop()
+	if music_player_1: 
+		music_player_1.stop()
+		music_player_1.stream = null
+	if music_player_2: 
+		music_player_2.stop()
+		music_player_2.stream = null
 	current_playlist_key = ""
 
 

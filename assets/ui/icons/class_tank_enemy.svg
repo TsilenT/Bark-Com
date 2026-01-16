@@ -1,0 +1,11 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Enemy Theme: Dark Background (Circle) -->
+  <circle cx="256" cy="256" r="240" fill="#313131" stroke="#5D4037" stroke-width="20"/>
+  
+  <!-- Shield Icon (Resized to fit circle) -->
+  <g transform="translate(256, 256) scale(0.7) translate(-256, -256)">
+    <path d="M256 80 L440 160 V300 C440 420 256 480 256 480 C256 480 72 420 72 300 V160 Z" fill="#4E342E" stroke="#8D6E63" stroke-width="16"/>
+    <rect x="236" y="140" width="40" height="260" fill="#3E2723"/>
+    <rect x="140" y="236" width="232" height="40" fill="#3E2723"/>
+  </g>
+</svg>

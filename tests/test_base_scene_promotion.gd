@@ -106,7 +106,13 @@ func _run_tests():
 	else:
 		print("❓ INFO: Value is " + str(new_cur) + ". Verify if correct.")
 		
-	scene.queue_free()
+	if gm.audio_manager:
+		gm.audio_manager.free()
+		gm.audio_manager = null
+		await get_tree().process_frame
+		
+	ClassIconManager.clear_cache()
+	scene.free()
 
 func _find_promote_button(node: Node) -> Button:
 	if node is Button and node.text == "PROMOTE!":

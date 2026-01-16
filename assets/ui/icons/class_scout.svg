@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Consistent Circle Background -->
+  <circle cx="256" cy="256" r="240" fill="#FFF3E0" stroke="#E65100" stroke-width="16"/>
+  
+  <!-- Compact Wing Icon -->
+  <!-- Centered and contained within the circle -->
+  <g transform="translate(256, 256) scale(0.8) translate(-256, -256)">
+    <!-- Classic Wing Shape -->
+    <!-- Top curve, three major feathers -->
+    <path d="M100 256 
+             Q100 100 300 100 
+             Q450 100 450 180 
+             Q400 220 350 220 
+             L420 280 
+             Q380 320 320 320 
+             L380 380 
+             Q300 420 180 380 
+             Q100 350 100 256 Z" 
+             fill="#FF9800" stroke="#E65100" stroke-width="16" stroke-linejoin="round"/>
+             
+    <!-- Inner Feather Detail -->
+    <path d="M180 256 Q250 180 350 180" fill="none" stroke="#BF360C" stroke-width="12" stroke-linecap="round"/>
+    <path d="M200 300 Q250 250 320 250" fill="none" stroke="#BF360C" stroke-width="12" stroke-linecap="round"/>
+  </g>
+</svg>

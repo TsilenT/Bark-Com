@@ -26,6 +26,13 @@ func _ready():
 	super._ready()
 	faction = "Enemy"
 	name = "Eldritch Beast"
+	
+	# Auto-detect class from script name (e.g. "SniperEnemy")
+	if unit_class == "Recruit":
+		# Defaults to script name, ensuring icons load correctly
+		# e.g. "SniperEnemy.gd" -> "SniperEnemy" -> Icons recognize "Enemy" suffix
+		var script_name = get_script().resource_path.get_file().get_basename()
+		unit_class = script_name
 
 	# Visuals: Red Cube (Only if no mesh exists from Scene)
 	# Visuals: Procedural Horror
@@ -54,7 +61,14 @@ func _ready():
 
 func initialize_from_data(data: EnemyData):
 	enemy_data = data
+	enemy_data = data
 	name = data.display_name
+	
+	# Set Class for Icons
+	if data.archetype_name != "Generic":
+		unit_class = data.archetype_name + "Enemy" # e.g. "SniperEnemy"
+	else:
+		unit_class = "EnemyRecruit" # Fallback
 
 	# Apply Stats
 	max_hp = data.max_hp

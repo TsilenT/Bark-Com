@@ -7,66 +7,52 @@ const SHEET_PATH = "res://assets/ui/class_icons_sheet.jpg"
 static var _atlas_texture: Texture2D
 static var _icons = {}
 
-static func get_class_icon(c_name: String) -> Texture2D:
-	if not _atlas_texture:
-		if ResourceLoader.exists(SHEET_PATH):
-			_atlas_texture = load(SHEET_PATH)
-		
-			# Fallback: Load Image directly (if Import failed)
-		if not _atlas_texture:
-			# Image.load_from_file is static and returns Image or null
-			var img = Image.load_from_file(ProjectSettings.globalize_path(SHEET_PATH))
-			if img:
-				_atlas_texture = ImageTexture.create_from_image(img)
-			else:
-				push_error("ClassIconManager: Failed to load image from " + SHEET_PATH)
-				return null
-	
-	if not _atlas_texture:
-		return null
+static func clear_cache():
+	_icons.clear()
 
+static func get_class_icon(c_name: String) -> Texture2D:
 	if _icons.has(c_name):
 		return _icons[c_name]
 		
-	# Create AtlasTexture logic
-	# Grid is 3x3. Assuming square image.
-	var w = _atlas_texture.get_width() / 3
-	var h = _atlas_texture.get_height() / 3
+
+		
+	# Format path: class_gunner.svg, class_medic.svg, etc.
+	# c_name input might be "Gunner", "Medic". Need to lower case.
 	
-	# Mapping based on prompt order:
-	# Row 1: Recruit, Sniper, Gunner
-	# Row 2: Medic, Scout, Tank
-	# Row 3: Rusher, Spitter, Whisperer
+	# Detect Enemy status from name or known list
+	var is_enemy = false
+	if "Enemy" in c_name or "Rusher" in c_name or "Spitter" in c_name or "Whisperer" in c_name:
+		is_enemy = true
+
+	# Helper: Clean up enemy names if they come in as "ExploderEnemy"
+	var clean_name = c_name.replace("Enemy", "").replace("Unit", "")
 	
-	var row = 0
-	var col = 0
+	# Mapping for special cases
+	var file_name = "class_" + clean_name.to_lower()
 	
-	match c_name:
-		"Recruit": 
-			row = 0; col = 0
-		"Sniper": 
-			row = 0; col = 1
-		"Gunner": 
-			row = 0; col = 2
-		"Medic": 
-			row = 1; col = 0
-		"Scout": 
-			row = 1; col = 1
-		"Tank", "Heavy": 
-			row = 1; col = 2
-		"Rusher": 
-			row = 2; col = 0
-		"Spitter": 
-			row = 2; col = 1
-		"Whisperer": 
-			row = 2; col = 2
-		_:
-			# Default/Fallback (Recruit)
-			row = 0; col = 0
-			
-	var atlas = AtlasTexture.new()
-	atlas.atlas = _atlas_texture
-	atlas.region = Rect2(col * w, row * h, w, h)
+	# Append _enemy suffix if it's a conflict class (Sniper, Tank) AND it's an enemy
+	# OR just always append _enemy for enemies to be safe and consistent?
+	# User wants "distinctly different".
+	# Let's force suffix for shared names: Sniper, Tank.
+	if is_enemy and (clean_name == "Sniper" or clean_name == "Tank" or clean_name == "Heavy"):
+		file_name += "_enemy"
 	
-	_icons[c_name] = atlas
-	return atlas
+	# Note: "Heavy" maps to "class_heavy" naturally now.
+		
+	# Handle Bosses
+	if "Dogthulhu" in c_name:
+		file_name = "class_boss"
+		
+	var path = "res://assets/ui/icons/" + file_name + ".svg"
+	
+	if ResourceLoader.exists(path):
+		var tex = load(path)
+		_icons[c_name] = tex
+		return tex
+	else:
+		# Fallback to Recruit if not found
+		if c_name != "Recruit":
+			return get_class_icon("Recruit")
+		else:
+			push_error("ClassIconManager: Default icon not found at " + path)
+			return null

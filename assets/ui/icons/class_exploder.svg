@@ -1,0 +1,40 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Enemy Theme: Dark Background -->
+  <circle cx="256" cy="256" r="240" fill="#212121" stroke="#B71C1C" stroke-width="16"/>
+  
+  <!-- Explosion Burst (Scaled down to fit safe area) -->
+  <g transform="translate(256, 256) scale(0.85) translate(-256, -256)">
+    <path d="M256 60 L300 180 L420 140 L360 240 L460 300 L340 340 L360 460 L260 380 L200 480 L180 360 L60 400 L140 300 L40 220 L160 200 Z" 
+          fill="#D32F2F" stroke="#B71C1C" stroke-width="8"/>
+  </g>
+        
+  <!-- Central Skull (The Suicide Bomber) -->
+  <g transform="translate(256, 266) scale(0.65)">
+      <!-- Skull Cranium -->
+      <path d="M-100 -60 
+               Q-100 -160 0 -160 
+               Q100 -160 100 -60 
+               L100 20 
+               Q70 100 0 100 
+               Q-70 100 -100 20 Z" 
+               fill="#ECEFF1" stroke="#263238" stroke-width="8"/>
+               
+      <!-- Eyes (Angled/Mad) -->
+      <path d="M-60 -40 L-20 -20 L-60 0 Z" fill="#263238"/>
+      <path d="M60 -40 L20 -20 L60 0 Z" fill="#263238"/>
+      
+      <!-- Nose -->
+      <path d="M-10 40 L10 40 L0 20 Z" fill="#263238"/>
+      
+      <!-- Teeth / Shatter (Moved UP and centered in jaw) -->
+      <g transform="translate(0, -10)">
+        <line x1="-50" y1="80" x2="-50" y2="100" stroke="#263238" stroke-width="6"/>
+        <line x1="-20" y1="80" x2="-20" y2="105" stroke="#263238" stroke-width="6"/>
+        <line x1="20" y1="80" x2="20" y2="105" stroke="#263238" stroke-width="6"/>
+        <line x1="50" y1="80" x2="50" y2="100" stroke="#263238" stroke-width="6"/>
+      </g>
+      
+      <!-- Cracks on Skull -->
+      <path d="M0 -160 L-20 -100 L20 -60" fill="none" stroke="#263238" stroke-width="6"/>
+  </g>
+</svg>

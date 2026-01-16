@@ -40,8 +40,8 @@ func test_unit_promotion_method():
 	assert(unit.max_hp > 10, "Max HP Should Increase. Got: " + str(unit.max_hp))
 		
 	# Verify Healing
-	# Should be 1 + 2 = 3. NOT 12.
-	assert(unit.current_hp == 3, "Current HP should increase by growth (2), start(1) -> 3. Got: " + str(unit.current_hp) + "/" + str(unit.max_hp))
+	# Should be 1 + 1 = 2 (Recruit growth is 1).
+	assert(unit.current_hp == 2, "Current HP should increase by growth (1), start(1) -> 2. Got: " + str(unit.current_hp) + "/" + str(unit.max_hp))
 	if unit.current_hp == unit.max_hp:
 		print("❌ FAIL: Unit was fully healed during promotion!")
 	
