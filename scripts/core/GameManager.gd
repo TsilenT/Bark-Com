@@ -354,9 +354,11 @@ func buy_item(index: int) -> bool:
 
 	if kibble >= item.cost:
 		kibble -= item.cost
-		inventory.append(item)
+		# Create a unique instance for the purchased item
+		var new_item = item.duplicate()
+		inventory.append(new_item)
 		if DEBUG_GAME:
-			print("GameManager: Bought ", item.display_name, ". Remaining Kibble: ", kibble)
+			print("GameManager: Bought ", new_item.display_name, ". Remaining Kibble: ", kibble)
 		SignalBus.on_kibble_changed.emit(kibble)
 		return true
 	else:
@@ -750,7 +752,7 @@ func load_game():
 		for item_name in base.get("inventory", []):
 			var item = _find_item_by_name(item_name)
 			if item:
-				inventory.append(item)
+				inventory.append(item.duplicate())
 
 		# Load SQUAD
 		var squad = data.get("squad", {})
@@ -761,7 +763,9 @@ func load_game():
 			var new_mem = mem_data
 			new_mem["primary_weapon"] = null
 			if new_mem.has("weapon_id"):
-				new_mem["primary_weapon"] = _find_item_by_name(new_mem["weapon_id"])
+				var w_item = _find_item_by_name(new_mem["weapon_id"])
+				if w_item:
+					new_mem["primary_weapon"] = w_item.duplicate()
 			
 			# Restore Unit Inventory
 			var saved_inv = new_mem.get("inventory", [])
@@ -770,7 +774,7 @@ func load_game():
 				for item_name in saved_inv:
 					var item = _find_item_by_name(item_name)
 					if item:
-						new_mem["inventory"].append(item)
+						new_mem["inventory"].append(item.duplicate())
 			
 			roster.append(new_mem)
 
