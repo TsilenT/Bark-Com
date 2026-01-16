@@ -31,7 +31,7 @@ var top_bar_label: Label
 var unit_card_panel: PanelContainer
 var unit_name_label: Label
 var action_bar_container: HBoxContainer
-var status_log_label: RichTextLabel
+# var status_log_label: RichTextLabel # Removed
 var mission_end_panel: Panel
 var hit_chance_label: Label
 
@@ -185,27 +185,31 @@ func _setup_ui():
 	bottom_layout.add_child(bottom_panel)
 
 	var h_split = HBoxContainer.new()
-	h_split.custom_minimum_size.y = 140
+	h_split.custom_minimum_size.y = 110 # Reduced from 140
 	bottom_panel.add_child(h_split)
 
 	# Unit Card (Left)
 	unit_card_panel = PanelContainer.new()
-	unit_card_panel.custom_minimum_size = Vector2(300, 140)
+	unit_card_panel.custom_minimum_size = Vector2(300, 110) # Reduced from 140
 	h_split.add_child(unit_card_panel)
 
 	var v_card = VBoxContainer.new()
+	v_card.add_theme_constant_override("separation", 4) # Add breathing room
 	unit_card_panel.add_child(v_card)
 	
 	# Name
 	unit_name_label = Label.new()
 	unit_name_label.text = "No Selection"
-	unit_name_label.add_theme_font_size_override("font_size", 22)
+	
+	# Initial Font Set
+	unit_name_label.add_theme_font_size_override("font_size", current_font_size + 4)
+	
 	unit_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v_card.add_child(unit_name_label)
 
 	# Bars
 	hp_bar = ProgressBar.new()
-	hp_bar.custom_minimum_size.y = 24
+	hp_bar.custom_minimum_size.y = 18 # Reduced from 24
 	hp_bar.show_percentage = false
 	var hp_style_bg = StyleBoxFlat.new()
 	hp_style_bg.bg_color = Color(0.2, 0.2, 0.2)
@@ -217,37 +221,47 @@ func _setup_ui():
 
 	hp_label = Label.new()
 	hp_label.text = "HP 10/10"
+	hp_label.add_theme_font_size_override("font_size", max(10, current_font_size - 2))
 	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp_bar.add_child(hp_label)
 	hp_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 
+	# Compact Row: AP | Sanity
+	var bars_row = HBoxContainer.new()
+	bars_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bars_row.add_theme_constant_override("separation", 8) # Gap between bars
+	v_card.add_child(bars_row)
+
 	ap_bar = ProgressBar.new()
-	ap_bar.custom_minimum_size.y = 20
+	ap_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ap_bar.custom_minimum_size.y = 12 
 	ap_bar.show_percentage = false
 	var ap_style_fill = StyleBoxFlat.new()
 	ap_style_fill.bg_color = Color(0.2, 0.6, 0.8)
 	ap_bar.add_theme_stylebox_override("fill", ap_style_fill)
-	v_card.add_child(ap_bar)
+	bars_row.add_child(ap_bar)
 
 	ap_label = Label.new()
 	ap_label.text = "AP 2/2"
+	ap_label.add_theme_font_size_override("font_size", max(10, current_font_size - 4))
 	ap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ap_bar.add_child(ap_label)
 	ap_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	# Sanity Bar (Purple)
 	sanity_bar = ProgressBar.new()
-	sanity_bar.custom_minimum_size.y = 16
+	sanity_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sanity_bar.custom_minimum_size.y = 12 
 	sanity_bar.show_percentage = false
 	var san_style_fill = StyleBoxFlat.new()
 	san_style_fill.bg_color = Color(0.6, 0.2, 0.8)  # Purple
 	sanity_bar.add_theme_stylebox_override("fill", san_style_fill)
-	v_card.add_child(sanity_bar)
+	bars_row.add_child(sanity_bar)
 
 	sanity_label = Label.new()
 	sanity_label.text = "SAN 100/100"
 	sanity_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sanity_label.add_theme_font_size_override("font_size", 10)
+	sanity_label.add_theme_font_size_override("font_size", max(10, current_font_size - 4))
 	sanity_bar.add_child(sanity_label)
 	sanity_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	
@@ -259,12 +273,44 @@ func _setup_ui():
 	action_bar_container.alignment = BoxContainer.ALIGNMENT_CENTER
 	h_split.add_child(action_bar_container)
 
-	# Status Log (Right)
-	status_log_label = RichTextLabel.new()
-	status_log_label.custom_minimum_size = Vector2(300, 140)
-	status_log_label.scroll_following = true
-	status_log_label.text = "System Online."
-	h_split.add_child(status_log_label)
+	# 2C. DETAILS PANEL (Right) - Replaces Status Log
+	# Structure: VBox -> [Weapon Slot | Status Icons] (Top Row), [Bonds] (Bottom Row)
+	var details_panel = PanelContainer.new()
+	details_panel.name = "DetailsPanel"
+	details_panel.custom_minimum_size = Vector2(300, 110)
+	details_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h_split.add_child(details_panel)
+	
+	var v_details = VBoxContainer.new()
+	v_details.name = "DetailsVBox"
+	v_details.add_theme_constant_override("separation", 8)
+	details_panel.add_child(v_details)
+	
+	# Top Row: Weapon + Status
+	var d_top_row = HBoxContainer.new()
+	d_top_row.name = "TopRow"
+	d_top_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v_details.add_child(d_top_row)
+	
+	# Weapon Slot Container (Will be populated in update)
+	var weapon_cont = PanelContainer.new()
+	weapon_cont.name = "WeaponContainer"
+	weapon_cont.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	d_top_row.add_child(weapon_cont)
+	
+	# Status Container (Will be populated in update)
+	var status_cont = HBoxContainer.new()
+	status_cont.name = "StatusContainer"
+	status_cont.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	d_top_row.add_child(status_cont)
+	
+	# Bottom Row: Bonds
+	var bond_label_node = Label.new()
+	bond_label_node.name = "BondLabel"
+	bond_label_node.text = "" # Dynamic
+	bond_label_node.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bond_label_node.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v_details.add_child(bond_label_node)
 
 	# 3. HIT CHANCE BREAKDOWN PANEL (SPIFFY REFACTOR)
 	hit_chance_panel = PanelContainer.new()
@@ -435,6 +481,7 @@ func _setup_ui():
 
 
 var grid_manager
+var current_font_size: int = 14
 
 
 func initialize(tm, gm):
@@ -445,6 +492,13 @@ func initialize(tm, gm):
 
 
 func _ready():
+	# Connect SignalBus
+	SignalBus.on_text_size_changed.connect(_on_text_size_changed)
+	
+	# Initial Font Sync
+	if GameManager and "text_size" in GameManager.settings:
+		current_font_size = GameManager.settings["text_size"]
+	
 	_setup_ui()
 	_setup_panels()
 	# Connect SignalBus
@@ -667,7 +721,7 @@ func _update_unit_card():
 		icon_node = TextureRect.new()
 		icon_node.name = "ClassIcon"
 		icon_node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon_node.custom_minimum_size = Vector2(48, 48) # Bigger for main UI
+		icon_node.custom_minimum_size = Vector2(32, 32) # Reduced from 48
 		icon_node.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		# Insert at top
 		v_card.add_child(icon_node)
@@ -707,73 +761,78 @@ func _update_unit_card():
 		sanity_label.text = "SAN: %d/%d" % [selected_unit.current_sanity, selected_unit.max_sanity]
 	else:
 		sanity_bar.visible = false
-	# Status Icons
-	var status_container = v_card.get_node_or_null("StatusContainer")
-	if not status_container:
-		status_container = HBoxContainer.new()
-		status_container.name = "StatusContainer"
-		status_container.custom_minimum_size.y = 24
-		v_card.add_child(status_container)
+	# --- RIGHT PANEL POPULATION ---
 	
-	for child in status_container.get_children():
+	# Find Details Panel Components
+	# h_split is hard to find from here without reference.
+	# We know structure: root -> bottom_layout -> bottom_panel -> h_split -> [unit_card, action_bar, details_panel]
+	# But better to just find by name if we named them?
+	# Or store reference in _setup_ui?
+	# Let's assume we can get it via finding the node if we didn't store it.
+	# BUT efficient way is to store "details_node" class var. 
+	# Since I didn't add the class var in the first hunk, I must find it via path or store it now.
+	# HACK: Iterate children of bottom_panel's split.
+	
+	var details_panel_node = null
+	if unit_card_panel:
+		var parent_split = unit_card_panel.get_parent()
+		if parent_split:
+			details_panel_node = parent_split.get_node_or_null("DetailsPanel")
+	
+	if not details_panel_node: return
+
+	var v_details = details_panel_node.get_node("DetailsVBox")
+	var d_top = v_details.get_node("TopRow")
+	var d_status = d_top.get_node("StatusContainer")
+	var d_weapon = d_top.get_node("WeaponContainer")
+	var d_bond = v_details.get_node("BondLabel")
+
+	# 1. STATUS ICONS
+	for child in d_status.get_children():
 		child.queue_free()
-	
+
 	if "active_effects" in selected_unit:
 		for eff in selected_unit.active_effects:
 			var rect = TextureRect.new()
-			rect.custom_minimum_size = Vector2(24, 24)
+			# Scale size with font? 
+			var s_size = max(24, current_font_size + 10)
+			rect.custom_minimum_size = Vector2(s_size, s_size)
 			rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			
 			if "icon" in eff and eff.icon:
 				rect.texture = eff.icon
 			else:
-				# Fallback Visual (Colored Square)
+				# Fallback
 				var placeholder = GradientTexture2D.new()
-				placeholder.width = 24
-				placeholder.height = 24
+				placeholder.width = s_size
+				placeholder.height = s_size
 				placeholder.fill = GradientTexture2D.FILL_SQUARE
 				var grad = Gradient.new()
-				if "type" in eff and eff.type == 1: # DEBUFF (enum 1)
+				if "type" in eff and eff.type == 1:
 					grad.colors = [Color.RED, Color.DARK_RED]
-				elif "type" in eff and eff.type == 0: # BUFF (enum 0)
-					grad.colors = [Color.GREEN, Color.DARK_GREEN]
 				else:
-					grad.colors = [Color.GRAY, Color.DARK_GRAY]
+					grad.colors = [Color.GREEN, Color.DARK_GREEN]
 				placeholder.gradient = grad
 				rect.texture = placeholder
-				
-			var desc = eff.description if "description" in eff else ""
-			rect.tooltip_text = eff.display_name + "\n" + desc
-			status_container.add_child(rect)
-
-	# WEAPON SLOT (Added)
-	var w_slot_node = v_card.get_node_or_null("MiniWeaponSlot")
-	if not w_slot_node:
-		var slot_script = load("res://scripts/ui/UnitWeaponSlot.gd")
-		if slot_script:
-			w_slot_node = slot_script.new()
-			w_slot_node.name = "MiniWeaponSlot"
-			w_slot_node.read_only = true # Always read only in HUD
-			w_slot_node.custom_minimum_size = Vector2(120, 40) # Smaller
-			# Insert before Bonds?
-			v_card.add_child(w_slot_node)
 			
-	if w_slot_node and w_slot_node.has_method("setup"):
-		w_slot_node.setup(selected_unit)
+			d_status.add_child(rect)
 
-	# BONDS DISPLAY
-	# v_card is already declared at top
-	var bond_label = v_card.get_node_or_null("BondLabel")
-	if not bond_label:
-		bond_label = Label.new()
-		bond_label.name = "BondLabel"
-		bond_label.add_theme_font_size_override("font_size", 10)
-		bond_label.modulate = Color(1, 0.5, 0.5)
-		v_card.add_child(bond_label)
+	# 2. WEAPON SLOT
+	for child in d_weapon.get_children():
+		child.queue_free()
+		
+	var slot_script = load("res://scripts/ui/UnitWeaponSlot.gd")
+	if slot_script:
+		var w_slot = slot_script.new()
+		w_slot.read_only = true
+		w_slot.custom_minimum_size = Vector2(100, 30) # Fixed-ish size?
+		d_weapon.add_child(w_slot)
+		w_slot.setup(selected_unit)
 
+	# 3. BONDS
+	var bond_text = ""
 	if GameManager:
-		var bond_text = ""
 		if is_instance_valid(turn_manager) and "units" in turn_manager:
 			for other in turn_manager.units:
 				if (
@@ -785,21 +844,17 @@ func _update_unit_card():
 					var lvl = GameManager.get_bond_level(selected_unit.name, other.name)
 					if lvl > 0:
 						var rank_char = "♥"
-						if lvl == 2:
-							rank_char = "♥♥"
-						if lvl == 3:
-							rank_char = "♥♥♥"
-
-						# Check adjacency for "Active" color?
+						if lvl == 2: rank_char = "♥♥"
+						if lvl == 3: rank_char = "♥♥♥"
+						
 						var dist = selected_unit.grid_pos.distance_to(other.grid_pos)
-						var active = dist <= 1.5
-
-						if active:
+						if dist <= 1.5:
 							bond_text += "[ON] " + other.name + " " + rank_char + "\n"
 						else:
 							bond_text += other.name + " " + rank_char + "\n"
-
-		bond_label.text = bond_text
+	
+	d_bond.text = bond_text
+	d_bond.add_theme_font_size_override("font_size", max(10, current_font_size - 4))
 
 
 var active_banner_tween: Tween
@@ -898,8 +953,8 @@ func _on_end_turn_clicked():
 
 
 func log_message(msg: String):
-	print("UI LOG: ", msg)  # Debug to console
-	status_log_label.add_text(msg + "\n")
+	print("UI LOG: ", msg)  # Debug to console only
+	# status_log_label removed per user request
 
 
 func show_victory(rewards: int = 50):
@@ -1628,3 +1683,37 @@ func _add_glossary_row(container, effect_inst):
 	
 	container.add_child(row)
 	container.add_child(HSeparator.new())
+
+func _on_text_size_changed(new_size: int):
+	current_font_size = new_size
+	_refresh_ui_fonts()
+
+func _refresh_ui_fonts():
+	# Update persistent labels
+	if unit_name_label:
+		unit_name_label.add_theme_font_size_override("font_size", current_font_size + 4)
+	if hp_label:
+		var hp_font_size = max(10, current_font_size - 2)
+		hp_label.add_theme_font_size_override("font_size", hp_font_size)
+		# Resize bar to fit text
+		if hp_bar:
+			hp_bar.custom_minimum_size.y = hp_font_size + 8
+
+	if ap_label:
+		var ap_font_size = max(10, current_font_size - 4)
+		ap_label.add_theme_font_size_override("font_size", ap_font_size)
+		if ap_bar:
+			ap_bar.custom_minimum_size.y = ap_font_size + 6
+
+	if sanity_label:
+		var san_font_size = max(10, current_font_size - 4)
+		sanity_label.add_theme_font_size_override("font_size", san_font_size)
+		if sanity_bar:
+			sanity_bar.custom_minimum_size.y = san_font_size + 6
+	if hit_chance_label:
+		hit_chance_label.add_theme_font_size_override("font_size", current_font_size + 14)
+	
+	# Reload dynamic content (Action Bar)
+	if selected_unit:
+		_refresh_action_bar(selected_unit)
+		_update_unit_card() # Force refresh to redraw details panel sized items

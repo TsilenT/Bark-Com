@@ -113,6 +113,8 @@ func _on_text_size_changed(val: float):
 		
 		if GameManager:
 			GameManager.settings["text_size"] = s
+			if SignalBus:
+				SignalBus.on_text_size_changed.emit(s)
 
 func open():
 	# Refresh values on open

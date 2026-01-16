@@ -45,6 +45,7 @@ signal on_request_floating_text(pos: Vector3, text: String, color: Color)
 signal on_ui_select_unit(unit)
 signal on_request_camera_focus(target_pos: Vector3)
 signal on_request_vfx(vfx_name: String, pos: Vector3, rotation_vec: Vector3, parent: Node, look_at)
+signal on_text_size_changed(new_size: int)
 
 # Movement & Reaction Events
 signal on_unit_move_step(unit, from_tile: Vector2, to_tile: Vector2)
