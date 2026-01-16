@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3 uid="uid://b0hrsxdgpu318"]
+[gd_scene load_steps=2 format=3 uid="uid://b8q7x3y2z1w0"]
 
-[ext_resource type="Script" path="res://tests/test_compilation.gd" id="1_test_compilation"]
+[ext_resource type="Script" path="res://tests/test_compilation.gd" id="1_compl"]
 
-[node name="TestRunner" type="Node"]
-script = ExtResource("1_test_compilation")
+[node name="CompilationTest" type="Node"]
+script = ExtResource("1_compl")

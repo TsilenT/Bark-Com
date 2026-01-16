@@ -127,6 +127,14 @@ func stop_music():
 	current_playlist_key = ""
 
 
+func stop_all():
+	stop_music()
+	for player in sfx_players:
+		if is_instance_valid(player):
+			player.stop()
+			player.stream = null # Release Resource Reference
+
+
 
 func _play_random_track_from_playlist(
 	key: String, is_continuation: bool = false, fade_duration: float = 2.0

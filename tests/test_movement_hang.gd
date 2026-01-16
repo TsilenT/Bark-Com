@@ -21,6 +21,12 @@ func setup_env():
 	grid_manager = load("res://scripts/managers/GridManager.gd").new()
 	add_child(grid_manager)
 	
+	# SAFETY CHECK
+	var gm = get_node_or_null("/root/GameManager")
+	if gm:
+		gm.TEST_MOCK_ENABLED = true
+		gm.save_file_path = "user://test_savegame.dat"
+	
 	# Open Grid
 	for x in range(5):
 		for y in range(5):
@@ -103,6 +109,11 @@ func _finalize(code):
 	for c in get_children():
 		if c.name == "TestSafeGuard":
 			c.queue_free()
+			
+	# Cleanup Audio
+	var gm = get_node_or_null("/root/GameManager")
+	if gm and gm.audio_manager and gm.audio_manager.has_method("stop_all"):
+		gm.audio_manager.stop_all()
 			
 	# 5. Clear Static Caches (EnemyModelFactory)
 	var Factory = load("res://scripts/utils/EnemyModelFactory.gd")

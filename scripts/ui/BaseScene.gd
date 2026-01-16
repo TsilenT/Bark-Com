@@ -994,18 +994,8 @@ func _start_promotion(corgi_data: Dictionary):
 		_log("Development note: ClassData for " + cls_name + " not found at " + path, "red")
 
 	if not class_data:
-		# _log("No Class Data found for " + cls_name)
-		# Just simple Stat Level Up? allow it?
-		# For Recruit/New System, we might not have ClassData yet.
-		pass
-		corgi_data["xp"] -= (corgi_data["level"] - 1) * 100  # Reset XP or keep accumulated? XCOM keeps accumulated total usually.
-		# But here 'needed' was current_level * 100.
-		# Let's subtract cost? Or just increment level is enough if Next Needed increases.
-		# Needed = lvl * 100. So Lvl 1->2 needs 100. Lvl 2->3 needs 200. Total 300.
-		# If we have 150 XP. Promote to Lvl 2.
-		# New needed = 200. Current 150. Need 50 more. Correct.
-		_log("Promoted to Level " + str(corgi_data["level"]) + "!")
-		_show_roster()
+		_log("Development note: No Class Data found. Proceeding with stat-only promotion.", "red")
+		_apply_promotion(corgi_data, "")
 		return
 
 	# 2. Check Tree
@@ -1024,6 +1014,7 @@ func _start_promotion(corgi_data: Dictionary):
 	if choices.size() > 0:
 		# Show Selection UI
 		var popup = load("res://scripts/ui/TalentSelectPopup.gd").new()
+		popup.name = "PromotionPopup" # Naming for testability
 		ui_container.add_child(popup)
 		# Center on screen (requires parent to be full rect)
 		popup.set_anchors_preset(Control.PRESET_CENTER) 
@@ -1038,12 +1029,60 @@ func _start_promotion(corgi_data: Dictionary):
 
 
 func _apply_promotion(corgi_data: Dictionary, perk_id: String = ""):
-	# Manually capture scroll before any changes
 	var scroll = content_area.find_child("RosterScroll", true, false)
 	if scroll and scroll is ScrollContainer:
 		saved_roster_scroll = scroll.scroll_vertical
 		
-	corgi_data["level"] += 1
+	# ROBUST PROMOTION LOGIC (Parity with In-Game Level Up)
+	# 1. Instantiate temporary unit
+	var UnitScript = load("res://scripts/entities/Unit.gd")
+	var temp_unit = UnitScript.new()
+	
+	# PARENTING FIX: Add to tree so getters (mobility/sanity) work
+	# and don't crash when SignalBus triggers UI updates.
+	# We hide it safely.
+	add_child(temp_unit)
+	temp_unit.visible = false
+	
+	# 2. Load Snapshot
+	temp_unit.restore_from_snapshot(corgi_data)
+	
+	# SAFEGUARD: Ensure Current HP was restored correctly (Fix for Full-Heal bug)
+	# If restore failed (e.g. key missing) or _ready overwrote it, we force it here.
+	if corgi_data.has("hp"):
+		var desired_hp = int(corgi_data["hp"])
+		if temp_unit.current_hp != desired_hp:
+			temp_unit.current_hp = desired_hp
+	
+	# 3. Apply Promotion (Handles Stats, HP Healing, Recalculation)
+	temp_unit.apply_promotion()
+	_log("Promoted to Rank " + str(temp_unit.rank_level))
+	_log("HP Increased to " + str(temp_unit.current_hp) + "/" + str(temp_unit.max_hp))
+	
+	# 4. Handle Perks
+	if perk_id != "":
+		# Unlock via Manager
+		if BarkTreeManager:
+			BarkTreeManager.unlock_perk(corgi_data["name"], perk_id)
+		_log("Learned perk: " + perk_id)
+		
+		# Also check for immediate perks logic if needed (e.g. Good Boy)
+		if perk_id == "recruit_good_boy":
+			temp_unit.current_sanity = min(temp_unit.current_sanity + 10, temp_unit.max_sanity)
+			_log("Good Boy! +10 Sanity applied.")
+
+	# 5. Save Snapshot back to Dictionary
+	# FIX: Method name is get_data_snapshot
+	var new_snap = temp_unit.get_data_snapshot()
+	
+	# Merge keys to ensure we don't lose meta-data not in snapshot
+	# (Snapshot handles name, class, stats, HP, sanity, fallen, cosmetics, level, xp)
+	for k in new_snap.keys():
+		corgi_data[k] = new_snap[k]
+		
+	# Cleanup
+	remove_child(temp_unit)
+	temp_unit.queue_free()
 	if perk_id != "":
 		# Unlock via Manager
 		if BarkTreeManager:

@@ -220,33 +220,58 @@ func _process_command(cmd_str: String):
 				if args.size() > 0:
 					amount = int(args[0])
 				
-				# Safeguard: Cap input amount
 				if amount > 2000:
 					amount = 2000
 					println("Warning: XP amount capped at 2000.", Color.ORANGE)
 				
 				var count = 0
-				for member in GameManager.roster:
-					var current_xp = member.get("xp", 0)
-					member["xp"] = min(current_xp + amount, 9999) # Safeguard: Cap total XP
-					count += 1
-					
-					# Simple Threshold Check (Duplicate of Unit.gd logic for convenience)
-					# {1: 0, 2: 100, 3: 300, 4: 600, 5: 1000}
-					var lvl = member.get("level", 1)
-					var new_level = lvl
-					if member["xp"] >= 1000: new_level = 5
-					elif member["xp"] >= 600: new_level = 4
-					elif member["xp"] >= 300: new_level = 3
-					elif member["xp"] >= 100: new_level = 2
-					
-					if new_level > lvl:
-						member["level"] = new_level
-						println(member["name"] + " leveled up to " + str(new_level) + "!", Color.CYAN)
+				var unit_script = load("res://scripts/entities/Unit.gd")
 				
+				for i in range(GameManager.roster.size()):
+					var member_data = GameManager.roster[i]
+					
+					# 1. Instantiate temp unit to calculate scaling correctly
+					var temp_unit = unit_script.new()
+					temp_unit.restore_from_snapshot(member_data)
+					
+					var old_level = temp_unit.rank_level
+					var old_max_hp = temp_unit.max_hp
+					var old_current_hp = temp_unit.current_hp
+					var damage_taken = max(0, old_max_hp - old_current_hp)
+					
+					# 2. Add XP
+					var current_xp = temp_unit.current_xp + amount
+					temp_unit.current_xp = min(current_xp, 9999)
+					
+					# 3. Recalculate Level (Simple Thresholds)
+					var new_level = old_level
+					if temp_unit.current_xp >= 1000: new_level = 5
+					elif temp_unit.current_xp >= 600: new_level = 4
+					elif temp_unit.current_xp >= 300: new_level = 3
+					elif temp_unit.current_xp >= 100: new_level = 2
+					
+					# 4. Apply Changes
+					if new_level > old_level:
+						temp_unit.rank_level = new_level
+						temp_unit.recalculate_stats() # Updates Max HP
+						
+						# Apply Damage Preservation Logic
+						temp_unit.current_hp = max(1, temp_unit.max_hp - damage_taken)
+						
+						println(temp_unit.unit_name + " leveled up to " + str(new_level) + "! (HP: " + str(temp_unit.current_hp) + "/" + str(temp_unit.max_hp) + ")", Color.CYAN)
+						
+						# Save back to Roster
+						GameManager.roster[i] = temp_unit.get_data_snapshot()
+						count += 1
+					else:
+						# Just save XP
+						GameManager.roster[i]["xp"] = temp_unit.current_xp
+						
+					temp_unit.queue_free()
+					
 				GameManager.save_game()
 				SignalBus.on_skin_changed.emit() # Force UI Refresh
-				println("Gave " + str(amount) + " XP to " + str(count) + " units.", Color.GREEN)
+				println("Gave " + str(amount) + " XP to " + str(GameManager.roster.size()) + " units.", Color.GREEN)
 		"all_enemies":
 			if _require_context(GameManager.GameState.MISSION):
 				var mm = get_tree().root.find_child("MissionManager", true, false)

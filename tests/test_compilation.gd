@@ -1,27 +1,33 @@
 extends Node
 
 func _ready():
-	print("--- TEST START: Script Compilation & Instantiation ---")
+	print("Verifying compilation of ability scripts (Scene Mode)...")
+	var err_count = 0
 	
-	print("Attempting to instantiate Unit...")
-	var u = load("res://scripts/entities/Unit.gd").new()
-	if u:
-		print("PASS: Unit instantiated successfully.")
-		u.queue_free()
+	var scripts = [
+		"res://scripts/abilities/GoForAnklesAbility.gd",
+		"res://scripts/abilities/RunAndGunAbility.gd"
+	]
+	
+	for s in scripts:
+		var script = load(s)
+		if script:
+			print("✅ Payload loaded: " + s)
+			var instance = script.new()
+			if instance:
+				print("   Instance created successfully.")
+				# Check if description property can be set (inherited)
+				instance.description = "Test Description"
+			else:
+				print("❌ Failed to instantiate: " + s)
+				err_count += 1
+		else:
+			print("❌ Failed to load: " + s)
+			err_count += 1
+			
+	if err_count == 0:
+		print("All scripts verified successfully.")
+		get_tree().quit(0)
 	else:
-		print("FAIL: Unit failed to instantiate.")
+		print("Verification failed with " + str(err_count) + " errors.")
 		get_tree().quit(1)
-		return
-
-	print("Attempting to instantiate EnemyUnit...")
-	var e = load("res://scripts/entities/EnemyUnit.gd").new()
-	if e:
-		print("PASS: EnemyUnit instantiated successfully.")
-		e.queue_free()
-	else:
-		print("FAIL: EnemyUnit failed to instantiate.")
-		get_tree().quit(1)
-		return
-
-	print("--- ALL COMPILATION TESTS PASSED ---")
-	get_tree().quit(0)

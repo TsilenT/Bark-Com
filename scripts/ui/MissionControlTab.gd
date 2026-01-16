@@ -117,7 +117,8 @@ func _select_default_squad():
 
 	var count = 0
 	for i in range(game_manager.roster.size()):
-		if game_manager.roster[i]["status"] == "Ready" and count < max_squad_size:
+		var unit_data = game_manager.roster[i]
+		if unit_data.get("status", "Ready") == "Ready" and count < max_squad_size:
 			selected_indices.append(i)
 			count += 1
 
@@ -139,7 +140,7 @@ func _refresh_squad_list():
 	# Filter only Ready units? Or all? Usually only Ready units can deploy.
 	for i in range(game_manager.roster.size()):
 		var unit = game_manager.roster[i]
-		if unit["status"] != "Ready":
+		if unit.get("status", "Ready") != "Ready":
 			continue
 
 		var is_selected = selected_indices.has(i)
@@ -164,11 +165,11 @@ func _refresh_squad_list():
 		hbox.add_child(info_box)
 
 		var name_l = Label.new()
-		name_l.text = unit["name"]
+		name_l.text = unit.get("name", "Unknown Dog")
 		info_box.add_child(name_l)
 
 		var cls_l = Label.new()
-		cls_l.text = unit.get("class", "Recruit") + " (Lvl " + str(unit["level"]) + ")"
+		cls_l.text = unit.get("class", "Recruit") + " (Lvl " + str(unit.get("level", 1)) + ")"
 		info_box.add_child(cls_l)
 
 		# Toggle Button

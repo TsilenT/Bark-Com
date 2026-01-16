@@ -8,6 +8,11 @@ func _ready():
 	if FileAccess.file_exists("user://test_savegame.dat"):
 		DirAccess.remove_absolute("user://test_savegame.dat")
 		
+	# SAFETY CHECK
+	if GameManager:
+		GameManager.TEST_MOCK_ENABLED = true
+		GameManager.save_file_path = "user://test_savegame.dat"
+		
 	var main_scene_res = load("res://scenes/Base.tscn")
 	if not main_scene_res:
 		printerr("❌ Smoke Test FAILED: Main scene not found!")

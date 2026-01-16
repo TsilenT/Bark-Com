@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://d1a2b3c4e5f6"]
+
+[ext_resource type="Script" path="res://tests/test_terminal_xp.gd" id="1_term"]
+
+[node name="TerminalXPTest" type="Node"]
+script = ExtResource("1_term")

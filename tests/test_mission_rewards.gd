@@ -9,6 +9,8 @@ func _ready():
 	
 	var GM_Script = load("res://scripts/core/GameManager.gd")
 	var GM = GM_Script.new()
+	GM.TEST_MOCK_ENABLED = true
+	GM.save_file_path = "user://test_savegame.dat"
 	add_child(GM)
 	# Mock UI manager requirement? GM uses SignalBus.
 	

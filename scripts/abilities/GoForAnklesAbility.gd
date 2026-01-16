@@ -1,7 +1,7 @@
 extends Ability
 
-var description: String
 var icon: Texture2D
+
 
 # SCOUT: Go For Ankles
 # Active Ability: Melee Attack with strong debuff.

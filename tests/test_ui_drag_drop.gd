@@ -32,6 +32,10 @@ func setup_game_manager():
 		printerr("GameManager not found!")
 		return
 		
+	# SAFETY CHECK
+	GameManager.TEST_MOCK_ENABLED = true
+	GameManager.save_file_path = "user://test_savegame.dat"
+		
 	# Setup Mock Roster
 	GameManager.roster = [
 		{

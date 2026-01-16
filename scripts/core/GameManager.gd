@@ -11,6 +11,7 @@ const DEBUG_GAME = false
 var iron_dog_mode: bool = false
 var cheats_enabled: bool = false
 var debug_scenario: String = ""
+var TEST_MOCK_ENABLED: bool = false # explicitly public for testing scripts
 
 # Instance
 var audio_manager  # Singleton ref
@@ -50,6 +51,9 @@ const BOND_LEVEL_3 = 50  # Soul Pups (Berserk Vengeance)
 # Init removed (Autoload)
 func _init():
 	if "--unit-test" in OS.get_cmdline_args():
+		TEST_MOCK_ENABLED = true
+	
+	if TEST_MOCK_ENABLED:
 		save_file_path = "user://test_savegame.dat"
 		print("GameManager: TEST MOCK ENABLED. Forcing save path to: ", save_file_path)
 # 	if not instance:
@@ -687,10 +691,16 @@ func save_game():
 	# To JSON
 	var json_str = JSON.stringify(save_data)
 	var obfuscated = Marshalls.utf8_to_base64(json_str)
+	
+	# SAFETY CHECK
+	if TEST_MOCK_ENABLED and save_file_path == "user://savegame.dat":
+		save_file_path = "user://test_savegame.dat"
+		print("GameManager: SAFETY INTERCEPT - Redirecting save to test file.")
+
 	var file = FileAccess.open(save_file_path, FileAccess.WRITE)
 	if file:
 		file.store_string(obfuscated)
-		print("GameManager: Game Saved (v", SAVE_VERSION, ")")
+		print("GameManager: Game Saved (v", SAVE_VERSION, ") to ", save_file_path)
 	else:
 		print("GameManager: Failed to save game.")
 

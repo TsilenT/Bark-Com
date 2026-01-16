@@ -63,6 +63,7 @@ func _test_save_load_cycle():
 		dir.remove("test_savegame.dat")
 
 	gm = game_manager_script.new()
+	gm.TEST_MOCK_ENABLED = true
 	gm.save_file_path = test_path # ISOLATION
 	add_child(gm)
 	
@@ -95,6 +96,7 @@ func _test_save_load_cycle():
 func _test_mission_completion_roster_integrity():
 	print("\n[TEST] Mission Completion & Roster Safety...")
 	gm = game_manager_script.new()
+	gm.TEST_MOCK_ENABLED = true
 	gm.save_file_path = "user://test_savegame.dat" # CRITICAL: Isolation
 	add_child(gm)
 	
@@ -137,6 +139,7 @@ func _test_mission_completion_roster_integrity():
 func _test_iron_dog_logic():
 	print("\n[TEST] Iron Dog Wipe...")
 	gm = game_manager_script.new()
+	gm.TEST_MOCK_ENABLED = true
 	gm.save_file_path = "user://test_savegame.dat"
 	add_child(gm)
 	gm.iron_dog_mode = true
@@ -165,6 +168,7 @@ func _test_iron_dog_logic():
 func _test_inventory_persistence_with_items():
 	print("\n[TEST] Inventory Persistence (Real Items & Null Filtering)...")
 	gm = game_manager_script.new()
+	gm.TEST_MOCK_ENABLED = true
 	gm.save_file_path = "user://test_savegame.dat"
 	add_child(gm)
 	
@@ -218,6 +222,7 @@ func _test_squad_selection_persistence():
 	
 	# Phase 1: Setup & Saving
 	gm = game_manager_script.new()
+	gm.TEST_MOCK_ENABLED = true
 	gm.save_file_path = test_path
 	add_child(gm)
 	
@@ -247,6 +252,7 @@ func _test_squad_selection_persistence():
 	
 	# Phase 2: Loading & Validation
 	gm = game_manager_script.new()
+	gm.TEST_MOCK_ENABLED = true
 	gm.save_file_path = test_path
 	add_child(gm)
 	

@@ -1,7 +1,7 @@
 extends Ability
 
-var description: String
 var icon: Texture2D
+
 
 func _init():
 	display_name = "Run & Gun"

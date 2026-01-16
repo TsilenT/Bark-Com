@@ -141,6 +141,7 @@ func _ready():
 	add_to_group("Units")
 	_setup_visuals()
 
+	print("DEBUG: Unit _ready. Resetting current_hp to max_hp (", max_hp, ")")
 	current_hp = max_hp
 	current_sanity = max_sanity
 	current_ap = max_ap
@@ -861,14 +862,29 @@ func get_fear_level() -> int:
 func _check_level_up():
 	var next_level = rank_level + 1
 	if XP_THRESHOLDS.has(next_level) and current_xp >= XP_THRESHOLDS[next_level]:
-		rank_level = next_level
+		apply_promotion()
 		print(name, " LEVELED UP to Level ", rank_level, "!")
 		SignalBus.on_level_up.emit(name, rank_level)
 		SignalBus.on_request_floating_text.emit(
 			position + Vector3(0, 2, 0), "LEVEL UP!", Color.GOLD
 		)
-		max_hp += 2
-		current_hp += 2
+
+
+func apply_promotion():
+	# DAMAGE PRESERVATION STRATEGY
+	# Calculate damage taken (Diff from Max)
+	var damage_taken = max_hp - current_hp
+	
+	rank_level += 1
+	
+	# Standardized Stat Recalculation (Handles Max HP growth)
+	recalculate_stats()
+	
+	# Reapply damage to new Max HP
+	# This ensures current_hp scales naturally (+2 Max means +2 Current implicitly)
+	current_hp = max(1, max_hp - damage_taken)
+	
+	SignalBus.on_unit_stats_changed.emit(self)
 
 
 
@@ -1134,13 +1150,16 @@ func _find_attachment_point(slot: String) -> Node3D:
 
 # --- SAVE DATA ---
 func get_data_snapshot() -> Dictionary:
-	var cls_name = "Recruit"
-	if current_class_data:
-		cls_name = current_class_data.display_name
+	var cls_name = unit_class
+	if cls_name == "":
+		cls_name = "Recruit"
 	return {
 		"name": name,
 		"class": cls_name,
+		"level": rank_level,
+		"xp": current_xp,
 		"max_hp": max_hp,
+		"hp": current_hp,
 		"sanity": current_sanity,
 		"fallen": is_dead,
 		"cosmetics": equipped_cosmetics.duplicate()
@@ -1149,7 +1168,11 @@ func get_data_snapshot() -> Dictionary:
 
 func restore_from_snapshot(data: Dictionary):
 	if data.has("name"): name = data["name"]
-	if data.has("class"): unit_class = data["class"]
+	if data.has("class"): 
+		unit_class = data["class"]
+		# Ensure Class Data is loaded so get_data_snapshot returns correct class
+		# and base stats are correct before recalculation.
+		apply_class_stats(unit_class)
 	if data.has("level"): rank_level = int(data["level"])
 	if data.has("xp"): current_xp = int(data["xp"])
 	if data.has("max_hp"): max_hp = int(data["max_hp"])
@@ -1171,9 +1194,14 @@ func restore_from_snapshot(data: Dictionary):
 	
 	recalculate_stats()
 	# Apply damage calculated from snapshot difference?
-	# If save said 10/46. Recalc says 46. We set current to 10.
 	if data.has("hp"):
 		current_hp = int(data["hp"])
+	elif data.has("current_hp"):
+		# Fallback for legacy data
+		current_hp = int(data["current_hp"])
+		
+	# BUGFIX: Clamp to prevent 18/16 HP issues if Max HP Changed
+	current_hp = min(current_hp, max_hp)
 		
 	SignalBus.on_unit_stats_changed.emit(self)
 
