@@ -66,25 +66,26 @@ func _refresh_full():
 		if PANIC_ICONS.has(unit.current_panic_state):
 			icons_to_show.append(PANIC_ICONS[unit.current_panic_state])
 
-	# 3. Cover Status
-	if unit.has_method("get_node_or_null"):
-		# Access GridManager safely
-		var gm = unit.get_node_or_null("/root/GridManager")
-		if gm and "grid_pos" in unit:
-			var cover_h = gm.get_best_cover_at(unit.grid_pos)
-			var cover_icon = null
-			
-			if cover_h >= 2.0:
-				# Use loaded SVG or preload - Assuming standard naming
-				# Ideally preload constants but dynamic path is easier for now
-				if ResourceLoader.exists("res://assets/ui/shield_icon_full.svg"):
-					cover_icon = load("res://assets/ui/shield_icon_full.svg")
-			elif cover_h >= 1.0:
-				if ResourceLoader.exists("res://assets/ui/shield_icon_half.svg"):
-					cover_icon = load("res://assets/ui/shield_icon_half.svg")
-			
-			if cover_icon:
-				icons_to_show.append(cover_icon)
+	# 3. Cover Status (Holograms)
+	# Access GridManager via Group (Safe)
+	var gm = get_tree().get_first_node_in_group("GridManager")
+	if gm and "grid_pos" in unit:
+		_update_directional_cover_indicators(gm)
+	else:
+		_clear_cover_indicators()
+
+	# 4. High Ground (Elevation > 0)
+	var elev = 0
+	if gm and gm.grid_data.has(unit.grid_pos):
+		elev = gm.grid_data[unit.grid_pos].get("elevation", 0)
+	
+	# Allow unit override (e.g. Flying)
+	if unit.has_method("get_elevation_offset"):
+		elev += unit.get_elevation_offset()
+		
+	if elev > 0:
+		if ResourceLoader.exists("res://assets/ui/high_ground.svg"):
+			icons_to_show.append(load("res://assets/ui/high_ground.svg"))
 
 	_create_icons(icons_to_show)
 
@@ -109,3 +110,73 @@ func _create_icons(icons: Array):
 		add_child(sprite)
 		sprites.append(sprite)
 
+
+# --------------------------------------------------------------------------
+# NEW: Directional Cover Indicators (Holograms)
+# --------------------------------------------------------------------------
+var cover_indicators: Array[Node3D] = []
+
+func _clear_cover_indicators():
+	for c in cover_indicators:
+		c.queue_free()
+	cover_indicators.clear()
+
+func _update_directional_cover_indicators(gm: Node):
+	_clear_cover_indicators()
+	
+	if not unit: return
+	var pos = unit.grid_pos
+	
+	# Check 4 Neighbors
+	var directions = {
+		Vector2(0, -1): 0,   # North
+		Vector2(0, 1): 180,  # South
+		Vector2(1, 0): -90,  # East
+		Vector2(-1, 0): 90   # West
+	}
+	
+	for dir in directions:
+		var target = pos + dir
+		if gm.grid_data.has(target):
+			var h = gm.grid_data[target].get("cover_height", 0.0)
+			if h > 0:
+				_spawn_indicator(dir, directions[dir], h)
+
+func _spawn_indicator(dir: Vector2, rot_y: float, height: float):
+	var mesh_inst = MeshInstance3D.new()
+	var quad = QuadMesh.new()
+	quad.size = Vector2(1.6, 1.0) # Wide but not full tile width
+	
+	mesh_inst.mesh = quad
+	
+	# Material
+	var mat = StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED # Double sided
+	
+	if height >= 2.0:
+		mat.albedo_color = Color(0.2, 1.0, 0.2, 0.4) # Green Transparent
+		quad.size.y = 1.6 # Taller
+	else:
+		mat.albedo_color = Color(1.0, 1.0, 0.0, 0.4) # Yellow Transparent
+		quad.size.y = 0.8
+		
+	# Texture (Hologrrid pattern?)
+	# Ideally we load a texture, but color is fine for MVP.
+	
+	mesh_inst.material_override = mat
+	
+	# Positioning
+	# Move to Edge: 1.0 unit in 'dir' direction from center?
+	# Tile size is 2.0. So center to edge is 1.0.
+	# We want it slightly INSIDE the tile so it doesn't clip walls.
+	var offset = Vector3(dir.x, 0, dir.y) * 0.85 
+	mesh_inst.position = offset + Vector3(0, quad.size.y * 0.5, 0)
+	
+	# Rotation
+	mesh_inst.rotation_degrees.y = rot_y
+	
+	# Add to scene
+	add_child(mesh_inst)
+	cover_indicators.append(mesh_inst)

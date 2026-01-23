@@ -25,7 +25,7 @@ func initialize(pos: Vector2, biome: int, type: int, elevation: int, is_walkable
 	grid_pos = pos
 	position = Vector3(pos.x * 2.0, elevation, pos.y * 2.0)
 	
-	_setup_visuals(biome, type, gm)
+	_setup_visuals(biome, type, elevation, gm)
 	
 	# Initial State
 	set_walkable(is_walkable)
@@ -33,7 +33,7 @@ func initialize(pos: Vector2, biome: int, type: int, elevation: int, is_walkable
 	# Default to hidden (Vision system will reveal)
 	visible = false
 
-func _setup_visuals(biome: int, type: int, gm: Node):
+func _setup_visuals(biome: int, type: int, elevation: int, gm: Node):
 	# Biome Colors
 	match biome:
 		0: _base_color = Color(0.8, 0.75, 0.7) # INDOORS
@@ -95,6 +95,16 @@ func _setup_visuals(biome: int, type: int, gm: Node):
 		box.size = Vector3(2.0, 0.2, 2.0)
 		mesh_instance.mesh = box
 		
+	# 3. Apply Elevation Tint
+	# Higher = Lighter/Warmer to make topology readable
+	# 3. Apply Elevation Tint
+	# Higher = Glaringly Obvious Gold/Light
+	if elevation > 0:
+		# Strong lift per level
+		_base_color = _base_color.lightened(0.25 * elevation)
+		# Strong Gold Shift ("Sunlight")
+		_base_color = _base_color.lerp(Color(1.0, 0.84, 0.0), 0.4 * elevation) # Gold
+
 	# Apply Base Color
 	_update_visual_state(false, false)
 
