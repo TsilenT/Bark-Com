@@ -66,6 +66,26 @@ func _refresh_full():
 		if PANIC_ICONS.has(unit.current_panic_state):
 			icons_to_show.append(PANIC_ICONS[unit.current_panic_state])
 
+	# 3. Cover Status
+	if unit.has_method("get_node_or_null"):
+		# Access GridManager safely
+		var gm = unit.get_node_or_null("/root/GridManager")
+		if gm and "grid_pos" in unit:
+			var cover_h = gm.get_best_cover_at(unit.grid_pos)
+			var cover_icon = null
+			
+			if cover_h >= 2.0:
+				# Use loaded SVG or preload - Assuming standard naming
+				# Ideally preload constants but dynamic path is easier for now
+				if ResourceLoader.exists("res://assets/ui/shield_icon_full.svg"):
+					cover_icon = load("res://assets/ui/shield_icon_full.svg")
+			elif cover_h >= 1.0:
+				if ResourceLoader.exists("res://assets/ui/shield_icon_half.svg"):
+					cover_icon = load("res://assets/ui/shield_icon_half.svg")
+			
+			if cover_icon:
+				icons_to_show.append(cover_icon)
+
 	_create_icons(icons_to_show)
 
 

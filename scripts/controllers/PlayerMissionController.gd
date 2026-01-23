@@ -29,6 +29,8 @@ var selected_ability = null # Ability Resource/Script
 var pending_item_action = null
 var pending_item_slot: int = -1
 var _last_debug_hover: Vector2 = Vector2(-999, -999)
+var _tactical_view_active: bool = false
+var _alt_held: bool = false
 
 # Signals (To update UI/Visuals)
 signal input_state_changed(new_state)
@@ -44,13 +46,39 @@ func initialize(entry_main, entry_gm, entry_tm, entry_ui, entry_sb):
 	default_attack = StandardAttack.new()
 	GameManager.log(LOG_PREFIX, "Initialized.")
 
+func _process(_delta):
+	# Handle Global Inputs (Tactical View) here to be frame-perfect
+	_handle_tactical_view_input()
+
+func _handle_tactical_view_input():
+	# Allow action "ui_tactical_view_toggle" or generic ALT key
+	# Note: If Input Map doesn't have the action, is_action_pressed returns false safely.
+	var alt_pressed = Input.is_key_pressed(KEY_ALT) 
+	if InputMap.has_action("ui_tactical_view_toggle"):
+		if Input.is_action_pressed("ui_tactical_view_toggle"):
+			alt_pressed = true
+
+	if GameManager and GameManager.settings.get("tactical_view_toggle", false) == true:
+		# TOGGLE MODE
+		if alt_pressed and not _alt_held:
+			_alt_held = true 
+			_tactical_view_active = not _tactical_view_active
+			_toggle_tactical_view(_tactical_view_active)
+		elif not alt_pressed:
+			_alt_held = false
+	else:
+		# HOLD MODE
+		# Only update if state changed to prevent spamming the visualizer
+		if alt_pressed != _tactical_view_active:
+			_tactical_view_active = alt_pressed
+			_toggle_tactical_view(_tactical_view_active)
+
 func set_input_state(new_state: int):
 	current_input_state = new_state
 	emit_signal("input_state_changed", new_state)
 	
-	# Clear visuals on state change?
-	if new_state == InputState.SELECTING:
-		_clear_overlays()
+	# Clear visuals on state change
+	_clear_overlays()
 	
 	# Show Visuals for New State
 	if new_state == InputState.MOVING and selected_unit:
@@ -80,7 +108,9 @@ func _clear_overlays():
 			gv.clear_highlights()
 			gv.clear_preview_path()
 			gv.clear_preview_aoe()
+			gv.clear_preview_aoe()
 			gv.clear_hover_cursor()
+			gv.clear_lof() # Fix: Ensure LOF is cleared
 		if _signal_bus:
 			_signal_bus.on_hide_hit_chance.emit()
 
@@ -175,6 +205,38 @@ func handle_mouse_hover(grid_pos: Vector2):
 			gv.clear_preview_aoe()
 			if _signal_bus:
 				_signal_bus.on_hide_hit_chance.emit()
+
+	# 6. Tactical View Toggle Logic Moved to _process for responsiveness 
+
+# ...
+
+func _toggle_tactical_view(active: bool):
+	var gv = _get_grid_visualizer()
+	if not gv: return
+	
+	if active:
+		if not grid_manager: return
+		
+		# Collect Cover Tiles
+		var cover_data = {}
+		
+		var vm = null
+		if main_node and "vision_manager" in main_node:
+			vm = main_node.vision_manager
+			
+		for coord in grid_manager.grid_data:
+			# Check Visibility
+			if vm and not vm.is_tile_explored(coord):
+				continue
+				
+			var tile = grid_manager.grid_data[coord]
+			var type = tile.get("type", 0)
+			if type == GridManager.TileType.COVER_FULL or type == GridManager.TileType.COVER_HALF:
+				cover_data[coord] = type
+				
+		gv.update_cover_icons(cover_data)
+	else:
+		gv.clear_cover_icons()
 
 
 # --- Handlers ---
@@ -421,8 +483,37 @@ func _preview_movement(grid_pos: Vector2, gv: Node):
 			color = Color.ORANGE
 		
 		gv.preview_path(path, color)
+		
+		# Predictive Cover Icon
+		if grid_manager:
+			var best_cover = grid_manager.get_best_cover_at(grid_pos)
+			var type = 0
+			if best_cover >= 2.0: type = 4 # COVER_FULL (Magic Number from GridManager enum? Need constant)
+			elif best_cover >= 1.0: type = 5 # COVER_HALF
+			
+			# Map to GridManager.TileType values:
+			# GROUND=0, OBSTACLE=1, COVER_HALF=2, COVER_FULL=3, RAMP=4, LADDER=5 ???
+			# Wait, let's check GridManager definitions.
+			# TileType { GROUND, OBSTACLE, COVER_HALF, COVER_FULL, RAMP, LADDER }
+			# Default Enum: GROUND=0, OBSTACLE=1, COVER_HALF=2, COVER_FULL=3, RAMP=4, LADDER=5
+			# But LevelGenerator uses specific values. 
+			# Let's use GridManager.TileType.COVER_FULL if available.
+			
+			if best_cover >= 2.0:
+				gv.show_predictive_cover_icon(grid_pos, GridManager.TileType.COVER_FULL)
+			elif best_cover >= 1.0:
+				gv.show_predictive_cover_icon(grid_pos, GridManager.TileType.COVER_HALF)
+			else:
+				gv.clear_predictive_cover_icon()
+				
 	else:
 		gv.clear_preview_path()
+		gv.clear_predictive_cover_icon()
+
+	# Ensure Attack Visuals are hidden
+	gv.clear_lof()
+	if _signal_bus:
+		_signal_bus.on_hide_hit_chance.emit()
 
 func _preview_ability(grid_pos: Vector2, gv: Node):
 	# 1. Path Clearing
@@ -513,10 +604,25 @@ func _preview_attack(grid_pos: Vector2):
 						pos = target_obj.position
 					elif grid_manager:
 						pos = grid_manager.get_world_position(grid_pos)
+						
 					_signal_bus.on_show_hit_chance.emit(info["hit_chance"], breakdown_str, pos + Vector3(0, 1.8, 0))
+					
+					# DRAW LINE OF FIRE
+					if gv:
+						# Start from Unit (Chest Height?)
+						var start_pos = selected_unit.global_position + Vector3(0, 0.8, 0)
+						var end_pos = pos + Vector3(0, 0.8, 0)
+						var color = Color.RED
+						if info["hit_chance"] > 50: color = Color.GREEN
+						elif info["hit_chance"] > 0: color = Color.YELLOW
+						
+						gv.draw_lof(start_pos, end_pos, color)
+						
 	else:
 		if _signal_bus:
 			_signal_bus.on_hide_hit_chance.emit()
+		if gv:
+			gv.clear_lof()
 
 
 func _preview_item(grid_pos: Vector2, gv: Node):

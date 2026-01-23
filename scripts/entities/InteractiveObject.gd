@@ -2,10 +2,10 @@ extends Node3D
 class_name InteractiveObject
 
 var grid_pos: Vector2
-var grid_manager: GridManager
+var grid_manager: Node
 
 
-func initialize(pos: Vector2, gm: GridManager):
+func initialize(pos: Vector2, gm: Node):
 	grid_pos = pos
 	grid_manager = gm
 	position = gm.get_world_position(pos)

@@ -1,0 +1,5 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Shield Path: Fits within 10px margin -->
+  <path d="M128 20 L40 60 V140 C40 210, 128 240, 128 240 C128 240, 216 210, 216 140 V60 L128 20 Z" 
+        fill="#00FF00" stroke="black" stroke-width="12" stroke-linejoin="round"/>
+</svg>

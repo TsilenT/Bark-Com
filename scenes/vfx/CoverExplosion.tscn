@@ -1,0 +1,19 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/vfx/AutoFree.gd" id="1_crax5"]
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_b28qe"]
+direction = Vector3(0, 1, 0)
+initial_velocity_min = 4.0
+initial_velocity_max = 8.0
+scale_min = 0.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_pobj1"]
+size = Vector3(0.2, 0.2, 0.2)
+
+[node name="CoverExplosion" type="GPUParticles3D"]
+amount = 16
+explosiveness = 1.0
+process_material = SubResource("ParticleProcessMaterial_b28qe")
+draw_pass_1 = SubResource("BoxMesh_pobj1")
+script = ExtResource("1_crax5")

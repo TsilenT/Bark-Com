@@ -33,7 +33,7 @@ var missions_completed: int = 0
 var mission_level: int = 1 # Difficulty Scaling (1-3+)
 var invasion_progress: int = 0  # 0-100 (Doomsday Clock)
 var inventory: Array = []
-var settings: Dictionary = {"music_vol": 1.0, "sfx_vol": 1.0, "mascot_style": 0, "fullscreen": false} 
+var settings: Dictionary = {"music_vol": 1.0, "sfx_vol": 1.0, "mascot_style": 0, "fullscreen": false, "tactical_view_toggle": false} 
 # mascot_style: 0=Normal, 1=Busty, 2=Bustier, 3=Bustiest
 
 # Shop Definition

@@ -50,6 +50,21 @@ func _inject_debug_checkbox():
 				# Debug Log the change itself (meta!)
 				if toggled: print("[LOG] Debug Logging Enabled.")
 		)
+		
+		# --- TACTICAL VIEW TOGGLE ---
+		var tac_check = CheckBox.new()
+		tac_check.text = "Tactical View Toggle"
+		tac_check.tooltip_text = "If checked, ALT toggles Tactical View ON/OFF. If unchecked, hold ALT to view."
+		container.add_child(tac_check)
+		container.move_child(tac_check, debug_check.get_index() + 1)
+		
+		if GameManager:
+			tac_check.set_pressed_no_signal(GameManager.settings.get("tactical_view_toggle", false))
+			
+		tac_check.toggled.connect(func(toggled):
+			if GameManager:
+				GameManager.settings["tactical_view_toggle"] = toggled
+		)
 
 func _connect_signals():
 	music_slider.value_changed.connect(_on_music_volume_changed)

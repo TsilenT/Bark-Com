@@ -9,6 +9,7 @@ static var _icons = {}
 
 static func clear_cache():
 	_icons.clear()
+	_atlas_texture = null
 
 static func get_class_icon(c_name: String) -> Texture2D:
 	if _icons.has(c_name):

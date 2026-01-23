@@ -211,3 +211,9 @@ func _has_line_of_sight(from: Vector3, to: Vector3, exclude: Array) -> bool:
 			return false
 
 	return true
+
+func is_tile_visible(coord: Vector2) -> bool:
+	return visible_tiles.has(coord)
+
+func is_tile_explored(coord: Vector2) -> bool:
+	return explored_tiles.has(coord)

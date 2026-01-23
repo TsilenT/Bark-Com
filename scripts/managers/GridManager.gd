@@ -407,3 +407,22 @@ func get_tiles_in_radius(center_tile: Vector2, radius: float) -> Array[Vector2]:
 		if tile.distance_to(center_tile) <= radius:
 			tiles.append(tile)
 	return tiles
+
+func get_best_cover_at(coord: Vector2) -> float:
+	# Returns the highest cover value provided by ANY neighbor.
+	# Used for UI feedback ("Am I in cover?").
+	if not grid_data.has(coord):
+		return 0.0
+		
+	var max_cover = 0.0
+	
+	# Check 4 direct neighbors
+	var neighbors = [Vector2(0, 1), Vector2(0, -1), Vector2(1, 0), Vector2(-1, 0)]
+	for n in neighbors:
+		var n_pos = coord + n
+		if grid_data.has(n_pos):
+			var h = grid_data[n_pos].get("cover_height", 0.0)
+			if h > max_cover:
+				max_cover = h
+				
+	return max_cover

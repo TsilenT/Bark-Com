@@ -107,12 +107,24 @@ func _run_tests():
 		print("❓ INFO: Value is " + str(new_cur) + ". Verify if correct.")
 		
 	if gm.audio_manager:
-		gm.audio_manager.free()
+		# Stop all audio to release resource references (Crucial for OggVorbis)
+		if gm.audio_manager.has_method("stop_all"):
+			gm.audio_manager.stop_all()
+			
+		# Use queue_free for safer cleanup
+		gm.audio_manager.queue_free()
 		gm.audio_manager = null
-		await get_tree().process_frame
 		
 	ClassIconManager.clear_cache()
-	scene.free()
+	
+	if is_instance_valid(scene):
+		scene.queue_free()
+		
+	# Allow deletion queue to flush (Extended for safety)
+	for i in range(10):
+		await get_tree().process_frame
+	
+	get_tree().quit()
 
 func _find_promote_button(node: Node) -> Button:
 	if node is Button and node.text == "PROMOTE!":

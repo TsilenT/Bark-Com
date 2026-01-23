@@ -3,8 +3,10 @@ class_name DestructibleCover
 
 @export var max_hp: int = 5
 var current_hp: int = 5
-var mesh: MeshInstance3D
+@export var prop_scene: PackedScene = preload("res://scenes/entities/DestructibleProp.tscn")
+@export var explosion_scene: PackedScene = preload("res://scenes/vfx/CoverExplosion.tscn")
 
+var mesh: Node3D # Changed from MeshInstance3D to generic Node3D root
 
 func _ready():
 	_setup_visuals()
@@ -14,15 +16,11 @@ func _ready():
 
 
 func _setup_visuals():
-	mesh = MeshInstance3D.new()
-	var box = BoxMesh.new()
-	box.size = Vector3(1.0, 1.0, 1.0)  # Crate size estimate
-	mesh.mesh = box
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = Color(0.5, 0.3, 0.1)  # Crate brown
-	mesh.material_override = mat
-	mesh.position.y = 0.5
-	add_child(mesh)
+	if prop_scene:
+		mesh = prop_scene.instantiate()
+		add_child(mesh)
+	else:
+		push_error("DestructibleCover: Prop Scene missing!")
 
 
 func _setup_collision():
@@ -42,7 +40,7 @@ func _setup_collision():
 	sb.set_meta("owner_node", self)
 
 
-func initialize(pos: Vector2, gm: GridManager):
+func initialize(pos: Vector2, gm: Node):
 	super.initialize(pos, gm)
 	# Set Grid State: BLOCKED/WALKABLE?
 	# Typically crates are HIGH COVER (Block walk? or just Provide Cover?)
@@ -67,7 +65,15 @@ func destroy():
 	grid_manager.update_tile_state(grid_pos, true, 0.0, GridManager.TileType.GROUND)
 
 	# Visuals
-	mesh.visible = false
-	# Spawn particles?
-	# queue_free after delay
+	if mesh:
+		mesh.visible = false
+	
+	# Spawn particles
+	if explosion_scene:
+		var vfx = explosion_scene.instantiate()
+		get_parent().add_child(vfx) # Add to world/parent to persist after self free
+		vfx.global_position = global_position + Vector3(0, 0.5, 0)
+		
+	# queue_free after delay?
+	# Particles handle themselves. We can remove ourselves immediately.
 	queue_free()

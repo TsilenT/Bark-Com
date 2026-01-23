@@ -62,11 +62,27 @@ func _setup_base_settings():
 
 func _connect_signals():
 	SignalBus.on_kibble_changed.connect(_on_kibble_changed)
-	SignalBus.on_unit_recruited.connect(func(_unit): _show_roster())
+	SignalBus.on_unit_recruited.connect(_on_unit_recruited)
 	SignalBus.on_mission_selected.connect(_on_mission_start_signal)
 	SignalBus.on_skin_changed.connect(_on_skin_changed_refresh)
 	SignalBus.on_inventory_changed.connect(_refresh_stash_sidebar)
-	SignalBus.on_roster_updated.connect(func(): _show_roster())
+	SignalBus.on_roster_updated.connect(_show_roster)
+
+
+func _exit_tree():
+	if not SignalBus: return
+	if SignalBus.on_kibble_changed.is_connected(_on_kibble_changed):
+		SignalBus.on_kibble_changed.disconnect(_on_kibble_changed)
+	if SignalBus.on_unit_recruited.is_connected(_on_unit_recruited):
+		SignalBus.on_unit_recruited.disconnect(_on_unit_recruited)
+	if SignalBus.on_mission_selected.is_connected(_on_mission_start_signal):
+		SignalBus.on_mission_selected.disconnect(_on_mission_start_signal)
+	if SignalBus.on_skin_changed.is_connected(_on_skin_changed_refresh):
+		SignalBus.on_skin_changed.disconnect(_on_skin_changed_refresh)
+	if SignalBus.on_inventory_changed.is_connected(_refresh_stash_sidebar):
+		SignalBus.on_inventory_changed.disconnect(_refresh_stash_sidebar)
+	if SignalBus.on_roster_updated.is_connected(_show_roster):
+		SignalBus.on_roster_updated.disconnect(_show_roster)
 
 
 func _load_initial_state():
@@ -1016,16 +1032,19 @@ func _start_promotion(corgi_data: Dictionary):
 		var popup = load("res://scripts/ui/TalentSelectPopup.gd").new()
 		popup.name = "PromotionPopup" # Naming for testability
 		ui_container.add_child(popup)
-		# Center on screen (requires parent to be full rect)
+		# CENTER_PRESET caused issues in some containers, manual valid for test
 		popup.set_anchors_preset(Control.PRESET_CENTER) 
-		# If center doesn't work due to container, forcing position:
 		popup.set_position(Vector2(1920/2 - 300, 1080/2 - 200))
 		
 		popup.setup_choices(next_rank, choices)
-		popup.perk_selected.connect(func(perk_id): _apply_promotion(corgi_data, perk_id))
+		# Use bind to pass corgi_data safely without lambda capture cycle risks (minimal)
+		popup.perk_selected.connect(_on_promotion_perk_selected.bind(corgi_data))
 	else:
-		# Just Stats
 		_apply_promotion(corgi_data, "")
+
+
+func _on_promotion_perk_selected(perk_id: String, corgi_data: Dictionary):
+	_apply_promotion(corgi_data, perk_id)
 
 
 func _apply_promotion(corgi_data: Dictionary, perk_id: String = ""):

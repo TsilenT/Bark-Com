@@ -25,6 +25,13 @@ func _ready():
 	if SignalBus.has_signal("on_unit_stats_changed"):
 		SignalBus.on_unit_stats_changed.connect(_on_stats_changed)
 
+func _exit_tree():
+	if SignalBus:
+		if SignalBus.on_perk_learned.is_connected(_on_perk_learned):
+			SignalBus.on_perk_learned.disconnect(_on_perk_learned)
+		if SignalBus.on_unit_stats_changed.is_connected(_on_stats_changed):
+			SignalBus.on_unit_stats_changed.disconnect(_on_stats_changed)
+
 func _on_stats_changed(u):
 	# Handle Object or Dictionary
 	var u_name = ""

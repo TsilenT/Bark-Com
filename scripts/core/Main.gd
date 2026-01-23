@@ -601,6 +601,48 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 			spawned_units.append(barrel) # Treat as Unit for Targeting
 			GameManager.log(LOG_PREFIX, "Spawned Explosive Barrel at ", pos)
 
+	# --- Spawn Destructible Cover (Props) ---
+	# LevelGenerator only marks grid as COVER. We need to instantiate props.
+	if grid_manager:
+		var cover_scene = load("res://scripts/entities/DestructibleCover.gd")
+		var count = 0
+		for coord in grid_manager.grid_data:
+			var tile = grid_manager.grid_data[coord]
+			var type = tile.get("type", 0)
+			
+			# Type 4 = COVER_FULL, Type 5 = COVER_HALF
+			# LevelGenerator uses these.
+			if type == GridManager.TileType.COVER_FULL or type == GridManager.TileType.COVER_HALF:
+				# Skip if something is already there (e.g. Explosive Barrels)
+				var occupied = false
+				for u in spawned_units:
+					if "grid_pos" in u and u.grid_pos == coord:
+						occupied = true
+						break
+				
+				if occupied:
+					continue
+
+				# Instantiate
+				var cover = cover_scene.new()
+				add_child(cover)
+				cover.initialize(coord, grid_manager)
+				
+				# If FULL COVER, maybe set HP higher?
+				if type == GridManager.TileType.COVER_FULL:
+					cover.max_hp = 10
+					cover.current_hp = 10
+					# Optional: Scale mesh up? Or swap mesh? 
+					# DestructibleCover defaults to "Crate" (1m box).
+					# Full cover is 1.5m-2m.
+					if cover.mesh:
+						cover.mesh.scale.y = 1.5
+						cover.mesh.position.y = 0.75
+				
+				count += 1
+		
+		GameManager.log(LOG_PREFIX, "Spawned ", count, " Destructible Cover Props.")
+
 	# 1. Spawn Corgi(s)
 	# Check for GameManager
 

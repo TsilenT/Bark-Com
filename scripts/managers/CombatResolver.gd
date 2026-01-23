@@ -426,7 +426,10 @@ static func execute_attack(
 		# Check for Kill
 		var hp = target.current_hp if "current_hp" in target else 999
 		if hp <= 0:
-			if attacker.has_method("gain_xp"):
+			var targ_faction_check = target.get("faction") if "faction" in target else "Neutral"
+			
+			# Only award XP for killing ENEMIES
+			if attacker.has_method("gain_xp") and targ_faction_check == "Enemy":
 				attacker.gain_xp(50)
 				GameManager.log(LOG_PREFIX, attacker.name, " killed ", target.name, " and gained 50 XP!")
 

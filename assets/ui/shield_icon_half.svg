@@ -1,0 +1,20 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="half-clip">
+      <!-- Clip bottom half for fill -->
+      <rect x="0" y="128" width="256" height="128"/>
+    </clipPath>
+  </defs>
+  
+  <!-- Background/Outline (Empty) -->
+  <path d="M128 20 L40 60 V140 C40 210, 128 240, 128 240 C128 240, 216 210, 216 140 V60 L128 20 Z" 
+        fill="#333333" fill-opacity="0.5" stroke="black" stroke-width="12" stroke-linejoin="round"/>
+        
+  <!-- Half Fill (Yellow) -->
+  <path d="M128 20 L40 60 V140 C40 210, 128 240, 128 240 C128 240, 216 210, 216 140 V60 L128 20 Z" 
+        fill="#FFFF00" clip-path="url(#half-clip)"/>
+        
+  <!-- Re-stroke on top to ensure clean border -->
+  <path d="M128 20 L40 60 V140 C40 210, 128 240, 128 240 C128 240, 216 210, 216 140 V60 L128 20 Z" 
+        fill="none" stroke="black" stroke-width="12" stroke-linejoin="round"/>
+</svg>

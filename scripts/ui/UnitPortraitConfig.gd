@@ -8,6 +8,18 @@ var model_root: Node3D
 func _ready():
 	_setup_viewport()
 
+func _exit_tree():
+	if sub_viewport:
+		# Manual Cleanup hierarchy to prevent World3D leaks
+		if sub_viewport.get_parent():
+			sub_viewport.get_parent().remove_child(sub_viewport)
+		
+		for c in sub_viewport.get_children():
+			c.free() # Kill everything inside
+			
+		sub_viewport.free() # Immediate destruction
+		sub_viewport = null
+
 
 func _setup_viewport():
 	custom_minimum_size = Vector2(100, 100)  # Portrait Size
