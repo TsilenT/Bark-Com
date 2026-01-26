@@ -21,5 +21,5 @@ func on_turn_end(unit: Node):
 		if unit.has_node("Label3D"):  # Quick hack or use FloatingTextManager
 			# FloatingTextManager is singleton
 			SignalBus.on_request_floating_text.emit(
-				unit.position + Vector3(0, 2, 0), "POISON!", Color.GREEN
+				unit, "POISON!", Color.GREEN
 			)

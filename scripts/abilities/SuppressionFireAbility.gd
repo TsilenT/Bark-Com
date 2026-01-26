@@ -1,6 +1,9 @@
 extends "res://scripts/resources/Ability.gd"
 
-var aoe_radius: float = 3.5
+const BASE_RADIUS = 3.5
+var aoe_radius: float = BASE_RADIUS
+
+
 
 func _init():
 	display_name = "Suppression Fire"
@@ -12,8 +15,8 @@ func execute(user, _target_unit, target_pos: Vector2, grid_manager) -> String:
 	# AoE Suppression
 	var world_pos = grid_manager.get_world_position(target_pos)
 	# Convert Tile Radius to World Radius
-	var world_radius = 3.5 * grid_manager.TILE_SIZE
-	var units = grid_manager.get_units_in_radius_world(world_pos, world_radius) # Wide area
+	var world_radius = grid_manager.get_world_aoe_radius(aoe_radius)
+	var units = grid_manager.get_units_in_radius_cylindrical(world_pos, world_radius, 3.0) # Wide area, varying height
 	
 	if units.size() == 0:
 		print("Suppression Fire hit nothing.") 
@@ -28,7 +31,7 @@ func execute(user, _target_unit, target_pos: Vector2, grid_manager) -> String:
 		
 		# Deal Chip Damage
 		unit.take_damage(1) 
-		SignalBus.on_request_floating_text.emit(unit.global_position + Vector3(0,2,0), "SUPPRESSED!", Color.ORANGE)
+		SignalBus.on_request_floating_text.emit(unit, "SUPPRESSED!", Color.ORANGE)
 		print(user.name, " suppressed ", unit.name)
 	
 	user.spend_ap(ap_cost)

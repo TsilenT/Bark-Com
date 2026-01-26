@@ -48,7 +48,7 @@ func execute(user, target, target_grid, grid_manager):
 			target.apply_effect(vuln)
 			
 		if SignalBus:
-			SignalBus.on_request_floating_text.emit(target.position, "ANKLES BITTEN!", Color.RED)
+			SignalBus.on_request_floating_text.emit(target, "ANKLES BITTEN!", Color.RED)
 		
 		# Start Cooldown
 		start_cooldown()

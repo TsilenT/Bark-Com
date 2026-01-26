@@ -26,7 +26,7 @@ func _on_action_started(unit, target, type, pos):
 			is_cloaked = false
 			_update_camo_visuals()
 			# Floating Text
-			SignalBus.on_request_floating_text.emit(position + Vector3(0,2,0), "REVEALED!", Color.RED)
+			SignalBus.on_request_floating_text.emit(self, "REVEALED!", Color.RED)
 
 func _update_camo_visuals():
 	var mesh = get_node_or_null("Mesh")

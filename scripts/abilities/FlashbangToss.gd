@@ -88,7 +88,8 @@ func execute(user, _target_unit, target_tile: Vector2, grid_manager: GridManager
 	SignalBus.on_combat_action_started.emit(user, null, "Flashbang", target_pos)
 	
 	# Radius Use Property
-	var tiles_to_hit = grid_manager.get_tiles_in_radius(final_target_tile, aoe_radius)
+	var world_radius = grid_manager.get_world_aoe_radius(aoe_radius)
+	var units_hit = grid_manager.get_units_in_radius_cylindrical(target_pos, world_radius, 3.0)
 
 	print(user.name, " throws FLASHBANG at ", target_tile)
 
@@ -96,34 +97,32 @@ func execute(user, _target_unit, target_tile: Vector2, grid_manager: GridManager
 		if GameManager and GameManager.audio_manager:
 			GameManager.audio_manager.play_sfx("SFX_Grenade") # Reuse or specific Flash sound
 
-		for tile in tiles_to_hit:
-			var units = user.get_tree().get_nodes_in_group("Units")
-			for u in units:
-				if u.grid_pos == tile and u.current_hp > 0:
-					# Friendly Fire? Yes.
-					u.take_damage(1)
-					
-					# Apply Stun (Uses StunEffect resource)
-					var stun_res = load("res://scripts/resources/effects/StunEffect.gd")
-					if stun_res:
-						var stun = stun_res.new()
-						u.apply_effect(stun)
-					
-					# Apply Aim Debuff (Needs new effect or raw modifier)
-					# Let's create 'DisorientedEffect'
-					var disorient_res = load("res://scripts/resources/effects/DisorientedEffect.gd")
-					if disorient_res:
-						var dis = disorient_res.new()
-						u.apply_effect(dis)
+		for u in units_hit:
+			if is_instance_valid(u) and u.current_hp > 0:
+				# Friendly Fire? Yes.
+				u.take_damage(1)
+				
+				# Apply Stun (Uses StunEffect resource)
+				var stun_res = load("res://scripts/resources/effects/StunEffect.gd")
+				if stun_res:
+					var stun = stun_res.new()
+					u.apply_effect(stun)
+				
+				# Apply Aim Debuff (Needs new effect or raw modifier)
+				# Let's create 'DisorientedEffect'
+				var disorient_res = load("res://scripts/resources/effects/DisorientedEffect.gd")
+				if disorient_res:
+					var dis = disorient_res.new()
+					u.apply_effect(dis)
+				else:
+					# Manual modifier fallback if script doesn't exist yet
+					if u.modifiers.has("accuracy"):
+						u.modifiers["accuracy"] -= 20
 					else:
-						# Manual modifier fallback if script doesn't exist yet
-						if u.modifiers.has("accuracy"):
-							u.modifiers["accuracy"] -= 20
-						else:
-							u.modifiers["accuracy"] = -20
-							
-						print(u.name, " is DISORIENTED (-20 Aim)")
-						SignalBus.on_request_floating_text.emit(u.position + Vector3(0,2,0), "DISORIENTED", Color.ORANGE)
+						u.modifiers["accuracy"] = -20
+						
+					print(u.name, " is DISORIENTED (-20 Aim)")
+					SignalBus.on_request_floating_text.emit(u, "DISORIENTED", Color.ORANGE)
 
 		SignalBus.on_combat_action_finished.emit(user)
 

@@ -460,7 +460,7 @@ func handle_reaction_fire(mover, from_pos: Vector2 = Vector2(-999, -999)):
 					# Consume Overwatch
 					unit.is_overwatch_active = false
 					SignalBus.on_request_floating_text.emit(
-						unit.position, "REACTION!", Color.ORANGE
+						unit, "REACTION!", Color.ORANGE
 					)
 					GameManager.log(LOG_PREFIX, "!!! OVERWATCH TRIGGERED: ", unit.name, " -> ", mover.name)
 

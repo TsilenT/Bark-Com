@@ -19,7 +19,7 @@ func on_apply(unit: Node):
 			unit.modifiers["aim"] = -20
 
 	SignalBus.on_request_floating_text.emit(
-		unit.position + Vector3(0, 2, 0), "SHAKEY PAWS", Color.PURPLE
+		unit, "SHAKEY PAWS", Color.PURPLE
 	)
 
 

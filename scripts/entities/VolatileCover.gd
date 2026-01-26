@@ -30,7 +30,7 @@ func take_damage_custom(amount: int, damage_source_type: String = "Normal"):
 		return
 
 	current_hp -= amount
-	SignalBus.on_request_floating_text.emit(position, str(amount), Color.YELLOW)
+	SignalBus.on_request_floating_text.emit(self, str(amount), Color.YELLOW)
 
 	# Check for Detonation Triggers
 	var should_detonate = false
@@ -58,7 +58,7 @@ func _start_fire():
 	fuse_timer = fuse_turns
 
 	print(name, " is BURNING! Fuse: ", fuse_timer)
-	SignalBus.on_request_floating_text.emit(position + Vector3(0, 2, 0), "BURNING!", Color.ORANGE)
+	SignalBus.on_request_floating_text.emit(self, "BURNING!", Color.ORANGE)
 
 	# Visuals: Fire Loop
 	_spawn_fire_vfx()
@@ -76,7 +76,7 @@ func _play_cinematic_sequence():
 	
 	# 1. Start Visuals (Flames)
 	_spawn_fire_vfx()
-	SignalBus.on_request_floating_text.emit(position + Vector3(0, 2, 0), "CRITICAL!", Color.RED)
+	SignalBus.on_request_floating_text.emit(self, "CRITICAL!", Color.RED)
 	
 	# 2. Camera Zoom
 	SignalBus.on_request_camera_zoom.emit(position, 8.0, 2.0)
@@ -145,7 +145,7 @@ func detonate():
 
 	# 1. Spawn VFX
 	SignalBus.on_request_vfx.emit("Explosion", position, Vector3.ZERO, null, null)
-	SignalBus.on_request_floating_text.emit(position + Vector3(0, 3, 0), "BOOM!", Color.RED)
+	SignalBus.on_request_floating_text.emit(self, "BOOM!", Color.RED)
 
 	# 2. Deal Damage (AOE)
 	# Find all Units and Volatile Objects in range

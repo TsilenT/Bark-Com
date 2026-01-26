@@ -10,6 +10,7 @@ var low_ground_pos = Vector2(0,1)
 
 func _ready():
 	print("Starting Passive Visuals Verification...")
+	add_child(load("res://tests/TestSafeGuard.gd").new())
 	await setup()
 	test_passive_high_ground()
 	test_passive_ground_level()

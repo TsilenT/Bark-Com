@@ -3,6 +3,7 @@ extends Node
 var game_ui
 func _ready():
 	print("🧪 Test UI Elements")
+	add_child(load("res://tests/TestSafeGuard.gd").new())
 	game_ui = load("res://scripts/ui/GameUI.gd").new()
 	add_child(game_ui)
 	

@@ -8,6 +8,7 @@ var generator
 
 func _ready():
 	print("Starting Door Logic Verification...")
+	add_child(load("res://tests/TestSafeGuard.gd").new())
 	await setup()
 	test_invalid_door_removal()
 	cleanup()

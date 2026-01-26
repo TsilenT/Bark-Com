@@ -15,7 +15,7 @@ func execute(user, target, target_grid, grid_manager):
 	# Grant AP
 	user.current_ap += 1
 	if SignalBus:
-		SignalBus.on_request_floating_text.emit(user.position, "+1 AP", Color.CYAN)
+		SignalBus.on_request_floating_text.emit(user, "+1 AP", Color.CYAN)
 	
 	# Start Cooldown
 	start_cooldown()

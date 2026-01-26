@@ -13,6 +13,8 @@ var cheats_enabled: bool = false
 var debug_scenario: String = ""
 var TEST_MOCK_ENABLED: bool = false # explicitly public for testing scripts
 
+const FLOATING_TEXT_OFFSET = Vector3(0, 2.0, 0)
+
 # Instance
 var audio_manager  # Singleton ref
 

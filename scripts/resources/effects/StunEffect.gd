@@ -15,7 +15,7 @@ func _init():
 func on_apply(unit: Node):
 	GameManager.log(LOG_PREFIX, unit.name, " is STUNNED!")
 	SignalBus.on_request_floating_text.emit(
-		unit.position + Vector3(0, 2.5, 0), "STUNNED!", Color.YELLOW
+		unit, "STUNNED!", Color.YELLOW
 	)
 	if unit.get("current_ap") != null:
 		unit.current_ap = 0
@@ -28,5 +28,5 @@ func on_turn_start(unit: Node):
 		unit.current_ap = 0
 		GameManager.log(LOG_PREFIX, "Stun drained AP from ", unit.name)
 		SignalBus.on_request_floating_text.emit(
-			unit.position + Vector3(0, 2.5, 0), "NO AP!", Color.YELLOW
+			unit, "NO AP!", Color.YELLOW
 		)

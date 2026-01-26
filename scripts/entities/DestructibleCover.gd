@@ -300,7 +300,7 @@ func take_damage(amount: int):
 
 	var color = Color(1.0, 0.84, 0.0) # Gold
 	
-	SignalBus.on_request_floating_text.emit(position + Vector3(0,1,0), str(amount), color)
+	SignalBus.on_request_floating_text.emit(self, str(amount), color)
 
 	# Visual Feedback: Flash or Darken
 	if mesh and mesh.material_override:

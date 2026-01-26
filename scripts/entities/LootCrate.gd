@@ -49,13 +49,9 @@ func interact(user_unit):
 		var item = loot_table.pick_random()
 		if _give_item_to_unit(user_unit, item):
 			item_granted = true
-			SignalBus.on_request_floating_text.emit(
-				position + Vector3(0, 2, 0), "Found " + item.display_name + "!", Color.YELLOW
-			)
+			SignalBus.on_request_floating_text.emit(self, "Found " + item.display_name + "!", Color.YELLOW)
 		else:
-			SignalBus.on_request_floating_text.emit(
-				position + Vector3(0, 2, 0), "Inventory Full!", Color.RED
-			)
+			SignalBus.on_request_floating_text.emit(self, "Inventory Full!", Color.RED)
 
 	# OM Notification removed - OM handles this in its own flow now.
 		
@@ -74,7 +70,7 @@ func interact(user_unit):
 
 func take_damage(_amount: int):
 	# Immune to damage
-	SignalBus.on_request_floating_text.emit(position + Vector3(0,2,0), "IMMUNE", Color.GRAY)
+	SignalBus.on_request_floating_text.emit(self, "IMMUNE", Color.GRAY)
 
 
 

@@ -1,5 +1,7 @@
 extends "res://scripts/resources/Ability.gd"
 
+const BASE_RADIUS = 1.0
+
 func _init():
 	display_name = "Acid Spit"
 	description = "Spits acid that creates a hazardous zone."
@@ -40,7 +42,7 @@ func execute(user, target, target_tile: Vector2, gm: GridManager):
 			zone.initialize(tile, gm)
 			
 	SignalBus.on_request_floating_text.emit(
-		gm.get_world_position(center) + Vector3(0, 2, 0), "ACID SPLASH!", Color.LIME
+		gm.get_world_position(center), "ACID SPLASH!", Color.LIME
 	)
 	
 	# Trigger Cooldown
@@ -55,7 +57,8 @@ func get_ai_score(user, target, gm: GridManager) -> float:
 	if dist <= ability_range:
 		score += 50.0
 		# Bonus if target is clumped?
-		var neighbors = gm.get_units_in_radius_world(target.global_position, 2.0)
+		var world_radius = gm.get_world_aoe_radius(BASE_RADIUS)
+		var neighbors = gm.get_units_in_radius_cylindrical(target.global_position, world_radius, 3.0)
 		if neighbors.size() > 1:
 			score += 30.0 * neighbors.size()
 			

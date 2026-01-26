@@ -15,7 +15,7 @@ func _init():
 func on_apply(unit: Node):
 	GameManager.log(LOG_PREFIX, unit.name, " caught FIRE!")
 	SignalBus.on_request_floating_text.emit(
-		unit.position + Vector3(0, 2.5, 0), "BURNING!", Color.ORANGE
+		unit, "BURNING!", Color.ORANGE
 	)
 
 func on_turn_start(unit: Node):

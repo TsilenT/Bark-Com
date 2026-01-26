@@ -288,7 +288,7 @@ static func execute_item_effect(
 			var sb = (target_unit as Node).get_node_or_null("/root/SignalBus") if (target_unit is Node) else null
 			if sb:
 				sb.on_request_floating_text.emit(
-					target_unit.position, "+%d SANITY" % item.value, Color.AZURE
+					target_unit, "+%d SANITY" % item.value, Color.AZURE
 				)
 			return true
 
@@ -522,7 +522,7 @@ static func execute_attack(
 		return "HIT"
 	else:
 		# MISS
-		SignalBus.on_request_floating_text.emit(target.position, "MISS", Color.GRAY)
+		SignalBus.on_request_floating_text.emit(target, "MISS", Color.GRAY)
 
 		# Audio: Miss
 		if GameManager and GameManager.audio_manager:

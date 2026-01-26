@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://testaoelogic"]
+
+[ext_resource type="Script" path="res://tests/verify_aoe_logic_scene.gd" id="1_test"]
+
+[node name="TestScene" type="Node"]
+script = ExtResource("1_test")

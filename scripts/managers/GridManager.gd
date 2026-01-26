@@ -459,6 +459,28 @@ func get_units_in_radius_world(center: Vector3, radius: float) -> Array:
 	return hit_units
 
 
+func get_world_aoe_radius(tile_radius: float) -> float:
+	return tile_radius * TILE_SIZE
+
+func get_units_in_radius_cylindrical(center: Vector3, radius: float, height_tolerance: float = 2.0) -> Array:
+	var hit_units = []
+	var all_units = get_tree().get_nodes_in_group("Units")
+	var center_2d = Vector2(center.x, center.z)
+	
+	for unit in all_units:
+		if is_instance_valid(unit) and "current_hp" in unit and unit.current_hp > 0:
+			# Check Horizontal Distance
+			var unit_2d = Vector2(unit.global_position.x, unit.global_position.z)
+			var dist = unit_2d.distance_to(center_2d)
+			
+			if dist <= radius:
+				# Check Vertical
+				if abs(unit.global_position.y - center.y) <= height_tolerance:
+					hit_units.append(unit)
+				
+	return hit_units
+
+
 func get_tiles_in_radius(center_tile: Vector2, radius: float) -> Array[Vector2]:
 	var tiles: Array[Vector2] = []
 	for tile in grid_data:

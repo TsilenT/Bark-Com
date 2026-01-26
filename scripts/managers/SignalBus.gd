@@ -41,7 +41,7 @@ signal on_request_pause
 signal on_show_hit_chance(percent: int, breakdown: String, target_pos: Vector3)
 signal on_hide_hit_chance
 signal on_turn_banner_finished
-signal on_request_floating_text(pos: Vector3, text: String, color: Color)
+signal on_request_floating_text(target, text: String, color: Color)
 signal on_ui_select_unit(unit)
 signal on_request_camera_focus(target_pos: Vector3)
 signal on_request_vfx(vfx_name: String, pos: Vector3, rotation_vec: Vector3, parent: Node, look_at)

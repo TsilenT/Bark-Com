@@ -158,7 +158,7 @@ func handle_interaction(interactor, target):
 		if target.is_in_group("TreatBags") or target is LootCrate:
 			current_retrievals += 1
 			print(interactor.name, " secured a Treat Bag! Progress: ", current_retrievals, "/", target_count)
-			SignalBus.on_request_floating_text.emit(target.position + Vector3(0,2,0), "SECURED " + str(current_retrievals) + "/" + str(target_count), Color.CYAN)
+			SignalBus.on_request_floating_text.emit(target, "SECURED " + str(current_retrievals) + "/" + str(target_count), Color.CYAN)
 			_emit_update()
 			
 			# Clean up object
@@ -185,7 +185,7 @@ func handle_interaction(interactor, target):
 				rescue_secured = true
 				rescue_win_turn = current_turn + 3
 				print(interactor.name, " secured the human! Hold until Turn ", rescue_win_turn)
-				SignalBus.on_request_floating_text.emit(target.position + Vector3(0,2,0), "SECURED! DEFEND!", Color.GREEN)
+				SignalBus.on_request_floating_text.emit(target, "SECURED! DEFEND!", Color.GREEN)
 				_emit_update()
 			else:
 				print("Already secured target.")

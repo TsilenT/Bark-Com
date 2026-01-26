@@ -219,6 +219,6 @@ func apply_sanity_penalties(units: Array):
 				var dmg = 5
 				unit.take_sanity_damage(dmg)
 				SignalBus.on_request_floating_text.emit(
-					unit.position, "Lost in Fog! -5 Sanity", Color.PURPLE
+					unit, "Lost in Fog! -5 Sanity", Color.PURPLE
 				)
 				# print("FogManager: ", unit.name, " took damage from Fog.")

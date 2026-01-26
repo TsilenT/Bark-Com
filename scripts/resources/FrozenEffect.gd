@@ -12,7 +12,7 @@ func on_apply(unit: Node):
 	if "current_ap" in unit:
 		unit.current_ap = 0
 
-	SignalBus.on_request_floating_text.emit(unit.position + Vector3(0, 2, 0), "FROZEN", Color.BLUE)
+	SignalBus.on_request_floating_text.emit(unit, "FROZEN", Color.BLUE)
 
 
 func on_turn_start(unit: Node):

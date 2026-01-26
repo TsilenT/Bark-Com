@@ -22,4 +22,4 @@ func on_remove(unit):
 		unit.modifiers["damage_taken_mult"] -= 0.15
 
 	if SignalBus:
-		SignalBus.on_request_floating_text.emit(unit.position + Vector3(0, 2, 0), "Vulnerable Ended", Color.WHITE)
+		SignalBus.on_request_floating_text.emit(unit, "Vulnerable Ended", Color.WHITE)

@@ -372,7 +372,7 @@ func gain_xp(amount: int):
 		print(name, " gained ", amount, " XP!")
 	SignalBus.on_xp_gained.emit(name, amount)
 	SignalBus.on_request_floating_text.emit(
-		position + Vector3(0, 1, 0), "+" + str(amount) + " XP", Color.GOLD
+		self, "+" + str(amount) + " XP", Color.GOLD
 	)
 	_check_level_up()
 
@@ -511,7 +511,7 @@ func enter_overwatch():
 	overwatch_aim_bonus = aim_bonus # Must store this for CombatResolver
 	
 	SignalBus.on_combat_action_started.emit(self, null, "Overwatch", position)
-	SignalBus.on_request_floating_text.emit(position + Vector3(0, 2, 0), "OVERWATCH", Color.CYAN)
+	SignalBus.on_request_floating_text.emit(self, "OVERWATCH", Color.CYAN)
 
 
 func move_to(target_grid_pos: Vector2, world_pos: Vector3):
@@ -587,7 +587,7 @@ func take_damage(amount: int):
 		if DEBUG_UNIT:
 			print(name, " lost Overwatch due to damage.")
 
-	SignalBus.on_request_floating_text.emit(global_position + Vector3(0, 2, 0), str(damage_int), Color.RED)
+	SignalBus.on_request_floating_text.emit(self, str(damage_int), Color.RED)
 
 	if current_hp <= 0:
 		# Ensure we don't process further logic if dead
@@ -605,7 +605,7 @@ func heal(amount: int):
 	var old_hp = current_hp
 	current_hp = min(max_hp, current_hp + amount)
 	SignalBus.on_unit_health_changed.emit(self, old_hp, current_hp)
-	SignalBus.on_request_floating_text.emit(global_position + Vector3(0, 2, 0), str(amount), Color.GREEN)
+	SignalBus.on_request_floating_text.emit(self, str(amount), Color.GREEN)
 	SignalBus.on_request_vfx.emit("HealSparkles", position, Vector3.ZERO, self, null)
 
 
@@ -620,7 +620,7 @@ func trigger_bond_growth(other_unit: Unit, value: int):
 		return
 
 	GameManager.modify_bond(name, other_unit.name, value)
-	SignalBus.on_request_floating_text.emit(position + Vector3(0, 2.5, 0), "Bond Up!", Color.PINK)
+	SignalBus.on_request_floating_text.emit(self, "Bond Up!", Color.PINK)
 
 
 func get_active_bond_bonuses() -> Dictionary:
@@ -711,7 +711,7 @@ func die():
 						u.current_panic_state = PanicState.BERSERK
 						u.current_ap = u.max_ap * 2  # Double AP for rage
 						SignalBus.on_request_floating_text.emit(
-							u.position + Vector3(0, 2, 0), "NOOOOO!", Color.RED
+							u, "NOOOOO!", Color.RED
 						)
 
 	# Emit Logic Signal for Main.gd (Persistence)
@@ -750,7 +750,7 @@ func take_sanity_damage(amount: int):
 	if reduction > 0:
 		text = "-" + str(final_amount) + " (Resist)"
 		color = Color.PLUM
-	SignalBus.on_request_floating_text.emit(position + Vector3(0, 1.8, 0), text, color)
+	SignalBus.on_request_floating_text.emit(self, text, color)
 
 	_check_level_up()
 	_check_panic_thresholds()
@@ -793,7 +793,7 @@ func _process_panic_turn_start():
 			print(name, " is no longer Berserk.")
 			current_panic_state = PanicState.NONE
 			panic_turn_count = 0
-			SignalBus.on_request_floating_text.emit(position + Vector3(0, 2, 0), "CALMED", Color.WHITE)
+			SignalBus.on_request_floating_text.emit(self, "CALMED", Color.WHITE)
 
 	# 2. General Panic Recovery (Chance after 3 turns?)
 	elif panic_turn_count >= 3:
@@ -801,7 +801,7 @@ func _process_panic_turn_start():
 			print(name, " snapped out of panic.")
 			current_panic_state = PanicState.NONE
 			panic_turn_count = 0
-			SignalBus.on_request_floating_text.emit(position + Vector3(0, 2, 0), "RECOVERED", Color.WHITE)
+			SignalBus.on_request_floating_text.emit(self, "RECOVERED", Color.WHITE)
 
 
 func _roll_panic_type():
@@ -846,7 +846,7 @@ func _check_level_up():
 		print(name, " LEVELED UP to Level ", rank_level, "!")
 		SignalBus.on_level_up.emit(name, rank_level)
 		SignalBus.on_request_floating_text.emit(
-			position + Vector3(0, 2, 0), "LEVEL UP!", Color.GOLD
+			self, "LEVEL UP!", Color.GOLD
 		)
 
 
@@ -1200,14 +1200,14 @@ func clear_negative_effects():
 		if is_debuff:
 			remove_effect(effect)
 			print(name, " cleansed of ", effect.display_name)
-			SignalBus.on_request_floating_text.emit(position + Vector3(0, 2, 0), "CLEANSED", Color.WHITE)
+			SignalBus.on_request_floating_text.emit(self, "CLEANSED", Color.WHITE)
 	
 	# Also clear panic
 	if current_panic_state != PanicState.NONE:
 		current_panic_state = PanicState.NONE
 		panic_turn_count = 0
 		print(name, " panic cleared!")
-		SignalBus.on_request_floating_text.emit(position + Vector3(0, 2, 0), "CALM", Color.WHITE)
+		SignalBus.on_request_floating_text.emit(self, "CALM", Color.WHITE)
 
 func get_hit_chance_breakdown(target_unit) -> Dictionary:
 	# Standard Attack Calculation

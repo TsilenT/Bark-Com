@@ -63,7 +63,7 @@ func register_survivor(enemy_data: Dictionary):
 	GameManager.log(LOG_PREFIX, "New Nemesis Promoted: ", new_nem.name)
 	save_data()
 	
-	SignalBus.on_request_floating_text.emit(Vector3(0,0,0), "NEMESIS PROMOTED!", Color.RED) # Global notification?
+	SignalBus.on_request_floating_text.emit(Vector3.ZERO, "NEMESIS PROMOTED!", Color.RED)
 
 func _promote_existing(nemesis: Dictionary, recent_data: Dictionary):
 	nemesis.level += 1

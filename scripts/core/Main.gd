@@ -513,7 +513,7 @@ func _apply_debug_effect(type: String):
 	if effect:
 		selected_unit.apply_effect(effect)
 		SignalBus.on_request_floating_text.emit(
-			selected_unit.position + Vector3(0, 2, 0), "+DEBUG " + type, Color.MAGENTA
+			selected_unit, "+DEBUG " + type, Color.MAGENTA
 		)
 
 

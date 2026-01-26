@@ -1,7 +1,8 @@
 extends "res://scripts/resources/Ability.gd"
 
 
-var aoe_radius = 2.5
+const BASE_RADIUS = 2.5
+var aoe_radius: float = BASE_RADIUS
 
 func _init():
 	display_name = "Rocket Launcher"
@@ -38,8 +39,11 @@ func execute(user, _target_unit, target_pos: Vector2, grid_manager) -> String:
 		await missile.impact
 	
 	# AOE Logic
-	var world_radius = aoe_radius * grid_manager.TILE_SIZE
-	var units = grid_manager.get_units_in_radius_world(world_pos, world_radius) 
+	var world_radius = grid_manager.get_world_aoe_radius(aoe_radius)
+	
+	# Use Cylindrical check to ensure units at the edge (with height diff) are hit
+	var units = grid_manager.get_units_in_radius_cylindrical(world_pos, world_radius, 3.0)
+	
 	for unit in units:
 		# Friendly Fire is ENABLED for Rockets
 		unit.take_damage(6)
@@ -49,19 +53,13 @@ func execute(user, _target_unit, target_pos: Vector2, grid_manager) -> String:
 		unit.apply_effect(shred)
 		
 	# Detonate Explosives (Barrels)
-	# We need to find objects in 'Destructible' group. 
-	# GridManager mostly tracks Units, but let's check if we can find barrels.
-	# Or, since barrels are usually physics bodies, we might need an Area check or traverse SceneTree?
-	# Better: GridManager tracks static obstacles. If they have 'take_damage', hit them.
-	# Actually, get_units_in_radius_world returns 'units' from grid_data.
-	# If Barrels are registered as 'unit' in grid_data (they block movement), they are in the list.
-	# Otherwise, we might miss them.
-	# Barrels usually handle their own physics or are props.
-	# Let's try iterating the scene tree group "Destructible" since we don't have a spatial query handy in GridManager specifically for props.
 	var destructibles = user.get_tree().get_nodes_in_group("Destructible")
 	for obj in destructibles:
 		# Check distance
-		if obj.global_position.distance_to(world_pos) <= 2.5:
+		var obj_pos_2d = Vector2(obj.global_position.x, obj.global_position.z)
+		var center_2d = Vector2(world_pos.x, world_pos.z)
+		
+		if obj_pos_2d.distance_to(center_2d) <= world_radius:
 			if obj.has_method("take_damage"):
 				obj.take_damage(999) # INSTANT DETONATION
 				print("Rocket detonated ", obj.name)

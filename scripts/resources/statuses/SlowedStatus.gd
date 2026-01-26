@@ -22,4 +22,4 @@ func on_remove(unit):
 		unit.modifiers["mobility"] += 4
 
 	if SignalBus:
-		SignalBus.on_request_floating_text.emit(unit.position + Vector3(0, 2, 0), "Slowed Ended", Color.WHITE)
+		SignalBus.on_request_floating_text.emit(unit, "Slowed Ended", Color.WHITE)

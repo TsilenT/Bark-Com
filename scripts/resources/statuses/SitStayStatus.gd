@@ -23,4 +23,4 @@ func on_remove(unit):
 		unit.defense -= 20
 
 	if SignalBus:
-		SignalBus.on_request_floating_text.emit(unit.position + Vector3(0, 2, 0), "Sit & Stay Ended", Color.WHITE)
+		SignalBus.on_request_floating_text.emit(unit, "Sit & Stay Ended", Color.WHITE)

@@ -996,18 +996,30 @@ func _show_end_screen(title: String, subtitle: String, color: Color = Color.WHIT
 var hit_chance_target_pos: Vector3 = Vector3.ZERO
 var hit_chance_active: bool = false
 
-var floating_text_queue: Array = []
-var floating_text_timer: float = 0.0
-const FLOATING_TEXT_DELAY: float = 0.4
+# Dictionary mapping Unit (or Object ID) -> { "queue": Array, "timer": float }
+var active_text_queues: Dictionary = {}
+const FLOATING_TEXT_DELAY: float = 0.5
 
 func _process(delta):
-	# Process Queue
-	if floating_text_queue.size() > 0:
-		floating_text_timer -= delta
-		if floating_text_timer <= 0:
-			var msg = floating_text_queue.pop_front()
-			_spawn_floating_text(msg["pos"], msg["text"], msg["color"])
-			floating_text_timer = FLOATING_TEXT_DELAY
+	# Process All Queues
+	var empty_keys = []
+	
+	for unit in active_text_queues.keys():
+		var data = active_text_queues[unit]
+		
+		if data["queue"].size() > 0:
+			data["timer"] -= delta
+			if data["timer"] <= 0:
+				var msg = data["queue"].pop_front()
+				_spawn_floating_text_for_unit(unit, msg["pos"], msg["text"], msg["color"])
+				data["timer"] = FLOATING_TEXT_DELAY
+		
+		# Cleanup empty queues to save memory
+		if data["queue"].is_empty() and data["timer"] <= 0:
+			empty_keys.append(unit)
+			
+	for k in empty_keys:
+		active_text_queues.erase(k)
 
 	# Update Floating UI Positions (Hit Chance)
 	if hit_chance_active and hit_chance_panel.visible:
@@ -1518,15 +1530,43 @@ func _on_options_pressed():
 	if options_panel:
 		options_panel.open()
 
-func _queue_floating_text(pos: Vector3, text: String, color: Color):
-	floating_text_queue.append({"pos": pos, "text": text, "color": color})
+func _queue_floating_text(target, text: String, color: Color):
+	var unit_key = target
+	var pos_snapshot = Vector3.ZERO
+	
+	if typeof(target) == TYPE_OBJECT and target is Node3D:
+		pos_snapshot = target.global_position
+	elif typeof(target) == TYPE_VECTOR3:
+		unit_key = "Global" # Consolidate spatial text to single queue to prevent overlap clutter?
+		pos_snapshot = target
+	elif typeof(target) == TYPE_STRING:
+		unit_key = "Global"
+		
+	if not unit_key: return
 
-func _spawn_floating_text(pos: Vector3, text: String, color: Color):
+	if not active_text_queues.has(unit_key):
+		active_text_queues[unit_key] = {"queue": [], "timer": 0.0}
+		
+	active_text_queues[unit_key]["queue"].append({"pos": pos_snapshot, "text": text, "color": color})
+
+func _spawn_floating_text_for_unit(unit, fixed_pos: Vector3, text: String, color: Color):
 	var cam = get_viewport().get_camera_3d()
 	if not cam: return
-	if cam.is_position_behind(pos): return
+	
+	# Determine Position: Use Unit's current position if valid, else use fixed_pos (snapshot)
+	var target_pos = fixed_pos
+	if is_instance_valid(unit) and unit is Node3D:
+		# Auto-offset applied here so emitters don't need to know about it
+		target_pos = unit.global_position + GameManager.FLOATING_TEXT_OFFSET 
+	elif typeof(unit) == TYPE_STRING and unit == "Global":
+		target_pos = fixed_pos + GameManager.FLOATING_TEXT_OFFSET 
+	else:
+		# Fallback for null unit but valid pos (e.g. Acid Spit)
+		target_pos = fixed_pos + GameManager.FLOATING_TEXT_OFFSET
 
-	var screen_pos = cam.unproject_position(pos)
+	if cam.is_position_behind(target_pos): return
+
+	var screen_pos = cam.unproject_position(target_pos)
 	var lbl = Label.new()
 	lbl.text = text
 	lbl.modulate = color

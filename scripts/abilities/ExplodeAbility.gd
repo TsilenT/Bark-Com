@@ -1,5 +1,7 @@
 extends "res://scripts/resources/Ability.gd"
 
+const BASE_RADIUS = 2.5
+	
 func _init():
 	display_name = "Self Destruct"
 	cooldown_turns = 0
@@ -14,10 +16,10 @@ func execute(user, target, target_tile: Vector2, gm: GridManager):
 	SignalBus.on_request_floating_text.emit(user.position, "BOOM!", Color.ORANGE)
 	
 	# Damage Radius (approx 2.5 tiles)
-	var radius = 2.5 * 2.0 # Converted to World Units? GM.get_units_in_radius_world takes world units.
 	# Tile size is 2.0. So 2.5 tiles = 5.0 units.
+	var world_radius = gm.get_world_aoe_radius(BASE_RADIUS)
 	
-	var victims = gm.get_units_in_radius_world(user.global_position, 5.0)
+	var victims = gm.get_units_in_radius_cylindrical(user.global_position, world_radius, 3.0)
 	
 	for v in victims:
 		if v != user:

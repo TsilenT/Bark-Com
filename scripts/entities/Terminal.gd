@@ -20,7 +20,7 @@ func _ready():
 
 func take_damage(_amount: int):
 	# Terminals are immune to damage
-	SignalBus.on_request_floating_text.emit(position, "IMMUNE", Color.GRAY)
+	SignalBus.on_request_floating_text.emit(self, "IMMUNE", Color.GRAY)
 
 
 func _setup_visuals():
@@ -68,14 +68,14 @@ func on_hack_result(success: bool):
 		_update_visuals_hacked()
 		emit_signal("hack_complete", true)
 		SignalBus.on_request_floating_text.emit(
-			position + Vector3(0, 2.5, 0), "HACKED!", Color.GREEN
+			self, "HACKED!", Color.GREEN
 		)
 		if GameManager and GameManager.audio_manager:
 			GameManager.audio_manager.play_sfx("SFX_Menu")  # Placeholder for Hack Sound
 	else:
 		emit_signal("hack_complete", false)  # Failure trigger
 		SignalBus.on_request_floating_text.emit(
-			position + Vector3(0, 2.5, 0), "ACCESS DENIED", Color.RED
+			self, "ACCESS DENIED", Color.RED
 		)
 		if GameManager and GameManager.audio_manager:
 			GameManager.audio_manager.play_sfx("SFX_Miss")  # Placeholder for Error

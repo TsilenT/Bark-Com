@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://c1x16ogp0vycn"]
+
+[ext_resource type="Script" path="res://tests/verify_floating_text_scene.gd" id="1_test"]
+
+[node name="TestScene" type="Node"]
+script = ExtResource("1_test")
