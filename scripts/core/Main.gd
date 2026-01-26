@@ -1461,8 +1461,8 @@ func _on_ability_requested(ability):
 	# KEEP HERE for now, using Controller state.
 	var valid = ability.get_valid_tiles(grid_manager, selected_unit)
 	var gv = get_node("GridVisualizer")
-	if gv:
-		gv.show_highlights(valid, Color.YELLOW)
+	# Legacy visual call removed - Handled by PlayerMissionController
+	# if gv: gv.show_highlights(valid, Color.YELLOW)
 
 
 func _on_item_requested(item, slot_index):
@@ -1491,8 +1491,8 @@ func _on_item_requested(item, slot_index):
 				valid_tiles.append(tile)
 
 	var gv = get_node("GridVisualizer")
-	if gv:
-		gv.show_highlights(valid_tiles, Color.YELLOW)
+	# Legacy visual call removed - Handled by PlayerMissionController
+	# if gv: gv.show_highlights(valid, Color.YELLOW)
 
 	SignalBus.on_combat_log_event.emit("Select Target for " + item.display_name, Color.WHITE)
 

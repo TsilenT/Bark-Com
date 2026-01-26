@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://verify_maptile_runner"]
+
+[ext_resource type="Script" path="res://tests/verify_maptile_system.gd" id="1_script"]
+
+[node name="VerifyMapTileRunner" type="Node3D"]
+script = ExtResource("1_script")

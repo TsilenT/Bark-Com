@@ -1,6 +1,17 @@
 extends Node
 class_name LevelGenerator
 
+## LevelGenerator
+##
+## Procedural Map Generator.
+## Generates a 20x20 Grid by stitching together 4x4 Chunks (5x5 tiles each).
+##
+## Features:
+## - Chunk-based Architecture: Uses predefined 5x5 templates (e.g. GARDEN, SNIPER_NEST).
+## - Biome Support: Assigns biomes (Street, Garden, Indoors) to chunks.
+## - Connectivity Validation: Ensures the generated map is playable via Flood Fill.
+## - Fallback Mechanism: Generates a flat safe map if validation fails 10 times.
+
 # Constants
 const LOG_PREFIX = "LevelGenerator: "
 const CHUNK_SIZE = 5
@@ -16,6 +27,7 @@ const TILE_SIZE = 2.0
 # + = High Ground (Walkable, Elevation 1)
 # ^ = Ramp (Walkable, Transitions Elevation 0<->1)
 # = = Ladder (Walkable, Ladder Tile)
+# | = Door (Walkable initially, converted to Door entity)
 
 const CHUNK_KITCHEN = ["##.##", "#...#", ".H.H.", ".....", "##.##"]
 
@@ -105,6 +117,14 @@ static func get_biome_string(biome: int) -> String:
 		_: return "Street"
 
 
+## Generates a new 20x20 Level Dictionary.
+## Returns `grid_data` format: { coordinates: { type, is_walkable, elevation, ... } }
+##
+## Process:
+## 1. Selects 16 Chunks (randomly or via override).
+## 2. Applies Biome Logic (Street, Garden, etc).
+## 3. Stitches chunks into a single Grid.
+## 4. Validates Connectivity (Flood Fill). Retries if failing.
 func generate_level() -> Dictionary:
 	var final_grid = {}
 	var rng = RandomNumberGenerator.new()
@@ -222,9 +242,50 @@ func generate_level() -> Dictionary:
 		print(LOG_PREFIX, "GENERATION FALLBACK. Generating Emergency Safe Map.")
 		_generate_safe_map(final_grid)
 
+	# Post-Process: Validate Door Logic (Prevent Floating Doors)
+	_validate_door_placement(final_grid)
+
 	return final_grid
 
 
+func _validate_door_placement(grid: Dictionary):
+	var doors_to_remove = []
+	
+	for pos in grid:
+		var d = grid[pos]
+		if d.get("variant") == "Door":
+			# Needs opposing walls (N/S or E/W)
+			var n_north = pos + Vector2(0, -1)
+			var n_south = pos + Vector2(0, 1)
+			var n_east = pos + Vector2(1, 0)
+			var n_west = pos + Vector2(-1, 0)
+			
+			var walls_ns = _is_wall(grid, n_north) and _is_wall(grid, n_south)
+			var walls_ew = _is_wall(grid, n_east) and _is_wall(grid, n_west)
+			
+			if not walls_ns and not walls_ew:
+				doors_to_remove.append(pos)
+				print(LOG_PREFIX, "Removing Invalid Door at ", pos)
+
+	for pos in doors_to_remove:
+		# Convert to standard Floor
+		grid[pos]["variant"] = ""
+		grid[pos]["destructible"] = false
+		grid[pos]["type"] = 0 # GROUND
+		grid[pos]["cover_height"] = 0.0
+
+
+func _is_wall(grid: Dictionary, pos: Vector2) -> bool:
+	if not grid.has(pos): return false
+	var t = grid[pos].get("type", 0)
+	# Obstacle (1) or High Cover (3) or Destructible Wall (Door variant check?)
+	return t == 1 or t == 3 or (t == 2 and grid[pos].get("variant") == "Wall")
+
+
+## Validates that the map is fully connected (Player can reach all walkable tiles).
+## Uses a Flood Fill algorithm starting from the default Spawn Point (1, 1).
+##
+## @return True if reachable ratio >= 99%.
 func _validate_connectivity(grid: Dictionary) -> bool:
 	# Flood Fill from assumed Player Start
 	# Main.gd spawns at (1, 1)
@@ -360,6 +421,17 @@ func _get_world_pos(grid_pos: Vector2, elevation_offset: float = 0.0) -> Vector3
 	return Vector3(grid_pos.x * TILE_SIZE, elevation_offset, grid_pos.y * TILE_SIZE)
 
 
+## Translates a specific Chunk Template into Global Grid Data.
+## Handles Char Code mapping -> Tile Type, Cover Height, Walkability.
+##
+## Mapping:
+## - '#' = OBSTACLE (Full Cover)
+## - 'H' = HIGH COVER (Full)
+## - 'L' = LOW COVER (Half)
+## - 'W' = DESTRUCTIBLE WALL
+## - '^' = RAMP
+## - '=' = LADDER
+## - '|' = DOOR
 func _stitch_chunk(
 	grid_data: Dictionary, template: Array, offset_x: int, offset_y: int, biome: int
 ):

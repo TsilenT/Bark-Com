@@ -322,8 +322,18 @@ static func get_cover_height_at_pos(
 				if dir_to_attacker.dot(dir_to_neighbor) > 0.7:
 					
 					# 3. Check Elevation (Is it TALLER than my feet?)
+					# Also factor in Attacker Elevation (High Ground Peeking)
 					var n_elev = n_data.get("elevation", 0)
-					var effective = (n_elev + raw_cover) - my_elev
+					
+					# Get Attacker Elevation
+					var attacker_elev = 0
+					if gm.grid_data.has(attacker_pos):
+						attacker_elev = gm.grid_data[attacker_pos].get("elevation", 0)
+						
+					var elevation_advantage = max(0, attacker_elev - my_elev)
+					
+					# Effective height relative to target's feet, minus elevation advantage
+					var effective = (n_elev + raw_cover) - my_elev - elevation_advantage
 					
 					if effective > max_cover:
 						max_cover = effective

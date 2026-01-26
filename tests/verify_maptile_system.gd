@@ -1,7 +1,8 @@
-extends SceneTree
+extends Node3D
 
-# Reconstructed verify_maptile_system.gd
+# verify_maptile_system_runner.gd
 # Tests basic MapTile generation and highlighting
+# Converted to Node3D + TestSafeGuard to prevent hangs.
 
 class MockGridManager extends Node:
 	signal grid_generated
@@ -10,15 +11,21 @@ class MockGridManager extends Node:
 	func get_grid_coord(pos): return Vector2(round(pos.x/2), round(pos.z/2))
 	func get_world_position(coord): return Vector3(coord.x*2, 0, coord.y*2)
 
-func _init():
+func _ready():
 	print("Starting MapTile Verification...")
-	var root = get_root()
 	
+	# Add Watchdog
+	var guard = load("res://tests/TestSafeGuard.gd").new()
+	add_child(guard)
+	
+	_run_test()
+
+func _run_test():
 	# 1. Mock GridManager
 	var gm = MockGridManager.new()
 	gm.name = "GridManager"
-	gm.add_to_group("GridManager") # Just in case
-	root.add_child(gm)
+	gm.add_to_group("GridManager") 
+	add_child(gm)
 	
 	# Populate Mock Data (10 tiles)
 	for x in range(2):
@@ -32,11 +39,15 @@ func _init():
 	var viz = Node3D.new()
 	viz.set_script(viz_script)
 	viz.grid_manager = gm # Explicitly assign mock
-	root.add_child(viz)
+	add_child(viz)
+	
+	await get_tree().process_frame
 	
 	# Trigger Generation
 	print("Testing Grid Visualization...")
 	viz._on_grid_generated()
+	
+	await get_tree().process_frame # Yield to allow updates
 	
 	# Check Children
 	var tile_count = 0
@@ -49,24 +60,30 @@ func _init():
 		print("PASS: Correct number of MapTiles spawned.")
 	else:
 		print("FAIL: Expected 10 tiles, found ", tile_count)
-		quit(1)
+		get_tree().quit(1)
 		return
 		
 	# Test Highlights
 	print("Testing Shader Highlights...")
 	if viz.has_method("show_highlights"):
-		viz.show_highlights([Vector2(0,0)], Color.RED)
+		viz.show_highlights([Vector2(0,0)], viz.VisualType.MOVE)
 		print("PASS: show_highlights called without error.")
 	else:
 		print("FAIL: show_highlights method missing.")
-		quit(1)
+		get_tree().quit(1)
 		return
+	
+	await get_tree().process_frame
 
 	if viz.has_method("clear_highlights"):
 		viz.clear_highlights()
 		print("PASS: clear_highlights called without error.")
 
 	print("All MapTile tests passed.")
-	viz.free()
-	gm.free()
-	quit()
+	
+	# Cleanup
+	viz.queue_free()
+	gm.queue_free()
+	
+	await get_tree().process_frame
+	get_tree().quit(0)

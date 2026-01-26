@@ -7,6 +7,7 @@ extends Node
 var grid_manager
 var enemy
 var mock_tm
+var test_conn
 
 func _ready():
 	print("--- TEST START: Movement Hang ---")
@@ -34,6 +35,12 @@ func setup_env():
 				"type": 0, "is_walkable": true, "world_pos": Vector3(x * 2.0, 0, y * 2.0)
 			}
 	grid_manager._setup_astar()
+	
+	# Disable Audio to prevent leaks
+	if gm and gm.audio_manager:
+		if is_instance_valid(gm.audio_manager):
+			gm.audio_manager.queue_free()
+		gm.audio_manager = null
 
 var signal_received = false
 
@@ -50,7 +57,7 @@ func run_test():
 	print("Triggering _perform_move...")
 	
 	# Spy on signal
-	enemy.movement_finished.connect(func(): 
+	test_conn = enemy.movement_finished.connect(func(): 
 		print("Signal movement_finished received!")
 		signal_received = true
 	)
@@ -71,8 +78,12 @@ func run_test():
 	
 	print("Movement started. Waiting for completion...")
 	
-	# Wait enough time for movement (0.25s per tile * 2 = 0.5s)
-	await get_tree().create_timer(1.0).timeout
+	# Polling Wait (Max 1.0s) rather than hard sleep
+	var max_wait = 1.0
+	var waited = 0.0
+	while not signal_received and waited < max_wait:
+		await get_tree().create_timer(0.05).timeout
+		waited += 0.05
 	
 	if signal_received:
 		print("✅ PASS: Movement finished signal emitted.")
@@ -92,18 +103,49 @@ func _finalize(code):
 		print("✅ ALL TESTS PASSED")
 	else:
 		print("❌ FAILED")
+		
+	# Disconnect Signal
+	if test_conn and test_conn.is_valid():
+		test_conn.disconnect()
 	
-	# Cleanup
-	TestUtils.free_children(self)
-	
+	# Explicitly remove children first (Immediate Free)
 	if enemy and is_instance_valid(enemy):
-		enemy.queue_free()
+		# Manual Resource Cleanup to prevent leak
+		if enemy.get("abilities"): enemy.abilities.clear()
+		if enemy.get("behavior_resource"): enemy.behavior_resource = null
+		if enemy.get("enemy_data"): enemy.enemy_data = null
+		
+		remove_child(enemy)
+		enemy.free()
+		enemy = null
+		
 	if grid_manager and is_instance_valid(grid_manager):
-		grid_manager.queue_free()
+		if grid_manager.astar:
+			grid_manager.astar.clear()
+			grid_manager.astar = null # Release Ref
+		remove_child(grid_manager)
+		grid_manager.free()
+		grid_manager = null
+		
+	# Clean up any remaining children (Guards etc)
+	for c in get_children():
+		c.free()
 	
 	# Clear Factory Cache
 	var Factory = load("res://scripts/utils/EnemyModelFactory.gd")
 	if Factory and "mat_cache" in Factory:
 		Factory.mat_cache.clear()
 
+	# Stop Audio to release stream refs
+	var am = get_node_or_null("/root/AudioManager")
+	if am and am.has_method("stop_all"):
+		am.stop_all()
+
 	await TestUtils.finalize_and_quit(get_tree(), code)
+
+func _exit_tree():
+	# Redundant safety - Disconnect
+	if test_conn and test_conn.is_valid(): test_conn.disconnect() 
+	# Redundant safety
+	if grid_manager and is_instance_valid(grid_manager): grid_manager.free()
+	if enemy and is_instance_valid(enemy): enemy.free()

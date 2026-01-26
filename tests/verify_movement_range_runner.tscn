@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://verify_movement_range_runner"]
+
+[ext_resource type="Script" path="res://tests/verify_movement_range.gd" id="1_script"]
+
+[node name="VerifyMovementRangeRunner" type="Node3D"]
+script = ExtResource("1_script")

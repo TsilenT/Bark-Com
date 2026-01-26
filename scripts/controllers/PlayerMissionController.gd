@@ -1,14 +1,32 @@
 extends Node
 class_name PlayerMissionController
+
+## PlayerMissionController
+##
+## Handles all Player inputs during the MISSION state.
+## Acts as the primary interface between the user (Mouse/Keyboard) and the Game Logic.
+##
+## Core Responsibilities:
+## 1. Input State Machine: Manages modes like MOVING, TARGETING, SELECTING.
+## 2. Selection: Tracks the currently selected Unit and Ability.
+## 3. Visualization: Updates GridVisualizer (Overlays, Paths, Hit Chances).
+## 4. Input Routing: Determines if a click is a Move, Attack, or Interaction.
+
 const LOG_PREFIX = "PMC: "
 
 const StandardAttack = preload("res://scripts/abilities/StandardAttack.gd")
+# Explicit preload to avoid cyclic dependency/cache issues with Global Class
+const GridVisualizerScript = preload("res://scripts/ui/GridVisualizer.gd")
+
 var default_attack: StandardAttack
 
 # Input States
 enum InputState {
+	## Default state. Selecting units or inspecting the field.
 	SELECTING,
+	## Unit selected, waiting for movement destination click.
 	MOVING,
+	## Ability/Attack selected, waiting for target selection.
 	TARGETING,        # Standard Attack
 	ABILITY_TARGETING,
 	ITEM_TARGETING,
@@ -32,6 +50,12 @@ var _last_debug_hover: Vector2 = Vector2(-999, -999)
 var _last_hovered_object: Node = null
 var _tactical_view_active: bool = false
 var _alt_held: bool = false
+var _last_threat_target = null # For cleaning up Visual Threat Contexts
+
+func _can_set_threat(obj):
+	if is_instance_valid(obj) and "status_ui" in obj and obj.status_ui and obj.status_ui.has_method("set_threat_context"):
+		return true
+	return false
 
 # Signals (To update UI/Visuals)
 signal input_state_changed(new_state)
@@ -88,7 +112,7 @@ func set_input_state(new_state: int):
 			# Only show reachable tiles if unit has AP to move
 			if _can_unit_move():
 				var reachable = grid_manager.get_reachable_tiles(selected_unit.grid_pos, selected_unit.mobility)
-				gv.show_highlights(reachable, Color(0, 1, 1, 0.4)) # Cyan transparent
+				gv.show_highlights(reachable, GridVisualizerScript.VisualType.MOVE)
 			else:
 				# Feedback handled by enter_movement_mode or suppressed
 				pass
@@ -97,7 +121,43 @@ func set_input_state(new_state: int):
 		var gv = _get_grid_visualizer()
 		if gv and grid_manager:
 			var valid = selected_ability.get_valid_tiles(grid_manager, selected_unit)
-			gv.show_highlights(valid, Color(1, 0, 0, 0.4)) # Red transparent
+			gv.show_highlights(valid, GridVisualizerScript.VisualType.ATTACK)
+			
+	if new_state == InputState.ITEM_TARGETING and pending_item_action:
+		var gv = _get_grid_visualizer()
+		if gv and grid_manager:
+			var item = pending_item_action
+			var valid = []
+			
+			if item.get("ability_ref"):
+				# Ability-based Item
+				var ability_res = item.ability_ref
+				if ability_res is Script or ability_res is Resource:
+					var ability = ability_res.new()
+					if selected_unit and ability.has_method("update_stats"):
+						ability.update_stats(selected_unit)
+					valid = ability.get_valid_tiles(grid_manager, selected_unit)
+					# Deduplicate
+					var unique = {}
+					var clean_valid = []
+					for t in valid:
+						if not unique.has(t):
+							unique[t] = true
+							clean_valid.append(t)
+					valid = clean_valid
+			else:
+				# Simple Range Item
+				var range_val = 1
+				if "range_tiles" in item: range_val = item.range_tiles
+				elif "range" in item: range_val = item.range
+				elif "ability_range" in item: range_val = item.ability_range
+				
+				# Calc circle
+				if selected_unit:
+					valid = grid_manager.get_tiles_in_range(selected_unit.grid_pos, range_val)
+
+			# Use Item Visual Type (Yellow)
+			gv.show_highlights(valid, GridVisualizerScript.VisualType.ITEM)
 
 func _clear_overlays():
 	if main_node.has_method("_clear_targeting_visuals"):
@@ -114,7 +174,20 @@ func _clear_overlays():
 		
 		# Atomic Cleanup
 		_hide_attack_feedback(gv)
+		
+		# Clear Threat Context
+		if _last_threat_target and is_instance_valid(_last_threat_target):
+			if _can_set_threat(_last_threat_target):
+				_last_threat_target.status_ui.clear_threat_context()
+			_last_threat_target = null
 
+## Central Input Router for 3D Tile Clicks.
+## Called by InputManager via Raycast.
+##
+## Dispatches logic based on `current_input_state`:
+## - MOVING: Validates and executes movement.
+## - TARGETING: Validates and executes attacks.
+## - SELECTING: Handles Unit Selection or Interacting with world props.
 func handle_tile_clicked(grid_pos: Vector2, button_index: int):
 	# print("PMC: handle_tile_clicked at ", grid_pos, " Btn: ", button_index, " State: ", current_input_state)
 # ... (Lines 59-109 Unchanged)
@@ -424,6 +497,10 @@ func _handle_move_click(grid_pos: Vector2):
 			_signal_bus.on_combat_log_event.emit("Cannot Stop Here", Color.RED)
 		return
 
+## Validates and executes an ability attack at the given position.
+## - Checks if target is valid for the selected ability.
+## - Checks if target is within Range / Valid Tiles.
+## - Delegates execution to Main (which calls CombatResolver).
 func _handle_ability_click(grid_pos: Vector2):
 	var target = _resolve_target_at(grid_pos)
 	
@@ -578,6 +655,22 @@ func _preview_attack(grid_pos: Vector2):
 	# 1. Resolve potential target (Unit, Prop, Terminal, or generic position)
 	target_obj = _resolve_target_at(grid_pos)
 	
+	# THREAT CONTEXT SYNC (Visuals mismatch fix)
+	# Clear previous contexts first (global cleanup might be messy, so just check last target?)
+	# Ideally, clear ALL contexts on all units, but that's slow.
+	# We rely on 'handle_mouse_hover' calling clear when we move away? No.
+	# We need a tracker for the last unit we modified.
+	
+	# NOTE: We need to inject this tracking into PMC to avoid stale states.
+	if _last_threat_target and is_instance_valid(_last_threat_target) and _last_threat_target != target_obj:
+		if _can_set_threat(_last_threat_target):
+			_last_threat_target.status_ui.clear_threat_context()
+		_last_threat_target = null
+
+	if target_obj and _can_set_threat(target_obj) and selected_unit:
+		target_obj.status_ui.set_threat_context(selected_unit.grid_pos)
+		_last_threat_target = target_obj
+	
 	# NEW: Show Barrel AOE if Targeting
 	var show_barrel_aoe = false
 	if current_input_state == InputState.TARGETING:
@@ -680,9 +773,8 @@ func _preview_item(grid_pos: Vector2, gv: Node):
 				if selected_unit and ability.has_method("update_stats"):
 					ability.update_stats(selected_unit)
 
-				# A. Valid Tiles Helper (Yellow to match Standard Ability)
-				var valid = ability.get_valid_tiles(grid_manager, selected_unit)
-				gv.show_highlights(valid, Color(1, 1, 0, 0.4)) 
+				# A. Valid Tiles Helper (Now handled in set_input_state)
+				# gv.show_highlights(valid, Color(1, 1, 0, 0.1)) 
 				
 				# B. AOE Helper
 				if "aoe_radius" in ability:
@@ -731,6 +823,8 @@ func _preview_item(grid_pos: Vector2, gv: Node):
 
 # --- Actions ---
 
+## Resets the controller state to SELECTING.
+## Clears selected abilities, items, and UI visualizers.
 func cancel_action():
 	set_input_state(InputState.SELECTING)
 	selected_ability = null

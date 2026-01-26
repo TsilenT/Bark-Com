@@ -1,4 +1,5 @@
 extends Node3D
+class_name GridVisualizer
 
 @export var grid_manager: Node
 
@@ -44,20 +45,51 @@ func clear_visuals():
 	tile_meshes.clear()
 
 
-func show_highlights(tiles: Array, color: Color):
+
+enum VisualType {
+	MOVE,      # Cyan 0.4
+	ATTACK,    # Red 0.15 (Ability/Attack)
+	ITEM,      # Yellow 0.15
+	AOE,       # Red Tint 0.4
+	WARNING    # Orange 0.4
+}
+
+var _visual_settings = {
+	VisualType.MOVE: { "color": Color.CYAN, "alpha": 0.4 },
+	VisualType.ATTACK: { "color": Color.YELLOW, "alpha": 0.15 },
+	VisualType.ITEM: { "color": Color.YELLOW, "alpha": 0.15 },
+	VisualType.AOE: { "color": Color(1, 0.4, 0.4), "alpha": 0.4 },
+	VisualType.WARNING: { "color": Color(1, 0.5, 0), "alpha": 0.4 }
+}
+
+func show_highlights(tiles: Array, type: int = VisualType.MOVE):
 	clear_highlights()
 	
 	if tiles.is_empty():
 		return
 	
-	# Shared Material
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	if not _visual_settings.has(type):
+		push_error("GridVisualizer: Unknown highlight type " + str(type))
+		return
+		
+	var settings = _visual_settings[type]
+	var base_color = settings["color"]
+	var alpha = settings["alpha"]
 	
-	# Shared Mesh (Flat Box)
+	# Standard Material
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = base_color
+	mat.albedo_color.a = alpha # Explicit Alpha
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	
+	# Standard Mesh (Flat Box)
 	var mesh = BoxMesh.new()
 	mesh.size = Vector3(1.7, 0.1, 1.7) # Slightly smaller than tile
+	
+	# Deduplication is handled by caller (PMC) or implicit via map logic, 
+	# but we'll add a local check just in case to be safe.
+	var processed = {}
 	
 	for tile_entry in tiles:
 		var coord = Vector2.ZERO
@@ -65,6 +97,9 @@ func show_highlights(tiles: Array, color: Color):
 			coord = tile_entry
 		elif tile_entry is Dictionary and tile_entry.has("world_pos"):
 			if grid_manager: coord = grid_manager.get_grid_coord(tile_entry["world_pos"])
+			
+		if processed.has(coord): continue
+		processed[coord] = true
 			
 		var world_pos = Vector3.ZERO
 		if grid_manager:
@@ -74,7 +109,8 @@ func show_highlights(tiles: Array, color: Color):
 			var mi = MeshInstance3D.new()
 			mi.mesh = mesh
 			mi.material_override = mat
-			mi.position = world_pos + Vector3(0, 0.15, 0) # Just above ground
+			# Height: 0.05 to prevent floating but avoid z-fighting.
+			mi.position = world_pos + Vector3(0, 0.05, 0) 
 			_highlights_container.add_child(mi)
 
 func clear_highlights():

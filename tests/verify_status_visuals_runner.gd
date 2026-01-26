@@ -32,7 +32,7 @@ func _ready():
 	# Setup Data: Unit at (1,1). High Ground (Elev 1). Cover at (1,0) (North).
 	gm.grid_data = {
 		Vector2(1,1): {"elevation": 1, "cover_height": 0.0},
-		Vector2(1,0): {"elevation": 0, "cover_height": 1.0} # Half Cover North
+		Vector2(1,0): {"elevation": 1, "cover_height": 1.0} # Half Cover North, on High Ground
 	}
 	
 	# 2. Setup Unit
@@ -80,6 +80,7 @@ func _ready():
 	var cover_targets = []
 	
 	for child in ui.get_children():
+		print("Child: ", child.name, " Type: ", child.get_class(), " Pos: ", child.global_position)
 		if child is Sprite3D and child.texture:
 			if "high_ground" in child.texture.resource_path:
 				print("PASS: High Ground Icon Found.")
@@ -129,7 +130,8 @@ func _ready():
 	# So no cover here.
 	
 	# Add Cover at (2,0) (East)
-	gm.grid_data[Vector2(2,0)] = {"elevation": 0, "cover_height": 1.0}
+	# Add Cover at (2,0) (East). High Wall (2.0) needed to cover Elev 1 unit.
+	gm.grid_data[Vector2(2,0)] = {"elevation": 0, "cover_height": 2.0}
 	
 	# Re-Emit to catch new data
 	SignalBus.on_unit_step_completed.emit(mock_unit)

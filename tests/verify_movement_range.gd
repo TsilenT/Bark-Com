@@ -1,16 +1,22 @@
-extends SceneTree
+extends Node3D
 
+# verify_movement_range.gd (Refactored)
 const GridManager = preload("res://scripts/managers/GridManager.gd")
 
-func _init():
+func _ready():
+	print("--- TEST START: Verify Movement Range ---")
+	
+	# Watchdog
+	var guard = load("res://tests/TestSafeGuard.gd").new()
+	add_child(guard)
+
+	_run_test()
+
+func _run_test():
 	var gm = GridManager.new()
-	var root = Node3D.new()
-	root.add_child(gm)
+	add_child(gm)
 	
 	# Override LevelGenerator to produce a FLAT EMPTY GRID
-	# We can't easily override internal logic of generate_grid() which loads LevelGenerator properly?
-	# We can manually set grid_data.
-	
 	print("--- SETTING UP FLAT GRID 20x20 ---")
 	gm.grid_data.clear()
 	for x in range(20):
@@ -30,6 +36,8 @@ func _init():
 	# Expectation: Square shape (Chebyshev) due to cost=1 diagonals
 	var start = Vector2(10, 10)
 	var mobility = 6
+	
+	await get_tree().process_frame # Yield
 	
 	print("\n--- TEST 1: Mobility ", mobility, " from ", start, " ---")
 	var tiles = gm.get_reachable_tiles(start, mobility)
@@ -59,6 +67,8 @@ func _init():
 		print("SUCCESS: X-Range matches mobility (", expected_min_x, "..", expected_max_x, ")")
 	else:
 		print("FAILURE: X-Range mismatch! Expected ", expected_min_x, "..", expected_max_x)
+		get_tree().quit(1)
+		return
 		
 	# Check Corners (Diagonal reach)
 	var corner = start + Vector2(mobility, mobility)
@@ -66,6 +76,8 @@ func _init():
 		print("SUCCESS: Corner ", corner, " is reachable (Diagonal Cost = 1).")
 	else:
 		print("FAILURE: Corner ", corner, " is NOT reachable. (Maybe Cost > 1?)")
+		get_tree().quit(1)
+		return
 		
 	# Visualize (ASCII)
 	print("\n--- GRID VISUALIZATION ---")
@@ -81,5 +93,7 @@ func _init():
 					line += " . "
 		print(line)
 		
-	root.free()
-	quit()
+	gm.queue_free()
+	
+	await get_tree().process_frame
+	get_tree().quit(0)

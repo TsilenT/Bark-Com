@@ -1,13 +1,23 @@
-extends SceneTree
+extends Node3D
 
-func _init():
+# test_visualizer_load.gd (Refactored)
+
+func _ready():
 	print("--- TEST: Visualizer Load ---")
+	
+	# Watchdog
+	var guard = load("res://tests/TestSafeGuard.gd").new()
+	add_child(guard)
+
+	_run_test()
+	
+func _run_test():
 	var scene = load("res://scenes/debug/ModelVisualizer.tscn")
 	var instance = scene.instantiate()
-	root.add_child(instance)
+	add_child(instance)
 	
 	# Simulate one frame
-	await process_frame
+	await get_tree().process_frame
 	
 	print("Visualizer instantiated successfully.")
 	
@@ -19,9 +29,13 @@ func _init():
 		
 	# Test switching to Enemy mode
 	instance._on_mode_changed(1) # Enemy
+	
+	await get_tree().process_frame
+	
 	if instance.pivot.get_child_count() > 0:
 		print("Spawned enemy model successfully.")
 	else:
 		print("Failed to spawn enemy model.")
 		
-	quit(0)
+	await get_tree().process_frame
+	get_tree().quit(0)

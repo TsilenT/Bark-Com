@@ -130,6 +130,17 @@ func _create_icons(icons: Array):
 # NEW: Directional Cover Indicators (Holograms)
 # --------------------------------------------------------------------------
 var cover_indicators: Array[Node3D] = []
+var _threat_pos: Vector2 = Vector2(-999, -999) # Grid Position of current attacker (if any)
+var _threat_active: bool = false
+
+func set_threat_context(pos: Vector2):
+	_threat_pos = pos
+	_threat_active = true
+	_refresh_full() # Trigger redraw
+
+func clear_threat_context():
+	_threat_active = false
+	_refresh_full()
 
 func _clear_cover_indicators():
 	for c in cover_indicators:
@@ -145,6 +156,20 @@ func _update_directional_cover_indicators(gm: Node):
 	# Use new position from Unit
 	var pos = unit.grid_pos
 	
+	# My Elevation (for relative height check)
+	var my_elev = 0
+	if gm.grid_data.has(pos):
+		my_elev = gm.grid_data[pos].get("elevation", 0)
+	
+	# Attacker Elevation (if active context)
+	var attacker_elev = 0
+	if _threat_active and gm.grid_data.has(_threat_pos):
+		attacker_elev = gm.grid_data[_threat_pos].get("elevation", 0)
+
+	var elevation_advantage = 0
+	if _threat_active:
+		elevation_advantage = max(0, attacker_elev - my_elev)
+	
 	# Check 4 Neighbors
 	var directions = {
 		Vector2(0, -1): 180,   # North (Look -Z)
@@ -153,16 +178,37 @@ func _update_directional_cover_indicators(gm: Node):
 		Vector2(-1, 0): -90    # West (Look -X)
 	}
 	
-	# Calculate Base Position using GridManager (Robust against Unit Transform issues)
+	# Calculate Base Position using GridManager
 	var base_pos = gm.get_world_position(pos)
+	
+	# Direction to threat (for filtering which wall is affected)
+	var dir_to_threat = Vector2.ZERO
+	if _threat_active:
+		dir_to_threat = (_threat_pos - pos).normalized()
 	
 	for dir in directions:
 		var target = pos + dir
 		if gm.grid_data.has(target):
-			# FIX: Only show cover if 'cover_height' > 0
-			var h = gm.grid_data[target].get("cover_height", 0.0)
-			if h > 0:
-				_spawn_indicator(dir, directions[dir], h, base_pos)
+			var tile = gm.grid_data[target]
+			var raw_cover = tile.get("cover_height", 0.0)
+			
+			if raw_cover > 0:
+				var n_elev = tile.get("elevation", 0)
+				
+				# 1. Base Effective Height (Relative to my feet)
+				var effective = (n_elev + raw_cover) - my_elev
+				
+				# 2. Threat Negation
+				# If this wall is BETWEEN me and the threat, apply elevation penalty
+				if _threat_active and dir_to_threat.dot(dir.normalized()) > 0.7:
+					effective -= elevation_advantage
+				
+				# 3. Determine Visuals
+				if effective >= 1.5:
+					_spawn_indicator(dir, directions[dir], 2.0, base_pos)
+				elif effective >= 0.5:
+					_spawn_indicator(dir, directions[dir], 1.0, base_pos)
+				# Else: < 0.5 means No Cover (Broken/Hidden)
 
 func _spawn_indicator(dir: Vector2, rot_y: float, height: float, base_pos: Vector3):
 	var mesh_inst = MeshInstance3D.new()

@@ -1,6 +1,17 @@
 extends Node
 class_name GridManager
 
+## GridManager
+##
+## Central Singleton responsible for the Tactical Grid, Pathfinding, and Tile Data.
+## MANAGED BY: GameManager (Autoload)
+##
+## Core Responsibilities:
+## 1. Storage: Holds `grid_data` dictionary (Coord -> Tile Properties).
+## 2. Pathfinding: Wraps `AStar3D` for movement logic.
+## 3. Querying: Provides helpers for Cover, LoS checks (via Walkability), and Range.
+## 4. State Management: Tracks dynamic occupancy (Units/Props) via `refresh_pathfinding`.
+
 # Signals
 signal grid_generated
 
@@ -73,6 +84,14 @@ func _get_point_id(coord: Vector2) -> int:
 	return int(coord.y) * 100 + int(coord.x)
 
 
+## Initializes the AStar3D graph based on the generated `grid_data`.
+## Called once after level generation.
+##
+## Logic:
+## 1. Adds all Points (Tiles) to AStar.
+## 2. Disables Points marked as `is_walkable: false`.
+## 3. Connects Neighbors (including diagonals).
+##    - Supports specific logic for Ramps and Ladders (elevation changes).
 func _setup_astar():
 	astar = AStar3D.new()
 
@@ -136,6 +155,9 @@ func _setup_astar():
 					astar.connect_points(id, n_id)
 
 
+## Returns a sequence of Vector2 coordinates representing the path from A to B.
+## Uses AStar3D internally.
+## Returns Empty Array if no path exists.
 func get_move_path(start: Vector2, end: Vector2) -> Array[Vector2]:
 	var start_id = _get_point_id(start)
 	var end_id = _get_point_id(end)
@@ -308,6 +330,16 @@ func is_tile_cover(coord: Vector2) -> bool:
 # Cache for dynamic unit positions (updated in refresh_pathfinding)
 var _unit_occupancy = {}
 
+## Updates AStar states based on dynamic unit positions.
+## Called at the start of every turn and after every move.
+##
+## Logic:
+## 1. Resets all points to their base static state (Walkable/Blocked).
+## 2. Checks for Static Props (Crates) occupying tiles.
+## 3. Iterates through all Units:
+##    - Marks their tiles as DISABLED (Occupied).
+##    - Exception: If 'active_faction' is provided, Friendly units remain TRAVERSABLE (Walkable),
+##      but are still not valid Destinations (handled by `is_valid_destination`).
 func refresh_pathfinding(units: Array, ignore_unit = null, active_faction: String = ""):
 	_unit_occupancy.clear()
 	
@@ -364,6 +396,11 @@ func get_random_valid_position() -> Vector2:
 
 
 
+## Returns all tiles reachable from 'start_pos' within 'max_move' cost.
+## Uses a BFS Flood Fill algorithm.
+##
+## Note: Relies on `astar.is_point_disabled` to respect obstacles.
+## Warning: High movement ranges (>15) can be expensive.
 func get_reachable_tiles(start_pos: Vector2, max_move: int) -> Array[Vector2]:
 	var reachable: Array[Vector2] = []
 	var queue = [{"pos": start_pos, "cost": 0}]
