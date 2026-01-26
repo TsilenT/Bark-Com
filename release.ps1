@@ -3,12 +3,18 @@
 
 param (
     [Parameter(Mandatory=$true)][string]$Version,
+    [string]$GodotPath = $env:GODOT_EXECUTABLE,
     [switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
 $ProjectID = "eldritch-dream/bark-com"
-$GodotPath = "C:\Users\smili\Documents\Godot\Installs\Godot_v4.5.1-stable_win64.exe"
+
+# Default to local path if not provided
+if (-not $GodotPath) {
+    $GodotPath = "C:\Users\smili\Documents\Godot\Installs\Godot_v4.5.1-stable_win64.exe"
+}
+
 $SmokeTestScene = "res://tests/SmokeTest.tscn"
 
 Write-Host ">>> Starting Release Pipeline for v$Version..." -ForegroundColor Cyan
@@ -17,21 +23,13 @@ Write-Host ">>> Starting Release Pipeline for v$Version..." -ForegroundColor Cya
 # 1. Generate Patch Notes
 # -------------------------------------------------------------------------
 Write-Host "`n[1/4] Generating Patch Notes..." -ForegroundColor Yellow
-# Try to get logs since the last tag. If no tags, getting last 20 commits.
-$Tags = git tag
-if ($Tags) {
-    $LastTag = git describe --tags --abbrev=0
-    Write-Host "   Fetching commits from $LastTag to HEAD..." -ForegroundColor Gray
-    $GitLog = git log "$LastTag..HEAD" --pretty=format:"- %s"
+# Try to generate patch notes using the centralized tool
+$PatchNotesScript = "tools\generate_patch_notes.ps1"
+if (Test-Path $PatchNotesScript) {
+    & $PatchNotesScript -Version $Version
 } else {
-    Write-Host "   No tags found, fetching last 20 commits..." -ForegroundColor Gray
-    $GitLog = git log -n 20 --pretty=format:"- %s"
+    Write-Host "   [WARN] Patch notes script not found at $PatchNotesScript. Skipping generation." -ForegroundColor Yellow
 }
-
-$PatchNotes = "# Patch Notes v$Version`n`n" + ($GitLog -join "`n")
-$PatchNotesFile = "release_$Version.md"
-$PatchNotes | Out-File $PatchNotesFile -Encoding UTF8
-Write-Host "   Notes saved to $PatchNotesFile" -ForegroundColor Green
 
 # -------------------------------------------------------------------------
 # 2. Test Suite
