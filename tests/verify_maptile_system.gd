@@ -67,4 +67,6 @@ func _init():
 		print("PASS: clear_highlights called without error.")
 
 	print("All MapTile tests passed.")
+	viz.free()
+	gm.free()
 	quit()

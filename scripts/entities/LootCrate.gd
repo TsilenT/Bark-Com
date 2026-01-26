@@ -17,6 +17,7 @@ func _ready():
 	var mesh = BoxMesh.new()
 	mesh.size = Vector3(1, 1, 1)
 	mesh_inst.mesh = mesh
+	mesh_inst.position.y = 0.5
 	var mat = StandardMaterial3D.new()
 	mat.albedo_color = Color.GOLD
 	mesh_inst.material_override = mat

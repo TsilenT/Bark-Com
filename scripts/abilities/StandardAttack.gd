@@ -9,16 +9,46 @@ func _init():
 
 func get_valid_tiles(grid_manager, user) -> Array[Vector2]:
 	var valid: Array[Vector2] = []
-	# Infinite Range (within map bounds / reasonable limits)
-	# User can target any visible enemy.
-	# For "Valid Tiles", we usually highlight reachable targets.
-	# Let's iterate all known units? 
-	# A simpler approach for "Infinite" is a large radius matching map size (e.g., 50).
-	var r = 50 
+	var r = 50 # Max Range
 	
-	for tile in grid_manager.grid_data:
-		if tile.distance_to(user.grid_pos) <= r:
-				valid.append(tile)
+	if not user or not user.is_inside_tree():
+		return valid
+		
+	var tree = user.get_tree()
+	
+	# 1. Enemies
+	# Start with all units, filter by faction
+	var units = tree.get_nodes_in_group("Units")
+	for u in units:
+		if is_instance_valid(u) and "current_hp" in u and u.current_hp > 0:
+			if "faction" in u and "faction" in user and u.faction != user.faction:
+				# Enemy found
+				# OBJECTIVE SAFEGUARD (Units)
+				if user.faction == "Player":
+					if u.is_in_group("Objectives") or u.is_in_group("TreatBags"):
+						continue
+
+				if u.get("grid_pos") and u.grid_pos.distance_to(user.grid_pos) <= r:
+					valid.append(u.grid_pos)
+	
+	# 2. Destructibles (Barrels, Cover, Doors)
+	var destructibles = tree.get_nodes_in_group("Destructible")
+	for d in destructibles:
+		# Resolve Object
+		var obj = d
+		if d is StaticBody3D: obj = d.get_parent()
+		
+		if is_instance_valid(obj) and "grid_pos" in obj:
+			# OBJECTIVE SAFEGUARD
+			if user.faction == "Player":
+				if obj.is_in_group("Objectives") or obj.is_in_group("TreatBags"):
+					# Skip Friendly Objectives
+					continue
+			
+			if obj.grid_pos.distance_to(user.grid_pos) <= r:
+				if not valid.has(obj.grid_pos):
+					valid.append(obj.grid_pos)
+					
 	return valid
 
 func get_hit_chance_breakdown(grid_manager, user, target) -> Dictionary:

@@ -29,6 +29,7 @@ var selected_ability = null # Ability Resource/Script
 var pending_item_action = null
 var pending_item_slot: int = -1
 var _last_debug_hover: Vector2 = Vector2(-999, -999)
+var _last_hovered_object: Node = null
 var _tactical_view_active: bool = false
 var _alt_held: bool = false
 
@@ -108,11 +109,11 @@ func _clear_overlays():
 			gv.clear_highlights()
 			gv.clear_preview_path()
 			gv.clear_preview_aoe()
-			gv.clear_preview_aoe()
+			gv.clear_predictive_cover_icon()
 			gv.clear_hover_cursor()
-			gv.clear_lof() # Fix: Ensure LOF is cleared
-		if _signal_bus:
-			_signal_bus.on_hide_hit_chance.emit()
+		
+		# Atomic Cleanup
+		_hide_attack_feedback(gv)
 
 func handle_tile_clicked(grid_pos: Vector2, button_index: int):
 	# print("PMC: handle_tile_clicked at ", grid_pos, " Btn: ", button_index, " State: ", current_input_state)
@@ -146,8 +147,7 @@ func handle_tile_clicked(grid_pos: Vector2, button_index: int):
 			_handle_selection_click(grid_pos)
 			
 		_:
-			if _signal_bus:
-				_signal_bus.on_hide_hit_chance.emit()
+			_hide_attack_feedback()
 
 
 func handle_mouse_hover(grid_pos: Vector2):
@@ -158,11 +158,25 @@ func handle_mouse_hover(grid_pos: Vector2):
 	if main_node and main_node.has_method("_on_mouse_hover"):
 		main_node._on_mouse_hover(grid_pos)
 
+	# --- NEW: Propagate Hover to Objects (Highlighting) ---
+	var hovered_obj = _resolve_target_at(grid_pos)
+	if not hovered_obj:
+		hovered_obj = _get_interactive_at(grid_pos)
+		
+	if hovered_obj != _last_hovered_object:
+		if is_instance_valid(_last_hovered_object) and _last_hovered_object.has_method("_mouse_exit"):
+			_last_hovered_object._mouse_exit()
+		
+		if is_instance_valid(hovered_obj) and hovered_obj.has_method("_mouse_enter"):
+			hovered_obj._mouse_enter()
+			
+		_last_hovered_object = hovered_obj
+	# -----------------------------------------------------
 
 	# Prevent hover updates during execution
 	if turn_manager and turn_manager.is_handling_action:
-		if _signal_bus:
-			_signal_bus.on_hide_hit_chance.emit()
+		_hide_attack_feedback(gv)
+		gv.clear_predictive_cover_icon() # Ensure stale icon is gone
 		return
 
 	match current_input_state:
@@ -197,14 +211,12 @@ func handle_mouse_hover(grid_pos: Vector2):
 					gv.clear_preview_aoe()
 				
 				gv.clear_preview_path()
-				if _signal_bus:
-					_signal_bus.on_hide_hit_chance.emit()
+				_hide_attack_feedback(gv)
 
 		_:
 			gv.clear_preview_path()
 			gv.clear_preview_aoe()
-			if _signal_bus:
-				_signal_bus.on_hide_hit_chance.emit()
+			_hide_attack_feedback(gv)
 
 	# 6. Tactical View Toggle Logic Moved to _process for responsiveness 
 
@@ -229,6 +241,10 @@ func _toggle_tactical_view(active: bool):
 			if vm and not vm.is_tile_explored(coord):
 				continue
 				
+			# Check Occupancy (Avoid double indicator with UnitStatusUI)
+			if _get_unit_at(coord):
+				continue
+				
 			var tile = grid_manager.grid_data[coord]
 			var type = tile.get("type", 0)
 			if type == GridManager.TileType.COVER_FULL or type == GridManager.TileType.COVER_HALF:
@@ -238,6 +254,12 @@ func _toggle_tactical_view(active: bool):
 	else:
 		gv.clear_cover_icons()
 
+
+# --- Internal Helper for Atomic Cleanup ---
+func _hide_attack_feedback(gv = null):
+	if not gv: gv = _get_grid_visualizer()
+	if gv: gv.clear_lof()
+	if _signal_bus: _signal_bus.on_hide_hit_chance.emit()
 
 # --- Handlers ---
 
@@ -264,6 +286,14 @@ func _handle_selection_click(grid_pos: Vector2):
 	
 	# Deselect if clicking empty ground? (Optional)
 	if not target_unit:
+		# Check for Generic Interactive (Door)
+		var interactive = _get_interactive_at(grid_pos)
+		if interactive and interactive.is_in_group("Interactive"):
+			GameManager.log(LOG_PREFIX, "Clicked Generic Interactive (Door). Delegating to Main.")
+			if main_node.has_method("_process_move_or_interact"):
+				main_node._process_move_or_interact(grid_pos)
+			return
+			
 		# select_unit(null) ? 
 		pass
 
@@ -273,6 +303,11 @@ func select_unit(unit):
 	
 	selected_unit = unit
 	emit_signal("selection_changed", unit)
+	
+	# Update Pathfinding for this unit (Allow moving through friends)
+	if grid_manager and turn_manager and unit:
+		grid_manager.refresh_pathfinding(turn_manager.units, unit, unit.faction)
+	
 	# Sync Main? Main uses signals mostly now.
 	if _signal_bus:
 		_signal_bus.on_ui_select_unit.emit(unit)
@@ -353,42 +388,41 @@ func _handle_move_click(grid_pos: Vector2):
 		select_unit(clicked_unit)
 		return
 
-	# 1. Check Interaction First
+	# 1. Validate Path for Movement (Priority: Walk if possible)
+	if grid_manager.is_valid_destination(grid_pos):
+		# Move Logic
+		var path = grid_manager.get_move_path(selected_unit.grid_pos, grid_pos)
+		GameManager.log(LOG_PREFIX, "Path size: ", path.size())
+		if path.size() > 0:
+			var cost = grid_manager.calculate_path_cost(path)
+			if cost > selected_unit.mobility:
+				GameManager.log(LOG_PREFIX, "Selected move invalid. Too far. Cost: ", cost, " > ", selected_unit.mobility)
+				if _signal_bus:
+					_signal_bus.on_combat_log_event.emit("Too Far!", Color.ORANGE)
+				return
+
+			# Delegate execution to Main
+			_clear_overlays()
+			if main_node.has_method("_process_move_or_interact"):
+				main_node._process_move_or_interact(grid_pos)
+			
+			set_input_state(InputState.SELECTING)
+			return
+
+	# 2. If blocked, Check Interaction (e.g. Closed Door)
 	var interactive = _get_interactive_at(grid_pos)
 	if interactive:
-		GameManager.log(LOG_PREFIX, "Interactive object clicked. Delegating to Main.")
+		GameManager.log(LOG_PREFIX, "Interactive object clicked (Blocked Tile). Delegating to Main.")
 		if main_node.has_method("_process_move_or_interact"):
 			main_node._process_move_or_interact(grid_pos)
 		return
-
-	# 2. Validate Path for Movement
+	
+	# 3. Invalid Destination Feedback
 	if not grid_manager.is_valid_destination(grid_pos):
 		GameManager.log(LOG_PREFIX, "Invalid destination (Blocked or LADDER).")
 		if _signal_bus:
 			_signal_bus.on_combat_log_event.emit("Cannot Stop Here", Color.RED)
 		return
-
-	var path = grid_manager.get_move_path(selected_unit.grid_pos, grid_pos)
-	GameManager.log(LOG_PREFIX, "Path size: ", path.size())
-	if path.size() > 0:
-		var cost = grid_manager.calculate_path_cost(path)
-		if cost > selected_unit.mobility:
-			GameManager.log(LOG_PREFIX, "Selected move invalid. Too far. Cost: ", cost, " > ", selected_unit.mobility)
-			if _signal_bus:
-				_signal_bus.on_combat_log_event.emit("Too Far!", Color.ORANGE)
-			return
-
-		# Delegate execution to Main (which handles movement coroutine)
-		# Or emit signal?
-		if main_node.has_method("_process_move_or_interact"):
-			main_node._process_move_or_interact(grid_pos)
-		
-		# Reset state usually happens after move starts
-		# But for now, we can reset to IDLE/SELECTING? 
-		# If blocking, Main changes state. If async, we wait.
-		# Let's assume Main handles state reset or we reset here?
-		# Legacy: _process_move_or_interact does blocking move.
-		set_input_state(InputState.SELECTING)
 
 func _handle_ability_click(grid_pos: Vector2):
 	var target = _resolve_target_at(grid_pos)
@@ -475,6 +509,12 @@ func _preview_movement(grid_pos: Vector2, gv: Node):
 		return
 	
 	var path = grid_manager.get_move_path(selected_unit.grid_pos, grid_pos)
+	
+	# Validate Destination Occupancy (Match Blue Squares logic)
+	if not grid_manager.is_valid_destination(grid_pos):
+		gv.clear_preview_path()
+		return
+		
 	if path.size() > 0:
 		var color = Color.CYAN
 		# Check Mobility
@@ -511,9 +551,7 @@ func _preview_movement(grid_pos: Vector2, gv: Node):
 		gv.clear_predictive_cover_icon()
 
 	# Ensure Attack Visuals are hidden
-	gv.clear_lof()
-	if _signal_bus:
-		_signal_bus.on_hide_hit_chance.emit()
+	_hide_attack_feedback(gv)
 
 func _preview_ability(grid_pos: Vector2, gv: Node):
 	# 1. Path Clearing
@@ -580,7 +618,11 @@ func _preview_attack(grid_pos: Vector2):
 			if target_obj.faction != selected_unit.faction:
 				is_valid_target = true
 		elif target_obj.has_method("take_damage"):
-			is_valid_target = true
+			# SAFEGUARD: Prevent targeting Objectives
+			if selected_unit.faction == "Player" and (target_obj.is_in_group("Objectives") or target_obj.is_in_group("TreatBags")):
+				is_valid_target = false
+			else:
+				is_valid_target = true
 			
 	if is_valid_target and ability_to_check:
 		# print("PMC DEBUG: Checking ability hit chance for ", ability_to_check.display_name)
@@ -619,10 +661,7 @@ func _preview_attack(grid_pos: Vector2):
 						gv.draw_lof(start_pos, end_pos, color)
 						
 	else:
-		if _signal_bus:
-			_signal_bus.on_hide_hit_chance.emit()
-		if gv:
-			gv.clear_lof()
+		_hide_attack_feedback(gv)
 
 
 func _preview_item(grid_pos: Vector2, gv: Node):
@@ -667,7 +706,7 @@ func _preview_item(grid_pos: Vector2, gv: Node):
 						var world_target = grid_manager.get_world_position(grid_pos)
 						_signal_bus.on_show_hit_chance.emit(info["hit_chance"], breakdown_str, world_target + Vector3(0, 1.0, 0))
 				else:
-					if _signal_bus: _signal_bus.on_hide_hit_chance.emit()
+					_hide_attack_feedback(gv)
 					
 				return # Done handling ability-based item
 		
@@ -683,11 +722,11 @@ func _preview_item(grid_pos: Vector2, gv: Node):
 		else:
 			gv.clear_preview_aoe()
 		
-		if _signal_bus: _signal_bus.on_hide_hit_chance.emit()
+		_hide_attack_feedback(gv)
 			
 	else:
 		gv.clear_preview_aoe()
-		if _signal_bus: _signal_bus.on_hide_hit_chance.emit()
+		_hide_attack_feedback(gv)
 
 
 # --- Actions ---
@@ -770,8 +809,11 @@ func _resolve_volatile_at(grid_pos: Vector2):
 		var obj = p
 		if p is StaticBody3D: obj = p.get_parent()
 		if is_instance_valid(obj) and "grid_pos" in obj and obj.grid_pos == grid_pos:
-			# Check typical explosive properties
-			if "explosion_range" in obj or "is_burning" in obj:
+			# Check Class Type
+			if obj is VolatileCover:
+				return obj
+			# Fallback for duck typing if needed (but class check is safer)
+			if obj.has_method("detonate") and "explosion_range" in obj:
 				return obj
 	return null
 

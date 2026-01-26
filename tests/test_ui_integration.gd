@@ -12,8 +12,7 @@ class MockGridManager:
 class MockTurnManager:
 	var units = []
 
-class MockUnit:
-	var name = "TestUnit"
+class MockUnit extends Node3D:
 	var current_hp = 10
 	var max_hp = 10
 	var faction = "Player"
@@ -23,6 +22,11 @@ class MockUnit:
 	var current_sanity = 100
 	var max_ap = 5
 	var current_ap = 2
+	var unit_name = "TestUnit" # For UI lookups if inconsistent
+	# Note: name is inherited from Node
+
+	func _init():
+		name = "TestUnit"
 
 
 func _ready():
@@ -101,7 +105,12 @@ func test_signal_connection_and_processing():
 		printerr("FAIL [Selection]: Expected unit selection not applied.")
 		failed = true
 
+	# Cleanup Mocks
 	TestUtils.free_node(gui)
+	TestUtils.free_node(ref_unit)
+	for u in units:
+		TestUtils.free_node(u)
+	
 	await get_tree().process_frame # Flush old GUI
 
 	if failed:
@@ -178,5 +187,6 @@ func test_squad_sync():
 	
 	TestUtils.free_node(gui)
 	TestUtils.free_node(squad_frame)
+	TestUtils.free_node(mock_unit)
 	print("--- ALL UI TESTS PASSED ---")
 	await TestUtils.finalize_and_quit(get_tree(), 0)

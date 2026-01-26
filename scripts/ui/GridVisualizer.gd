@@ -5,7 +5,13 @@ extends Node3D
 var tile_meshes = {}  # coord: Vector2 -> MeshInstance3D
 
 
+var _highlights_container: Node3D
+
 func _ready():
+	_highlights_container = Node3D.new()
+	_highlights_container.name = "HighlightsContainer"
+	add_child(_highlights_container)
+
 	if not grid_manager:
 		# Try to find it if not assigned
 		grid_manager = get_node("../GridManager")
@@ -18,67 +24,65 @@ func _ready():
 	_setup_lof_visuals()
 
 
-# Enum matching LevelGenerator
-enum Biome { INDOORS, GARDEN, STREET }
+# Enum matching LevelGenerator (Removed - using LevelGenerator.Biome directly)
 
 
 func _on_grid_generated():
 	clear_visuals()
 	visualize_grid()
-	_setup_lof_visuals() # Re-create LOF container after clear
+	# _setup_lof_visuals() # Removed: Persistent container created in _ready
 
 
 func clear_visuals():
 	for child in get_children():
+		# Preserve our persistent containers
+		if child == _highlights_container or child == lof_node:
+			for c in child.get_children(): c.queue_free()
+			continue
+			
 		child.queue_free()
 	tile_meshes.clear()
 
 
-
-
-
 func show_highlights(tiles: Array, color: Color):
-	# Optimization: Use shader highlight on existing tiles instead of new geometry
-	# First, clear old highlights (reset shader params on ALL tiles)
-	# This might be slow if we iterate all 400 tiles. 
-	# Better: Keep track of currently highlighted tiles.
-	
 	clear_highlights()
+	
+	if tiles.is_empty():
+		return
+	
+	# Shared Material
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	
+	# Shared Mesh (Flat Box)
+	var mesh = BoxMesh.new()
+	mesh.size = Vector3(1.7, 0.1, 1.7) # Slightly smaller than tile
 	
 	for tile_entry in tiles:
 		var coord = Vector2.ZERO
 		if tile_entry is Vector2:
 			coord = tile_entry
 		elif tile_entry is Dictionary and tile_entry.has("world_pos"):
-			# Convert back to grid coord? Or just find tile at pos?
-			# GridVisualizer is keyed by Coord.
-			if grid_manager:
-				coord = grid_manager.get_grid_coord(tile_entry["world_pos"])
-		
-		if tile_meshes.has(coord):
-			var tile = tile_meshes[coord]
-		if tile_meshes.has(coord):
-			var tile = tile_meshes[coord]
-			if tile.has_method("show_highlight"):
-				tile.show_highlight(true, color)
-				_highlighted_tiles.append(coord)
-
-# We need a way to track highlighted tiles to clear them efficiently without iterating all 400.
-var _highlighted_tiles = []
+			if grid_manager: coord = grid_manager.get_grid_coord(tile_entry["world_pos"])
+			
+		var world_pos = Vector3.ZERO
+		if grid_manager:
+			world_pos = grid_manager.get_world_position(coord)
+			
+		if world_pos != Vector3.ZERO:
+			var mi = MeshInstance3D.new()
+			mi.mesh = mesh
+			mi.material_override = mat
+			mi.position = world_pos + Vector3(0, 0.15, 0) # Just above ground
+			_highlights_container.add_child(mi)
 
 func clear_highlights():
-	# Clear previous highlights
-	for coord in _highlighted_tiles:
-		if tile_meshes.has(coord):
-			var tile = tile_meshes[coord]
-			if tile.has_method("show_highlight"):
-				tile.show_highlight(false)
-	_highlighted_tiles.clear()
+	if _highlights_container:
+		for c in _highlights_container.get_children():
+			c.queue_free()
 	
-	# Also clear old node-based highlights if any exist (legacy support)
-	var existing = get_node_or_null("Highlights")
-	if existing:
-		existing.free()
+
 
 
 
@@ -124,6 +128,7 @@ func visualize_grid():
 		var shape = BoxShape3D.new()
 		
 		# Determine shape size based on type (Ramp/Ladder logic from before)
+		# Determine shape size based on type (Ramp/Ladder logic from before)
 		if type == GridManager.TileType.RAMP:
 			# Ramps need special collision or just a block for clicking?
 			# Detailed ramp collision is better for cursor height.
@@ -132,6 +137,22 @@ func visualize_grid():
 			collision_shape.position.y = 0.5
 		elif type == GridManager.TileType.LADDER:
 			shape.size = Vector3(0.6, 2.5, 0.2)
+			
+		elif type == GridManager.TileType.OBSTACLE:
+			# Full Wall (Static)
+			shape.size = Vector3(2.0, 2.0, 2.0)
+			collision_shape.position.y = 1.0
+			
+		elif type == GridManager.TileType.COVER_FULL:
+			# Static Full Cover
+			shape.size = Vector3(1.8, 2.0, 1.8)
+			collision_shape.position.y = 1.0
+			
+		elif type == GridManager.TileType.COVER_HALF:
+			# Static Half Cover
+			shape.size = Vector3(1.8, 1.0, 1.8)
+			collision_shape.position.y = 0.5
+			
 		else:
 			# Standard Ground
 			shape.size = Vector3(1.8, 0.2, 1.8) # Matches visual thickness
@@ -337,6 +358,8 @@ func clear_preview_aoe():
 var lof_node: Node3D
 
 func _setup_lof_visuals():
+	if lof_node: return # Persistent
+	
 	lof_node = Node3D.new()
 	lof_node.name = "LOF_Container"
 	add_child(lof_node)

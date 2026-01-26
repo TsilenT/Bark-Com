@@ -17,7 +17,8 @@ base_stats = {
 "accuracy": 65,
 "defense": 0,
 "max_hp": 10,
-"mobility": 6
+"mobility": 6,
+"smell_range": 5
 }
 stat_growth = {
 "accuracy": 2,

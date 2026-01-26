@@ -59,6 +59,13 @@ func _init():
 # 	if not instance:
 # 		instance = self
 
+func _exit_tree():
+	# Ensure singleton refs are cleaned if they were added as children
+	# Standard queue_free does this, but if we had strong external refs...
+	if audio_manager and is_instance_valid(audio_manager):
+		audio_manager.queue_free()
+	if name_gen and is_instance_valid(name_gen):
+		name_gen.queue_free()
 
 func _ready():
 	# Audio Setup

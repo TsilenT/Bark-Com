@@ -727,7 +727,12 @@ func _update_unit_card():
 		v_card.add_child(icon_node)
 		v_card.move_child(icon_node, 0)
 		
-	var cls = selected_unit.unit_class if "unit_class" in selected_unit else "Recruit"
+	var cls = "Object"
+	if "unit_class" in selected_unit:
+		cls = selected_unit.unit_class
+	elif "variant_type" in selected_unit: # DestructibleCover
+		cls = selected_unit.variant_type
+		
 	# Check for Enemy Faction
 	if "faction" in selected_unit and selected_unit.faction == "Enemy":
 		# Maybe enemy class logic matches their name or type?
@@ -738,6 +743,12 @@ func _update_unit_card():
 			# Actually, Enemy classes (Rusher, Spitter) are usually their "unit_class" or "corgi_class" (now unit_class)
 			pass
 			
+	# Determine Icon
+	if selected_unit.is_in_group("Destructible"):
+		# Use generic "Shield" or "Box" icon? or reuse valid class if mapped.
+		# For now, maybe just "Recruit" default or specific if manager supports it.
+		pass 
+		
 	icon_node.texture = ClassIconManager.get_class_icon(cls)
 
 	# Update Bars

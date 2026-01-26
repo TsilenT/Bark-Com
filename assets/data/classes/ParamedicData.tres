@@ -18,6 +18,7 @@ base_stats = {
 "defense": 10,
 "max_hp": 10,
 "mobility": 6,
+"smell_range": 5,
 "willpower": 0
 }
 stat_growth = {

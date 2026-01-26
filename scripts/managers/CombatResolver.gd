@@ -54,8 +54,22 @@ static func calculate_hit_chance(
 		else:
 			return {"hit_chance": 0, "breakdown": "Friendly Fire"}
 
+	# DESTRUCTIBLE CHECK (Stationary Bonus +10)
+	var is_destructible = target.is_in_group("Destructible") or (target is StaticBody3D and target.get_parent().is_in_group("Destructible"))
+	var stationary_bonus = 10 if is_destructible else 0
+
+	# OBJECTIVE SAFEGUARD (Player cannot attack non-hostile objectives)
+	# Objectives are things like LootCrates, TreatBags, GoldenHydrant.
+	# Typically Neutral or Player faction. Enemy objectives (Assassinate) are Enemy faction.
+	if att_faction == "Player" and (target.is_in_group("Objectives") or target.is_in_group("TreatBags")):
+		if targ_faction != "Enemy":
+			return {"hit_chance": 0, "breakdown": "Objective Protected"}
+
 	# 1. Base Accuracy
-	var hit_chance = attacker.accuracy
+	var hit_chance = attacker.accuracy + stationary_bonus
+	
+	if stationary_bonus > 0:
+		breakdown += "[Stationary +10] "
 
 	# Status Effect Modifiers
 	if "modifiers" in attacker and attacker.modifiers.has("aim"):
@@ -81,7 +95,8 @@ static func calculate_hit_chance(
 			if "overwatch_shots_dodged_this_turn" in target and target.overwatch_shots_dodged_this_turn == 0:
 				hit_chance = 0
 				breakdown += " | LIGHTNING REFLEXES!"
-				# Early return? Maybe just let it flow with 0.
+				# Early return to ensure 0% logic bypasses Minimum Clamp
+				return {"hit_chance": 0, "breakdown": breakdown}
 		
 		elif attacker.has_method("has_perk") and attacker.has_perk("vigilance"):
 			breakdown += " | Vigilance (No Penalty)"
@@ -139,7 +154,9 @@ static func calculate_hit_chance(
 
 	# 4. Cover Penalty
 	# Use new helper to check adjacent obstacles
-	var cover_height = get_cover_height_at_pos(target_grid_pos, attack_pos, grid_manager)
+	var cover_height = 0.0
+	if not is_destructible:
+		cover_height = get_cover_height_at_pos(target_grid_pos, attack_pos, grid_manager)
 
 	var cover_pen = 0
 	
@@ -199,8 +216,15 @@ static func calculate_hit_chance(
 	if crit_bonus > 0:
 		breakdown += " | Crit: " + str(crit_bonus) + "%"
 
+	# BLIND FIRE PENALTY (Smelled but not seen)
+	if "is_visually_seen" in target and not target.is_visually_seen:
+		# Does not apply to Destructibles (they don't have is_visually_seen, or always visible)
+		# Actually Destructibles don't have this property, so Safe check works.
+		hit_chance -= 30
+		breakdown += " | Blind Fire: -30"
+
 	# Clamp
-	hit_chance = clamp(hit_chance, 5, 100)
+	hit_chance = clamp(hit_chance, 0, 100)
 
 	return {"hit_chance": int(hit_chance), "breakdown": breakdown, "crit_chance": crit_bonus}
 
@@ -276,10 +300,13 @@ static func get_cover_height_at_pos(
 ) -> float:
 	# 1. Intrinsic Cover (Standing IN cover)
 	var tile_data = gm.get_tile_data(target_pos)
-	var max_cover = tile_data.get("cover_height", 0.0)
-
-	# 2. Directional Cover (Standing BEHIND cover)
+	
+	# Determine Attack Source
 	var dir_to_attacker = (attacker_pos - target_pos).normalized()
+	
+	var my_elev = tile_data.get("elevation", 0)
+
+	var max_cover = 0.0
 
 	# Check 4 neighbors
 	var neighbors = [Vector2(0, 1), Vector2(0, -1), Vector2(1, 0), Vector2(-1, 0)]
@@ -287,15 +314,24 @@ static func get_cover_height_at_pos(
 		var neighbor_pos = target_pos + n
 		if gm.grid_data.has(neighbor_pos):
 			var n_data = gm.grid_data[neighbor_pos]
-			var h = n_data.get("cover_height", 0.0)
-			if h > 0.0:
-				# Is this neighbor roughly towards the attacker?
+			var raw_cover = n_data.get("cover_height", 0.0)
+			
+			if raw_cover > 0.0:
+				# 2. Check Direction (Is it BETWEEN me and attacker?)
 				var dir_to_neighbor = n.normalized()
-				# Dot product > 0.5 means angle < 60 degrees.
 				if dir_to_attacker.dot(dir_to_neighbor) > 0.7:
-					max_cover = max(max_cover, h)
+					
+					# 3. Check Elevation (Is it TALLER than my feet?)
+					var n_elev = n_data.get("elevation", 0)
+					var effective = (n_elev + raw_cover) - my_elev
+					
+					if effective > max_cover:
+						max_cover = effective
 
-	return max_cover
+	# Clamp to valid types
+	if max_cover >= 1.5: return 2.0
+	elif max_cover >= 0.5: return 1.0
+	return 0.0
 
 
 static func execute_attack(

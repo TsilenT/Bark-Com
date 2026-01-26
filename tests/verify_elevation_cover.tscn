@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://py0orlf3mi12"]
+
+[ext_resource type="Script" path="res://tests/verify_elevation_cover.gd" id="1_test"]
+
+[node name="VerifyElevation" type="Node"]
+script = ExtResource("1_test")

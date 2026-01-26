@@ -130,9 +130,9 @@ func _test_mission_completion_roster_integrity():
 	gm.complete_mission([], true, [], 100)
 	
 	if gm.roster.size() == 1:
-		pass_test("PASS: Fail-Safe triggered for empty survivors on win.")
+		pass_test("PASS: Safety-Trigger triggered for empty survivors on win.")
 	else:
-		fail("FAIL: Fail-Safe failed.")
+		fail("FAIL: Safety-Trigger failed.")
 		
 	TestUtils.free_node(gm)
 

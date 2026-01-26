@@ -67,6 +67,8 @@ class MockGridVisualizer extends Node:
 	func preview_path(p, c): 
 		preview_calls += 1
 	func preview_aoe(t, c): pass
+	func show_lof(tiles): pass
+	func clear_lof(): pass
 
 class MockUnit extends Node:
 	var grid_pos = Vector2(2,2)
@@ -198,6 +200,15 @@ func run_tests() -> bool:
 	controller.set_input_state(controller.InputState.TARGETING)
 	controller.selected_ability = null
 	
+	# Fix: StandardAttack requires a valid target (Enemy) to be considered valid.
+	# Spawn a Mock Enemy at (3,3)
+	var mock_enemy = MockUnit.new()
+	mock_enemy.name = "MockEnemy"
+	mock_enemy.faction = "Enemy"
+	mock_enemy.grid_pos = Vector2(3,3)
+	mock_enemy.add_to_group("Units")
+	add_child(mock_enemy)
+	
 	# Click (3,3) - Standard Attack valid calc needs weapon range. 
 	# MockUnit has no weapon but StandardAttack defaults to range 3.
 	# Distance (2,2) to (3,3) is ~1.4. Valid.
@@ -324,6 +335,9 @@ func run_tests() -> bool:
 	
 	# Cleanup interact_obj (orphaned on root)
 	TestUtils.free_node(interact_obj)
+	# Cleanup manually created mock_enemy (if local var, can't access, but free_children(self) might catch it if added to self)
+	# I added mock_enemy via add_child(mock_enemy). self is the test runner.
+	# free_children(self) handles it.
 		
 	# Aggressive Cleanup of Mocks
 	TestUtils.free_children(self)

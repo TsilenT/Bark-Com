@@ -25,9 +25,10 @@ func _ready():
 	# Assuming panic changes triggers stats changed or we might need a specific panic signal?
 	# Usually Panic adds a status or we check each turn. 
 	# For now, let's hook into stats changed too just in case.
-	SignalBus.on_unit_stats_changed.connect(_on_status_changed_wrapper)
+	# 5. Connect Step Completed (Refresh on Move)
+	SignalBus.on_unit_step_completed.connect(_on_step_completed)
 
-	_refresh_full()
+	call_deferred("_refresh_full")
 	
 func _exit_tree():
 	if SignalBus:
@@ -37,7 +38,12 @@ func _exit_tree():
 			SignalBus.on_status_removed.disconnect(_on_status_changed)
 		if SignalBus.on_unit_stats_changed.is_connected(_on_status_changed_wrapper):
 			SignalBus.on_unit_stats_changed.disconnect(_on_status_changed_wrapper)
+		if SignalBus.on_unit_step_completed.is_connected(_on_step_completed):
+			SignalBus.on_unit_step_completed.disconnect(_on_step_completed)
 
+func _on_step_completed(u):
+	if u == unit:
+		_refresh_full()
 
 func _on_status_changed(_u, _id):
 	if _u == unit:
@@ -48,6 +54,8 @@ func _on_status_changed_wrapper(u):
 		_refresh_full()
 
 func _refresh_full():
+	if not is_inside_tree(): return
+	
 	# Clear existing
 	for s in sprites:
 		s.queue_free()
@@ -67,9 +75,16 @@ func _refresh_full():
 			icons_to_show.append(PANIC_ICONS[unit.current_panic_state])
 
 	# 3. Cover Status (Holograms)
+	var show_cover = true
+	# User Request: Hide cover for non-relevant objectives (Treat Bags) but keep for Allies/Enemies/Rescue Targets
+	if "faction" in unit and unit.faction == "Neutral":
+		# Simple name check for now (Rescue Target is "Lost Human")
+		if not ("Human" in unit.name or "Rescue" in unit.name):
+			show_cover = false
+
 	# Access GridManager via Group (Safe)
 	var gm = get_tree().get_first_node_in_group("GridManager")
-	if gm and "grid_pos" in unit:
+	if show_cover and gm and "grid_pos" in unit:
 		_update_directional_cover_indicators(gm)
 	else:
 		_clear_cover_indicators()
@@ -95,7 +110,7 @@ func _create_icons(icons: Array):
 		return
 
 	var count = icons.size()
-	var spacing = 0.6 # Adjust based on icon size
+	var spacing = 0.6
 	var start_x = -(count - 1) * spacing * 0.5
 	
 	for i in range(count):
@@ -105,8 +120,8 @@ func _create_icons(icons: Array):
 		sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		sprite.pixel_size = 0.005
 		sprite.position = Vector3(start_x + (i * spacing), 2.5, 0)
-		sprite.no_depth_test = true # Ensure visible on top?
-		sprite.render_priority = 10 # Draw on top of unit
+		sprite.no_depth_test = true
+		sprite.render_priority = 10
 		add_child(sprite)
 		sprites.append(sprite)
 
@@ -125,27 +140,34 @@ func _update_directional_cover_indicators(gm: Node):
 	_clear_cover_indicators()
 	
 	if not unit: return
+	if not unit.is_inside_tree(): return # Wait for tree
+	
+	# Use new position from Unit
 	var pos = unit.grid_pos
 	
 	# Check 4 Neighbors
 	var directions = {
-		Vector2(0, -1): 0,   # North
-		Vector2(0, 1): 180,  # South
-		Vector2(1, 0): -90,  # East
-		Vector2(-1, 0): 90   # West
+		Vector2(0, -1): 180,   # North (Look -Z)
+		Vector2(0, 1): 0,      # South (Look +Z)
+		Vector2(1, 0): 90,     # East (Look +X)
+		Vector2(-1, 0): -90    # West (Look -X)
 	}
+	
+	# Calculate Base Position using GridManager (Robust against Unit Transform issues)
+	var base_pos = gm.get_world_position(pos)
 	
 	for dir in directions:
 		var target = pos + dir
 		if gm.grid_data.has(target):
+			# FIX: Only show cover if 'cover_height' > 0
 			var h = gm.grid_data[target].get("cover_height", 0.0)
 			if h > 0:
-				_spawn_indicator(dir, directions[dir], h)
+				_spawn_indicator(dir, directions[dir], h, base_pos)
 
-func _spawn_indicator(dir: Vector2, rot_y: float, height: float):
+func _spawn_indicator(dir: Vector2, rot_y: float, height: float, base_pos: Vector3):
 	var mesh_inst = MeshInstance3D.new()
 	var quad = QuadMesh.new()
-	quad.size = Vector2(1.6, 1.0) # Wide but not full tile width
+	quad.size = Vector2(1.6, 1.0)
 	
 	mesh_inst.mesh = quad
 	
@@ -153,30 +175,26 @@ func _spawn_indicator(dir: Vector2, rot_y: float, height: float):
 	var mat = StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED # Double sided
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	
 	if height >= 2.0:
 		mat.albedo_color = Color(0.2, 1.0, 0.2, 0.4) # Green Transparent
-		quad.size.y = 1.6 # Taller
+		quad.size.y = 1.6
 	else:
 		mat.albedo_color = Color(1.0, 1.0, 0.0, 0.4) # Yellow Transparent
 		quad.size.y = 0.8
 		
-	# Texture (Hologrrid pattern?)
-	# Ideally we load a texture, but color is fine for MVP.
-	
 	mesh_inst.material_override = mat
 	
-	# Positioning
-	# Move to Edge: 1.0 unit in 'dir' direction from center?
-	# Tile size is 2.0. So center to edge is 1.0.
-	# We want it slightly INSIDE the tile so it doesn't clip walls.
-	var offset = Vector3(dir.x, 0, dir.y) * 0.85 
-	mesh_inst.position = offset + Vector3(0, quad.size.y * 0.5, 0)
-	
-	# Rotation
-	mesh_inst.rotation_degrees.y = rot_y
-	
-	# Add to scene
+	# Positioning (Global Space Logic)
+	# 1. Add to Scene FIRST (so it has a valid transform context)
 	add_child(mesh_inst)
 	cover_indicators.append(mesh_inst)
+
+	# 2. Set Top Level (Ignore Parent Transform)
+	mesh_inst.set_as_top_level(true)
+	
+	# 3. Set Global Position (GridManager Based)
+	var offset_local = Vector3(dir.x, 0, dir.y) * 0.85
+	mesh_inst.global_position = base_pos + Vector3(0, quad.size.y * 0.5, 0) + offset_local
+	mesh_inst.global_rotation_degrees.y = rot_y

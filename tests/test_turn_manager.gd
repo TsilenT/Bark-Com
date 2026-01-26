@@ -48,7 +48,7 @@ func setup_env():
 	gm.name = "GridManager"
 	# Add dynamic script to handle method calls
 	var gm_script = GDScript.new()
-	gm_script.source_code = "extends Node\nfunc refresh_pathfinding(a, b=null): pass\nfunc get_world_position(v): return Vector3.ZERO"
+	gm_script.source_code = "extends Node\nfunc refresh_pathfinding(a, b=null, c=''): pass\nfunc get_world_position(v): return Vector3.ZERO"
 	gm_script.reload()
 	gm.set_script(gm_script)
 	add_child(gm)

@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3 uid="uid://verifystatusvisuals"]
+[gd_scene load_steps=2 format=3 uid="uid://b7onw40ge75cm"]
 
 [ext_resource type="Script" path="res://tests/verify_status_visuals_runner.gd" id="1_runner"]
 
-[node name="Runner" type="Node"]
+[node name="Runner" type="Node3D"]
 script = ExtResource("1_runner")

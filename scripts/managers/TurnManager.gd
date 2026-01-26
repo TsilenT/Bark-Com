@@ -83,7 +83,7 @@ func start_player_turn():
 	# REFRESH GRID: Ensure unit positions are blocked
 	var gm = get_node_or_null("../GridManager")
 	if gm:
-		gm.refresh_pathfinding(units)
+		gm.refresh_pathfinding(units, null, "Player")
 
 	GameManager.log("\n", LOG_PREFIX, "--- TURN ", turn_count, ": PLAYER PHASE ---")
 	SignalBus.on_turn_changed.emit("PLAYER PHASE", turn_count)
@@ -180,6 +180,11 @@ func start_enemy_turn():
 	for u in all_nodes:
 		if is_instance_valid(u) and not u.is_queued_for_deletion() and u.current_hp > 0:
 			units.append(u)
+			
+	# Update Grid for Enemies (Can move through other enemies)
+	var gm = get_node_or_null("../GridManager")
+	if gm:
+		gm.refresh_pathfinding(units, null, "Enemy")
 	
 	GameManager.log("\n", LOG_PREFIX, "--- TURN ", turn_count, ": ENEMY PHASE (Units: ", units.size(), ") ---")
 	SignalBus.on_turn_changed.emit("ENEMY PHASE", turn_count)
@@ -212,10 +217,8 @@ func start_enemy_turn():
 			and unit.current_hp > 0
 		):
 			if unit.has_method("decide_action"):
-				# Find GridManager?
-				# Ideally passed in start_game.
-				# Workaround: find sibling
-				var gm = unit.get_node("../GridManager")
+				# Find GridManager (Reuse Outer or Find Sibling)
+				var unit_gm = unit.get_node("../GridManager")
 
 				# Camera Focus (Phase 68)
 				if unit.visible:
@@ -226,7 +229,7 @@ func start_enemy_turn():
 					GameManager.log(LOG_PREFIX, "[", get_instance_id(), "]: Awaiting action for ", unit.name, " (", unit.get_instance_id(), ")")
 
 
-				unit.decide_action(units, gm)
+				unit.decide_action(units, unit_gm)
 				
 				if unit.has_signal("action_complete"):
 					# Wait for signal OR timeout (safety)

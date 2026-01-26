@@ -276,6 +276,10 @@ func _spawn_objectives(type: int, count: int):
 					obj_node.initialize(pos)
 			
 			obj_node.add_to_group("Objectives")
+			# Register as Occupant (Prevents overlaps)
+			if grid_manager.grid_data.has(pos):
+				grid_manager.grid_data[pos]["unit"] = obj_node
+
 			GameManager.log(LOG_PREFIX, "Spawned Objective (Type ", type, ") at ", pos)
 			successful_spawns += 1
 		else:

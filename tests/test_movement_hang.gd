@@ -93,33 +93,17 @@ func _finalize(code):
 	else:
 		print("❌ FAILED")
 	
-	# Cleanup: Use queue_free to allow safe signal/coroutine teardown
-	if is_instance_valid(enemy):
+	# Cleanup
+	TestUtils.free_children(self)
+	
+	if enemy and is_instance_valid(enemy):
 		enemy.queue_free()
-		
-	if is_instance_valid(grid_manager):
+	if grid_manager and is_instance_valid(grid_manager):
 		grid_manager.queue_free()
 	
-	for c in get_children():
-		if c.name == "TestSafeGuard":
-			c.queue_free()
-			
-	# Wait for deletion queue
-	await get_tree().process_frame
-	await get_tree().process_frame
-			
-	# Cleanup Audio
-	var gm = get_node_or_null("/root/GameManager")
-	if gm and gm.audio_manager and gm.audio_manager.has_method("stop_all"):
-		gm.audio_manager.stop_all()
-			
-	# 5. Clear Static Caches (EnemyModelFactory)
+	# Clear Factory Cache
 	var Factory = load("res://scripts/utils/EnemyModelFactory.gd")
 	if Factory and "mat_cache" in Factory:
 		Factory.mat_cache.clear()
 
-	# Flush Final
-	await get_tree().process_frame
-	await get_tree().process_frame
-	
-	get_tree().quit(code)
+	await TestUtils.finalize_and_quit(get_tree(), code)

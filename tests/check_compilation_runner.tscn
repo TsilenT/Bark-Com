@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://check_compilation_runner"]
+
+[ext_resource type="Script" path="res://tests/check_compilation.gd" id="1_check"]
+
+[node name="CheckCompilationRunner" type="Node"]
+script = ExtResource("1_check")

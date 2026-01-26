@@ -2,31 +2,59 @@ extends Node
 class_name LevelGenerator
 
 # Constants
+const LOG_PREFIX = "LevelGenerator: "
 const CHUNK_SIZE = 5
+const TILE_SIZE = 2.0
 
 # Tile Codes for Template
-# . = Ground
-# # = Wall (Obstacle)
-# H = High Cover (e.g. Sofa, Hydrant)
-# L = Low Cover (e.g. Flower Bed, Low Wall)
+# . = Ground (Walkable, No Cover)
+# # = Obstacle (Non-walkable, Full Cover, Indestructible)
+# H = High Cover (Non-walkable, Full Cover 2.0)
+# L = Low Cover (Non-walkable, Half Cover 1.0, Destructible)
+# W = Destructible Wall (Non-walkable, Full Cover 2.0, Breaks into Ground)
+# D = Destructible Cover (Non-walkable, Half Cover 1.0, Breaks into Ground)
+# + = High Ground (Walkable, Elevation 1)
+# ^ = Ramp (Walkable, Transitions Elevation 0<->1)
+# = = Ladder (Walkable, Ladder Tile)
 
 const CHUNK_KITCHEN = ["##.##", "#...#", ".H.H.", ".....", "##.##"]
 
 const CHUNK_GARDEN = ["L...L", ".....", "..L..", ".....", "L...L"]
 
-const CHUNK_STREET = [".....", ".H.H.", ".....", ".H.H.", "....."]
+# --- TACTICAL STREET CHUNKS ---
+# Killbox: Open center, cover on edges for crossfire
+const CHUNK_KILLBOX = [
+	"W...W", # W = Destructible Wall 
+	".....", 
+	".D.D.", 
+	".....", 
+	"W...W"
+] 
 
-const CHUNK_HILL = [".^^^.", "^+++^", "^+++^", "^+++^", ".^^^."]
+# Flank Lane: Long cover running North-South
+const CHUNK_FLANK_LANE = [
+	".L.L.", 
+	".L.L.", 
+	".L.L.", 
+	".L.L.", 
+	".L.L."
+]
 
-const CHUNK_TRENCH = ["+++++", "^...^", "^.L.^", "^...^", "+++++"]
-
-const CHUNK_NEST = ["####.", "#+++^", "#+.+^", "#+L+^", ".^^^."]
+# Sniper Nest: High ground corner overlooking open area
+# FIXED: Added Ramp (^) for access
+const CHUNK_SNIPER_NEST = [
+	"###..", 
+	"#++.L", 
+	".^+.L", # Ramp adjacent to High Ground
+	"..L..", 
+	"L...."
+]
 
 const CHUNK_BRIDGE = [".^.^.", ".+.+.", ".+.+.", ".+.+.", ".^.^."]
 
-const CHUNK_LADDER_TEST = [".....", ".H+++", ".=H+.", ".H+++", "....."]  # Single Ladder at (1,2)
+const CHUNK_LADDER_TEST = [".....", ".H+++", ".=H+.", ".H+++", "....."] 
 
-const CHUNK_SPLIT_LEVEL = ["+++++", "+...=", "+.L.=", "+...=", "....."]
+const CHUNK_SPLIT_LEVEL = ["+++++", "+=...", "+=.L.", "+=...", "....."]
 
 const CHUNK_PARK = [".....", ".L.L.", ".....", ".L.L.", "....."]
 
@@ -36,10 +64,45 @@ const CHUNK_ROOFTOP = [".....", ".=+++", ".=+++", ".=+++", "....."]
 
 const CHUNK_PILLBOX = [".###.", "#+++#", "#+++#", "#=+=#", "....."]
 
-const CHUNK_LABYRINTH = ["##.##", ".....", ".###.", ".....", "##.##"]
+const CHUNK_LABYRINTH = ["##W##", ".....", ".#W#.", ".....", "##W##"] # Added Destructible Walls
+
+# --- NEW CHUNKS (Set 2) ---
+# Checkpoint: Choke point with destructible cover and a DOOR
+const CHUNK_CHECKPOINT = ["W...W", "D...D", "..|..", "D...D", "W...W"]
+
+# Secure Room: Enclosed space with Door access
+const CHUNK_SECURE_ROOM = ["#####", "#.|.#", "#...#", "#...#", "#####"]
+
+# Guard Tower: Central high ground with ladder access
+const CHUNK_GUARD_TOWER = [".....", ".+++.", ".=++.", ".+++.", "....."]
+
+# Construction Site: Walls and ramp to unfinished floor
+const CHUNK_CONSTRUCTION = ["W.W^.", ".....", "W.W+.", ".....", "D.D.."]
+
+# Market Stalls: Dense destructible cover lanes
+const CHUNK_MARKET = ["D.L.D", ".....", "D.L.D", ".....", "D.D.D"]
+
+# The Overlook: High ground strip with ramp access
+const CHUNK_OVERLOOK = ["..^..", "L.+.L", ".+++.", ".+++.", "....."]
+
+# Door Maze: Dense doors for testing
+const CHUNK_DOOR_MAZE = ["W|W|W", "|...|", "W.|.W", "|...|", "W|W|W"]
 
 # Map Biome Types to Colors in Visualizer later?
-enum Biome { INDOORS, GARDEN, STREET }
+enum Biome { INDOORS, GARDEN, STREET, SNOW, DESERT }
+
+# Generation Override for Verification Scenarios
+static var override_mode: String = ""
+
+
+static func get_biome_string(biome: int) -> String:
+	match biome:
+		Biome.INDOORS: return "Indoors"
+		Biome.GARDEN: return "Garden"
+		Biome.STREET: return "Street"
+		Biome.SNOW: return "Snow"
+		Biome.DESERT: return "Desert"
+		_: return "Street"
 
 
 func generate_level() -> Dictionary:
@@ -52,6 +115,17 @@ func generate_level() -> Dictionary:
 	var max_attempts = 10
 	var valid_map = false
 
+	if LevelGenerator.override_mode == "DOOR_TEST":
+		# Force Door Maze Grid
+		print("LevelGenerator: OVERRIDE MODE = DOOR_TEST. Generating Door Heavy Map.")
+		for cx in range(4):
+			for cy in range(4):
+				var template = CHUNK_DOOR_MAZE
+				# Alternating Rotation
+				if (cx + cy) % 2 == 0: template = _rotate_template(template, 1)
+				_stitch_chunk(final_grid, template, cx * CHUNK_SIZE, cy * CHUNK_SIZE, Biome.INDOORS)
+		return final_grid
+
 	while attempts < max_attempts and not valid_map:
 		final_grid.clear()
 		attempts += 1
@@ -59,7 +133,7 @@ func generate_level() -> Dictionary:
 		# Generate 4x4 Chunks
 		for cx in range(4):
 			for cy in range(4):
-				var type_roll = rng.randi() % 14
+				var type_roll = rng.randi() % 19
 				var template = []
 				var biome = Biome.GARDEN
 
@@ -71,16 +145,16 @@ func generate_level() -> Dictionary:
 						template = CHUNK_GARDEN
 						biome = Biome.GARDEN
 					2:
-						template = CHUNK_STREET
+						template = CHUNK_KILLBOX
 						biome = Biome.STREET
 					3:
-						template = CHUNK_HILL
+						template = CHUNK_FLANK_LANE
 						biome = Biome.STREET
 					4:
-						template = CHUNK_TRENCH
+						template = CHUNK_SNIPER_NEST
 						biome = Biome.STREET
 					5:
-						template = CHUNK_NEST
+						template = CHUNK_KILLBOX # Higher weight
 						biome = Biome.STREET
 					6:
 						template = CHUNK_BRIDGE
@@ -107,6 +181,30 @@ func generate_level() -> Dictionary:
 						template = CHUNK_LABYRINTH
 						biome = Biome.STREET
 
+					14:
+						template = CHUNK_CHECKPOINT
+						biome = Biome.STREET
+					15:
+						template = CHUNK_GUARD_TOWER
+						biome = Biome.STREET
+					16:
+						template = CHUNK_CONSTRUCTION
+						biome = Biome.STREET
+					17:
+						template = CHUNK_MARKET
+						biome = Biome.STREET
+					18:
+						template = CHUNK_OVERLOOK
+						biome = Biome.STREET
+
+				# Biome Variety Override
+				if biome == Biome.STREET:
+					var biome_roll = rng.randf()
+					if biome_roll < 0.1:
+						biome = Biome.SNOW
+					elif biome_roll < 0.2:
+						biome = Biome.DESERT
+
 				# Rotation
 				var rots = rng.randi() % 4
 				template = _rotate_template(template, rots)
@@ -121,7 +219,7 @@ func generate_level() -> Dictionary:
 			print("LevelGenerator: Map Rejected on attempt ", attempts, ". Retrying...")
 
 	if not valid_map:
-		print("LevelGenerator: CRITICAL FAIL. Generating Emergency Safe Map.")
+		print(LOG_PREFIX, "GENERATION FALLBACK. Generating Emergency Safe Map.")
 		_generate_safe_map(final_grid)
 
 	return final_grid
@@ -210,7 +308,11 @@ func _validate_connectivity(grid: Dictionary) -> bool:
 
 	var ratio = float(reachable) / float(total_walkable)
 	# print("Flood Fill: ", reachable, "/", total_walkable, " (", ratio, ")")
-	return ratio >= 0.9
+	
+	# Strict Validation: 99% of walkable tiles must be reachable.
+	# (Allows 1-2 glitch tiles if float math is weird, but essentially requires full connectivity).
+	# High Ground Islands will cause failure here.
+	return ratio >= 0.99
 
 
 func _generate_safe_map(grid: Dictionary):
@@ -225,7 +327,7 @@ func _generate_safe_map(grid: Dictionary):
 				"cover_height": 0.0,
 				"elevation": 0,
 				"biome": 1,
-				"world_pos": Vector3(x * 2.0, 0, y * 2.0)
+				"world_pos": _get_world_pos(pos, 0.0)
 			}
 
 
@@ -254,6 +356,10 @@ func _rotate_template(original: Array, times: int) -> Array:
 	return current
 
 
+func _get_world_pos(grid_pos: Vector2, elevation_offset: float = 0.0) -> Vector3:
+	return Vector3(grid_pos.x * TILE_SIZE, elevation_offset, grid_pos.y * TILE_SIZE)
+
+
 func _stitch_chunk(
 	grid_data: Dictionary, template: Array, offset_x: int, offset_y: int, biome: int
 ):
@@ -267,6 +373,8 @@ func _stitch_chunk(
 			var is_walkable = true
 			var cover_height = 0.0
 
+			var extra_data = {}
+
 			match char_code:
 				"#":
 					type = GridManager.TileType.OBSTACLE
@@ -276,12 +384,46 @@ func _stitch_chunk(
 					type = GridManager.TileType.COVER_FULL
 					is_walkable = false
 					cover_height = 2.0
+				"D":
+					# Destructible Cover (Half) - Crates, Hydrants
+					type = GridManager.TileType.COVER_HALF
+					is_walkable = false
+					cover_height = 1.0
+					extra_data = {
+						"destructible": true,
+						"variant": "Auto"
+					}
+				"W":
+					# Destructible Wall (Full Cover) - Bricks
+					type = GridManager.TileType.COVER_FULL
+					is_walkable = false
+					cover_height = 2.0
+					extra_data = {
+						"destructible": true,
+						"variant": "Wall"
+					}
 				"L":
 					type = GridManager.TileType.COVER_HALF
-					is_walkable = true
+					is_walkable = false
 					cover_height = 1.0
+					extra_data = {
+						"destructible": true,
+						"variant": "Auto"
+					}
+				"|":
+					# Door (High Wall initially)
+					# FIX: Validation needs to see this as a connector.
+					# Set is_walkable = true for Generation.
+					# Door.gd will lock it (make Unwalkable) upon spawning/initialization.
+					type = GridManager.TileType.GROUND 
+					is_walkable = true
+					cover_height = 2.0
+					extra_data = {
+						"variant": "Door",
+						"destructible": true
+					}
 				".":
-					pass  # Default Ground
+					pass
 				"+":
 					# High Ground
 					grid_data[global_coord] = {
@@ -290,30 +432,29 @@ func _stitch_chunk(
 						"cover_height": 0.0,
 						"elevation": 1,
 						"biome": biome,
-						"world_pos": Vector3(global_coord.x * 2.0, 1.0, global_coord.y * 2.0)
+						"world_pos": _get_world_pos(global_coord, 1.0)
 					}
 					continue
 				"^":
-					# Ramp (Base 0 -> 1)
+					# Ramp
 					grid_data[global_coord] = {
 						"type": GridManager.TileType.RAMP,
 						"is_walkable": true,
 						"cover_height": 0.0,
-						"elevation": 0,  # Base of ramp
+						"elevation": 0,
 						"biome": biome,
-						"world_pos": Vector3(global_coord.x * 2.0, 0.5, global_coord.y * 2.0)  # Midpoint visual?
+						"world_pos": _get_world_pos(global_coord, 0.5)
 					}
 					continue
 				"=":
-					# Ladder (Vertical Access)
-					# Elevation 0, connects to Elevation 1 via GridManager logic
+					# Ladder
 					grid_data[global_coord] = {
 						"type": GridManager.TileType.LADDER,
-						"is_walkable": true,  # Walkable BUT restricted ending (handled in Main/GM)
+						"is_walkable": true,
 						"cover_height": 0.0,
 						"elevation": 0,
 						"biome": biome,
-						"world_pos": Vector3(global_coord.x * 2.0, 0.0, global_coord.y * 2.0)
+						"world_pos": _get_world_pos(global_coord, 0.0)
 					}
 					continue
 
@@ -321,6 +462,9 @@ func _stitch_chunk(
 				"type": type,
 				"is_walkable": is_walkable,
 				"cover_height": cover_height,
-				"biome": biome,  # Store biome for coloring
-				"world_pos": Vector3(global_coord.x * 2.0, 0, global_coord.y * 2.0)
+				"biome": biome,
+				"world_pos": _get_world_pos(global_coord, 0.0)
 			}
+			# Merge Extra Data
+			if not extra_data.is_empty():
+				grid_data[global_coord].merge(extra_data)

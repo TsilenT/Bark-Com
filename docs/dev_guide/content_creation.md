@@ -42,3 +42,29 @@ Enemies require logic (Behavior) and Stats.
 2.  **Asset**: `resources/weapons/LaserRifle.tres`.
 3.  **Stats**: Damage, Range, Crit Chance.
 4.  **Equip**: Assign to `Unit.primary_weapon`.
+
+## 5. Level Generation Templates
+
+When creating new chunks in `LevelGenerator.gd` (e.g., `CHUNK_PARK`), use the following character codes to define the 5x5 grid layout.
+
+| Code | Name               | Description                                      | Walkable | Elevation | Cover Type   | Destructible |
+| :--- | :----------------- | :----------------------------------------------- | :------- | :-------- | :----------- | :----------- |
+| `.`  | Ground             | Standard floor tile.                             | Yes      | 0         | None         | No           |
+| `#`  | Obstacle           | Indestructible wall (e.g., concrete pillar).     | No       | 0         | Full (2.0)   | No           |
+| `H`  | High Cover         | Tall objects (e.g., Fridge, High Wall).          | No       | 0         | Full (2.0)   | No           |
+| `L`  | Low Cover          | Short objects (e.g., Flower Bed, Sandbags).      | No       | 0         | Half (1.0)   | **Yes**      |
+| `W`  | Destructible Wall  | Bricks/Wood. Breaks onto Ground.                 | No       | 0         | Full (2.0)   | **Yes**      |
+| `D`  | Destructible Cover | Crates/Barrels. Breaks onto Ground.              | No       | 0         | Half (1.0)   | **Yes**      |
+| `+`  | High Ground        | Elevated platform or 2nd story floor.            | Yes      | 1         | None         | No           |
+| `^`  | Ramp               | Connects Elevation 0 to 1.                       | Yes      | 0 / 1     | None         | No           |
+| `=`  | Ladder             | Vertical traversal.                              | Yes      | 0 / 1     | None         | No           |
+
+## 6. Chunk Design Rules
+
+When designing new 5x5 chunks, adhere to the following rules to ensure quality and playability:
+
+1.  **Self-Contained**: Chunks must function independently without relying on neighbors for navigation.
+2.  **Destructibility**: Utilize Destructible Walls (`W`) and Cover (`D`) to allow terrain modification.
+3.  **Verticality**: High Ground (`+`) and Ramps (`^`) are encouraged but must be traversable.
+4.  **Accessibility**: **CRITICAL**: If a chunk has High Ground (`+`), it MUST have a way to reach it (Ramp `^` or Ladder `=`) or transition to/from it within the chunk.
+5.  **Tactics**: Design for cover, flanking routes, and open fire lanes. Avoid creating unplayable "dead zones".

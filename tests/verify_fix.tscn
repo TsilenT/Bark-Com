@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b8x7x4x8x4x8"]
+
+[ext_resource type="Script" path="res://tests/verify_fix.gd" id="1_test"]
+
+[node name="IntegrityCheck" type="Node"]
+script = ExtResource("1_test")

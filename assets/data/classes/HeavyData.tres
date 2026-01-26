@@ -11,7 +11,8 @@ base_stats = {
 "accuracy": 60,
 "defense": 10,
 "max_hp": 14,
-"mobility": 4
+"mobility": 4,
+"smell_range": 4
 }
 rank_tree = {}
 starting_abilities = Array[Script]([ExtResource("2_abil")])

@@ -26,7 +26,7 @@ func _ready():
 	var unit_script = load("res://scripts/entities/Unit.gd")
 	var temp = unit_script.new()
 	# USE UNKNOWN CLASS TO TRIGGER FALLBACK (Simulate User Issue)
-	temp.apply_class_stats("CustomBadger") 
+	temp.apply_class_stats("Recruit") 
 	temp.rank_level = 1
 	temp.recalculate_stats()
 	var base_max = temp.max_hp
@@ -34,7 +34,7 @@ func _ready():
 	
 	var unit_data = {
 		"name": "TestSubject",
-		"class": "CustomBadger", # Unknown Class
+		"class": "Recruit", # Valid Class
 		"level": 1,
 		"xp": 0,
 		"max_hp": base_max,
@@ -66,8 +66,8 @@ func _ready():
 	
 	var passed = true
 	
-	if res.get("class") != "CustomBadger":
-		print("❌ FAIL: Class Reset! Expected CustomBadger, Got: " + str(res.get("class")))
+	if res.get("class") != "Recruit":
+		print("❌ FAIL: Class Reset! Expected Recruit, Got: " + str(res.get("class")))
 		passed = false
 
 	if res["level"] != 2:

@@ -612,33 +612,42 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 			
 			# Type 4 = COVER_FULL, Type 5 = COVER_HALF
 			# LevelGenerator uses these.
-			if type == GridManager.TileType.COVER_FULL or type == GridManager.TileType.COVER_HALF:
-				# Skip if something is already there (e.g. Explosive Barrels)
+			# Check for Destructible Flag (Propagated from LevelGenerator)
+			var is_destructible = tile.get("destructible", false)
+			var requested_variant = tile.get("variant", "Crate")
+			
+			# Destructible Cover Logic
+			if is_destructible:
+				# Skip if occupied
 				var occupied = false
 				for u in spawned_units:
 					if "grid_pos" in u and u.grid_pos == coord:
 						occupied = true
 						break
-				
-				if occupied:
-					continue
+				if occupied: continue
 
 				# Instantiate
-				var cover = cover_scene.new()
+				var cover
+				if tile.get("variant") == "Door":
+					cover = load("res://scripts/entities/Door.gd").new()
+				else:
+					cover = cover_scene.new()
+					
 				add_child(cover)
-				cover.initialize(coord, grid_manager)
 				
-				# If FULL COVER, maybe set HP higher?
-				if type == GridManager.TileType.COVER_FULL:
-					cover.max_hp = 10
-					cover.current_hp = 10
-					# Optional: Scale mesh up? Or swap mesh? 
-					# DestructibleCover defaults to "Crate" (1m box).
-					# Full cover is 1.5m-2m.
-					if cover.mesh:
-						cover.mesh.scale.y = 1.5
-						cover.mesh.position.y = 0.75
+				# Variant Selection (Pass requested variant if specific, else use Biome autogen)
+				var biome_int = tile.get("biome", 1) 
+				var biome_str = LevelGenerator.get_biome_string(biome_int)
+					
+				# Resolve Variant Override (if explicitly set in Map Data)
+				var variant_override = -1
+				var raw_variant_str = tile.get("variant") # Null if not set
+				if raw_variant_str:
+					variant_override = DestructibleCover.get_variant_from_string(raw_variant_str)
 				
+				# Initialize (Variant override takes precedence over Biome)
+				cover.initialize(coord, grid_manager, biome_str, variant_override)
+
 				count += 1
 		
 		GameManager.log(LOG_PREFIX, "Spawned ", count, " Destructible Cover Props.")
@@ -707,12 +716,19 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 			var candidate = start_tile + Vector2(0, spawn_offset + i)
 			var walkable_candidate = grid_manager.get_nearest_walkable_tile(candidate)
 
-			# Check Occupancy against ALREADY spawned units
+			# Check Occupancy against ALREADY spawned units + Grid Data (Obstacles)
 			var occupied = false
+			
+			# 1. Check spawned list (dynamic units)
 			for u in spawned_units:
 				if u.grid_pos == walkable_candidate:
 					occupied = true
 					break
+			
+			# 2. Check Grid Occupancy (Static Props/Walls/Objectives)
+			if not occupied and grid_manager.grid_data.has(walkable_candidate):
+				if grid_manager.grid_data[walkable_candidate].get("unit") != null:
+					occupied = true
 
 			if not occupied:
 				target_tile = walkable_candidate
@@ -1832,6 +1848,7 @@ func _clear_targeting_visuals():
 		gv.clear_preview_path()
 		gv.clear_hover_cursor()
 		gv.clear_preview_aoe()
+		gv.clear_predictive_cover_icon()
 	
 	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 	SignalBus.on_combat_log_event.emit("Command Cancelled.", Color.GRAY)
@@ -1899,6 +1916,9 @@ func _process_combat(target_obj):
 	var can_target_friendly = false
 	if selected_unit.primary_weapon and selected_unit.primary_weapon.display_name == "Syringe Gun":
 		can_target_friendly = true
+
+	if not is_instance_valid(target_obj):
+		return
 
 	var t_faction = target_obj.get("faction") if "faction" in target_obj else "Neutral"
 	var s_faction = selected_unit.faction
@@ -2023,21 +2043,28 @@ func _process_move_or_interact(target_grid_pos: Vector2):
 			break
 
 	if interactive_obj:
-		var dist = selected_unit.grid_pos.distance_to(target_grid_pos)
-		GameManager.log(LOG_PREFIX, "DEBUG: Object found. Distance: ", dist)
-
-		# Attempt Interaction
-		if dist <= 1.5:
-			# interactive_obj.interact(selected_unit) # OLD DIRECT CALL
-			var om = get_node("ObjectiveManager")
-			if om:
-				om.handle_interaction(selected_unit, interactive_obj)
-			else:
-				GameManager.log(LOG_PREFIX, "Critical - OM not found for context interaction!")
-				interactive_obj.interact(selected_unit) # Fallback
-			return
+		# PRIORITY FIX: If the tile is Walkable (Open Door, Loot), Prioritize Movement.
+		# Only interact if the tile is Blocked (Closed Door) or if we are already there?
+		# Actually, simply checking validity is enough.
+		if gm.is_valid_destination(target_grid_pos):
+			GameManager.log(LOG_PREFIX, "Interactive found, but tile is Walkable. Moving instead.")
+			# Fall through to Movement Logic
 		else:
-			GameManager.log(LOG_PREFIX, "Too far to interact! (Dist: " + str(dist) + ")")
+			var dist = selected_unit.grid_pos.distance_to(target_grid_pos)
+			GameManager.log(LOG_PREFIX, "DEBUG: Object found. Distance: ", dist)
+	
+			# Attempt Interaction
+			if dist <= 1.5:
+				# interactive_obj.interact(selected_unit) # OLD DIRECT CALL
+				var om = get_node("ObjectiveManager")
+				if om:
+					om.handle_interaction(selected_unit, interactive_obj)
+				else:
+					GameManager.log(LOG_PREFIX, "Critical - OM not found for context interaction!")
+					interactive_obj.interact(selected_unit) # Fallback
+				return
+			else:
+				GameManager.log(LOG_PREFIX, "Too far to interact! (Dist: " + str(dist) + ")")
 
 	# MOVEMENT
 	# Refresh Pathfinding to respect units

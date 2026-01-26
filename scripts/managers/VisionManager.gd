@@ -15,6 +15,18 @@ var known_enemies: Dictionary = {}  # unit: EnemyUnit -> bool (true if currently
 func initialize(gm: GridManager, gv: Node):
 	grid_manager = gm
 	grid_visualizer = gv
+	
+	# Connect Step Signal for Continuous Reveal
+	var sb = get_node_or_null("/root/SignalBus")
+	if sb:
+		if not sb.on_unit_step_completed.is_connected(_on_unit_step):
+			sb.on_unit_step_completed.connect(_on_unit_step)
+
+
+func _on_unit_step(_unit):
+	# Refresh vision immediately when any unit finishes a step
+	if not units.is_empty():
+		update_vision(units)
 
 
 func update_vision(all_units: Array):
@@ -42,17 +54,39 @@ func update_vision(all_units: Array):
 	for unit in player_units:
 		_process_unit_vision(unit)
 
-	# 3b. Mark current visible as explored
+	# 3b. Expand Vision (Neighbor Dilation)
+	# User Request: "Looking down a hallway walls were not revealed... corners should still be blind spots"
+	# Solution: Reveal adjacent OBSTACLES (Walls), but keep adjacent WALKABLE (Floors) hidden if blocked.
+	# 3b. Expand Vision (Neighbor Dilation)
+	# Reveal adjacent OBSTACLES (Walls) without cascading.
+	var walls_to_reveal = {}
+	
+	# Iterate currently visible (LOS) tiles directly (Read-Only pass)
 	for coord in visible_tiles:
-		explored_tiles[coord] = true
+		# Check 8 neighbors
+		for dx in range(-1, 2):
+			for dy in range(-1, 2):
+				if dx == 0 and dy == 0: continue
+				var n = coord + Vector2(dx, dy)
+				
+				# Only check if NOT already visible (and not already queued)
+				if not visible_tiles.has(n) and not walls_to_reveal.has(n) and grid_manager.grid_data.has(n):
+					# Check if Obstacle (Not Walkable)
+					if not grid_manager.is_walkable(n):
+						walls_to_reveal[n] = true
+						
+	# Merge found walls
+	if not walls_to_reveal.is_empty():
+		visible_tiles.merge(walls_to_reveal)
 
-	# 4. Render Tiles
-	# First, render all confirmed explored tiles as Fogged
+	# 3c. Update Explored & Render
+	# First, render all previously explored tiles as Fogged
 	for coord in explored_tiles:
 		grid_visualizer.reveal_fogged(coord)
 
-	# Then, render currently visible tiles as Bright (Overwrites Fogged)
+	# Then, mark currently visible as explored AND render them Bright (Overwrites Fogged)
 	for coord in visible_tiles:
+		explored_tiles[coord] = true
 		grid_visualizer.reveal_visible(coord)
 
 	# 5. Check Enemy Visibility
@@ -143,7 +177,8 @@ func _check_enemy_visibility(player_units: Array):
 			if not is_seen and dist <= player.smell_range:
 				is_smelled = true
 
-		# print("DEBUG VISION RESULT: Seen=", is_seen, " Smelled=", is_smelled)
+		# DEBUG VISION RESULT
+		enemy.is_visually_seen = is_seen
 
 		if is_seen:
 			enemy.visible = true
@@ -174,7 +209,7 @@ func _check_enemy_visibility(player_units: Array):
 			# Show as Ghost/Blip
 			enemy.visible = true
 			enemy.set_visual_mode("GHOST")
-			print("Smelled enemy at ", enemy.grid_pos)
+			# print("Smelled enemy at ", enemy.grid_pos)
 
 		else:
 			enemy.visible = false

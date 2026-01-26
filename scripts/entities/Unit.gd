@@ -69,7 +69,8 @@ var max_sanity: int:
 
 @export_group("Vision")
 @export var vision_range: int = 4
-@export var smell_range: int = 12
+@export var base_smell_range: int = 4
+@export var smell_range: int = 4
 
 @export_group("Progression")
 @export var current_xp: int = 0
@@ -106,6 +107,7 @@ var is_dead: bool:
 var active_effects: Array = []  # Type: StatusEffect
 var enemies_seen_this_turn: Array = []
 var modifiers: Dictionary = {}
+var is_visually_seen: bool = false # Tracks if currently visible by LOS (true) or just smelled (false)
 
 # State Machine
 var state_machine: Node  # StateMachine
@@ -226,6 +228,7 @@ func apply_class_stats(cls_name: String):
 			accuracy = class_data.base_stats.get("accuracy", 65)
 			defense = class_data.base_stats.get("defense", 10)
 			tech_score = class_data.base_stats.get("tech_score", 0)
+			base_smell_range = class_data.base_stats.get("smell_range", 4) # Default to 4 (Vision)
 
 			for script in class_data.starting_abilities:
 				abilities.append(script.new())
@@ -246,39 +249,12 @@ func apply_class_stats(cls_name: String):
 
 	# Fallback (Legacy)
 	if not loaded_from_resource:
-		print("Unit: Falling back to legacy stats for ", cls_name)
-		match cls_name:
-			"Recruit":
-				max_hp = 10
-				base_mobility = 6
-				abilities.append(load("res://scripts/abilities/GrenadeToss.gd").new())
-			"Scout":
-				max_hp = 8
-				base_mobility = 8
-				tech_score = 20
-				abilities.append(load("res://scripts/abilities/OverwatchAbility.gd").new())
-			"Heavy":
-				max_hp = 14
-				base_mobility = 4
-				abilities.append(load("res://scripts/abilities/ScatterShot.gd").new())
-				
-			"Paramedic":
-				max_hp = 10
-				base_mobility = 6
-				abilities.append(load("res://scripts/abilities/Triage.gd").new())
-			"Grenadier":
-				max_hp = 12
-				base_mobility = 5
-				abilities.append(load("res://scripts/abilities/GrenadeToss.gd").new())
-			"Sniper":
-				max_hp = 6
-				base_mobility = 5
-				abilities.append(load("res://scripts/abilities/OverwatchAbility.gd").new())
-			_:
-				print("Unknown Class: ", cls_name, ". Defaulting to Recruit.")
-				max_hp = 10
-				base_mobility = 6
-				abilities.append(load("res://scripts/abilities/GrenadeToss.gd").new())
+		push_error("Unit: Failed to load ClassData for " + cls_name + ". Check assets/data/classes/")
+		# Minimal default to avoid crash
+		max_hp = 10
+		base_mobility = 6
+		base_smell_range = 4
+		abilities.append(load("res://scripts/abilities/GrenadeToss.gd").new())
 
 	current_hp = max_hp
 	
@@ -481,14 +457,18 @@ func recalculate_stats():
 		var bonus_hp_level = (rank_level - 1) * 2
 		max_hp += bonus_hp_level
 
-	# 3. Refresh Ability Stats (Perks etc)
+	# 3. Smell Logic
+	smell_range = base_smell_range
+			
+	# Refresh Ability Stats (Perks etc)
 	for ability in abilities:
 		if ability.has_method("update_stats"):
 			ability.update_stats(self)
-
+			
+	# Perk Modifiers (stack on top)
+	# Eagle Eye logic below tracks "+4 Smell", so it will be Base + Class + Perk.
+	
 	if has_perk("heavy_bullet_sponge"):
-		# Previous: max_hp += 4, defense += 1
-		# New: Add 1 flat armor
 		armor += 1
 		print(name, " applies Bullet Sponge (+1 Armor)")
 		

@@ -15,6 +15,9 @@ class MockGridManager extends Node:
 func _ready():
 	print("Starting DestructibleCover Verification...")
 	
+	# Anti-Ghosting
+	add_child(load("res://tests/TestSafeGuard.gd").new())
+	
 	# We are in the tree now (Autoloads should be ready)
 	var root = self
 	
@@ -35,7 +38,7 @@ func _ready():
 	
 	root.add_child(cover)
 	
-	# Initialize
+	# 1. Test Generic Crate
 	if cover.has_method("initialize"):
 		cover.initialize(Vector2(5,5), gm)
 	else:
@@ -45,11 +48,35 @@ func _ready():
 		
 	# Check Visuals
 	if cover.mesh:
-		print("PASS: Visual mesh instantiated.")
+		print("PASS: Crate mesh instantiated.")
 	else:
 		print("FAIL: Visual mesh missing.")
 		get_tree().quit(1)
 		return
+	
+	# 2. Test Wall Variant
+	var wall = Node3D.new()
+	wall.set_script(cover_script)
+	root.add_child(wall)
+	wall.initialize(Vector2(6,6), gm)
+	wall.set_variant(DestructibleCover.Variant.WALL)
+	
+	if wall.max_hp == 20: 
+		print("PASS: Wall variant initializes with 20 HP.")
+	else:
+		print("FAIL: Wall has wrong HP: ", wall.max_hp)
+		get_tree().quit(1)
+		return
+		
+	if wall.mesh and wall.mesh.mesh is BoxMesh:
+		# BoxMesh for Wall (size check optional)
+		print("PASS: Wall mesh instantiated.")
+	else:
+		print("FAIL: Wall mesh invalid.")
+		get_tree().quit(1)
+		return
+		
+	# Test Destroy on Crate
 		
 	# Test Destroy
 	print("Testing Destroy...")
@@ -71,4 +98,21 @@ func _ready():
 		print("FAIL: Explosion particles not found in parent.")
 		# Note: If CoverExplosion.tscn fails to load or instantiate, this fails.
 		
+	# 3. Test ExplosiveBarrel Visuals (Fix Check)
+	var barrel_script = load("res://scripts/entities/ExplosiveBarrel.gd")
+	if barrel_script:
+		var barrel = Node3D.new()
+		barrel.set_script(barrel_script)
+		root.add_child(barrel)
+		barrel.initialize(Vector2(7,7), gm)
+		
+		if barrel.mesh and barrel.mesh.mesh is CylinderMesh:
+			print("PASS: ExplosiveBarrel initialized as Cylinder (Correct Visuals).")
+		elif barrel.mesh and barrel.mesh.mesh is BoxMesh:
+			print("FAIL: ExplosiveBarrel initialized as Box (Crate Overwrite Bug).")
+		else:
+			print("FAIL: ExplosiveBarrel visual mesh unexpected.")
+	else:
+		print("SKIP: ExplosiveBarrel script load failed.")
+
 	get_tree().quit()

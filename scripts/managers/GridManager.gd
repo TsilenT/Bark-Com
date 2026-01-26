@@ -76,20 +76,26 @@ func _get_point_id(coord: Vector2) -> int:
 func _setup_astar():
 	astar = AStar3D.new()
 
-	# 1. Add All Points
+	# 1. Add Points & Configuration (Merged Pass)
 	for coord in grid_data:
+		var id = _get_point_id(coord)
+		astar.add_point(id, get_world_position(coord))
+		
+		# Attributes
 		var data = grid_data[coord]
 		var is_walkable = data.get("is_walkable", false)
-		if is_walkable:
-			var id = _get_point_id(coord)
-			astar.add_point(id, get_world_position(coord))
+		if not is_walkable:
+			astar.set_point_disabled(id, true)
+			
+		# Weights (Future proofing, default is 1.0)
+		# astar.set_point_weight_scale(id, 1.0) 
 
 	# 2. Connect Neighbors
 	for coord in grid_data:
 		var id = _get_point_id(coord)
-		if not astar.has_point(id):
-			continue
-
+		# No need to check has_point(id) if we iterate grid_data keys which we just added.
+		# But safety first.
+		
 		var current_elev = grid_data[coord].get("elevation", 0)
 		var current_type = grid_data[coord].get("type", TileType.GROUND)
 
@@ -128,14 +134,6 @@ func _setup_astar():
 
 				if can_connect:
 					astar.connect_points(id, n_id)
-
-	# 3. Apply Traverse Weights (Ladders are slow)
-	# UPDATE: User requested Ladders cost 1 AP (standard) but cannot be stopped on.
-	for coord in grid_data:
-		var id = _get_point_id(coord)
-		if astar.has_point(id):
-			# Uniform weight provided logic handles blocking elsewhere
-			astar.set_point_weight_scale(id, 1.0)
 
 
 func get_move_path(start: Vector2, end: Vector2) -> Array[Vector2]:
@@ -177,6 +175,10 @@ func calculate_path_cost(path: Array[Vector2]) -> int:
 func is_valid_destination(coord: Vector2) -> bool:
 	if not grid_data.has(coord):
 		return false
+		
+	# NEW: Check Dynamic Occupancy (Updated by refresh_pathfinding)
+	if _unit_occupancy.has(coord):
+		return false # Cannot stop on ANY unit (Friend or Foe)
 
 	# Cannot end turn on a Ladder
 	if grid_data[coord].get("type") == TileType.LADDER:
@@ -303,13 +305,18 @@ func is_tile_cover(coord: Vector2) -> bool:
 	return grid_data[coord].get("cover_height", 0.0) > 0.0
 
 
-func refresh_pathfinding(units: Array, ignore_unit = null):
+# Cache for dynamic unit positions (updated in refresh_pathfinding)
+var _unit_occupancy = {}
+
+func refresh_pathfinding(units: Array, ignore_unit = null, active_faction: String = ""):
+	_unit_occupancy.clear()
+	
 	# 1. Reset to Base Static State + Check Dynamic Obstacles (Props/Crates)
 	for coord in grid_data:
 		var d = grid_data[coord]
 		var walkable = d.get("is_walkable", false)
 		
-		# Check if occupied by a prop or unit registered in grid_data
+		# Check if occupied by a prop or unit registered in grid_data (Static/Prop)
 		var occupant = d.get("unit")
 		if occupant and is_instance_valid(occupant) and occupant != ignore_unit:
 			walkable = false
@@ -318,12 +325,27 @@ func refresh_pathfinding(units: Array, ignore_unit = null):
 		if astar.has_point(id):
 			astar.set_point_disabled(id, not walkable)
 
-	# 2. Mark Units from List (Redundant but safe for moving units)
+	# 2. Mark Units from List (Dynamic Units)
 	for u in units:
-		if is_instance_valid(u) and u.current_hp > 0 and u != ignore_unit:
-			var u_id = _get_point_id(u.grid_pos)
-			if astar.has_point(u_id):
-				astar.set_point_disabled(u_id, true)
+		if is_instance_valid(u) and u.current_hp > 0:
+			_unit_occupancy[u.grid_pos] = u
+			
+			if u != ignore_unit:
+				# Check Faction vs Active Faction
+				# If active_faction is set, friendlies (same faction) are WALKABLE (Traversable).
+				# Enemies are BLOCKED.
+				# If no active_faction (generic update), BLOCK EVERYONE (safe default).
+				
+				var block_tile = true
+				if active_faction != "" and "faction" in u:
+					if u.faction == active_faction:
+						block_tile = false # Allow traversal through friend
+				
+				var u_id = _get_point_id(u.grid_pos)
+				if astar.has_point(u_id):
+					# Only disable if blocking. If not blocking (friend), we leave it as set by step 1 (likely walkable).
+					if block_tile:
+						astar.set_point_disabled(u_id, true)
 
 
 
@@ -341,11 +363,13 @@ func get_random_valid_position() -> Vector2:
 	return Vector2(-1, -1)
 
 
+
 func get_reachable_tiles(start_pos: Vector2, max_move: int) -> Array[Vector2]:
 	var reachable: Array[Vector2] = []
 	var queue = [{"pos": start_pos, "cost": 0}]
 	var visited = {start_pos: 0}  # Pos -> Cost
 	
+	# Start pos is always reachable (cost 0)
 	reachable.append(start_pos)
 
 	while not queue.is_empty():
@@ -358,18 +382,14 @@ func get_reachable_tiles(start_pos: Vector2, max_move: int) -> Array[Vector2]:
 			
 		var connections = astar.get_point_connections(c_id)
 		for n_id in connections:
+			# If disabled (Wall or Enemy), we cannot enter/traverse
 			if astar.is_point_disabled(n_id):
 				continue
 				
 			var n_pos = get_grid_coord(astar.get_point_position(n_id))
 
-			
-			# Calculate Cost to neighbor
+			# Calculate Cost to neighbor (Uniform Step Cost)
 			var move_cost = 1
-			# UPDATE: Ladders cost 1 now.
-			# if grid_data[n_pos].get("type") == TileType.LADDER:
-			# 	move_cost = 2
-				
 			var new_cost = current.cost + move_cost
 			
 			if new_cost <= max_move:
@@ -378,7 +398,8 @@ func get_reachable_tiles(start_pos: Vector2, max_move: int) -> Array[Vector2]:
 					visited[n_pos] = new_cost
 					queue.append({"pos": n_pos, "cost": new_cost})
 					
-					# Only add to output if it's a valid STOPPING point (e.g. not a Ladder)
+					# Only add to output if it's a valid STOPPING point (e.g. not occupied)
+					# This gives us "Blue Squares" that match the "Line Helper" logic
 					if is_valid_destination(n_pos):
 						if not reachable.has(n_pos):
 							reachable.append(n_pos)
@@ -414,6 +435,7 @@ func get_best_cover_at(coord: Vector2) -> float:
 	if not grid_data.has(coord):
 		return 0.0
 		
+	var my_elev = grid_data[coord].get("elevation", 0)
 	var max_cover = 0.0
 	
 	# Check 4 direct neighbors
@@ -421,8 +443,32 @@ func get_best_cover_at(coord: Vector2) -> float:
 	for n in neighbors:
 		var n_pos = coord + n
 		if grid_data.has(n_pos):
-			var h = grid_data[n_pos].get("cover_height", 0.0)
-			if h > max_cover:
-				max_cover = h
+			var n_data = grid_data[n_pos]
+			var raw_cover = n_data.get("cover_height", 0.0)
+			
+			if raw_cover > 0.0:
+				var n_elev = n_data.get("elevation", 0)
+				# ELEVATION CHECK: Cover must be TALLER than my feet level.
+				# Absolute Top of Wall = n_elev + raw_cover.
+				# If Top of Wall <= my_elev, it's a floor to me. No cover.
+				
+				# Actually, cover_height 2.0 (Full) or 1.0 (Half).
+				# If my_elev is 1, neighbor is 0. Wall is 1.0 high. Top is 1.0. 
+				# My feet are at 1.0. Wall matches feet -> Floor. No cover.
+				
+				# If Wall is Full (2.0) at elev 0. Top is 2.0. My feet 1.0. 
+				# Effective cover = 2.0 - 1.0 = 1.0 (Half Cover).
+				
+				# Logic: Effective Height = (n_elev + raw_cover) - my_elev
+				var effective = (n_elev + raw_cover) - my_elev
+				if effective > 0.0:
+					# Clamp to valid cover types (0, 1, 2)
+					# If effective >= 1.5 -> Full (2), else if >= 0.5 -> Half (1)
+					if effective >= 1.5: effective = 2.0
+					elif effective >= 0.5: effective = 1.0
+					else: effective = 0.0
+					
+					if effective > max_cover:
+						max_cover = effective
 				
 	return max_cover

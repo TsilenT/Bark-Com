@@ -12,10 +12,9 @@ class MockGridManager extends "res://scripts/managers/GridManager.gd":
 	
 
 
-class MockUnit:
-	var name = "MockUnit"
+class MockUnit extends Node3D:
+	var unit_name = "MockUnit"
 	var grid_pos = Vector2.ZERO
-	var global_position = Vector3.ZERO
 	var accuracy = 65
 	var defense = 0
 	var faction = "Player"
@@ -53,7 +52,7 @@ func _ready():
 func assert_eq(actual, expected, context):
 	if actual != expected:
 		print("FAIL [", context, "]: Expected ", expected, " but got ", actual)
-		# quit(1) # Fail fast
+		await TestUtils.finalize_and_quit(get_tree(), 1)
 	else:
 		print("PASS [", context, "]")
 
@@ -68,6 +67,8 @@ func test_base_hit_chance():
 	var result = CombatResolver.calculate_hit_chance(attacker, target, gm)
 	assert_eq(int(result["hit_chance"]), 65, "Base Hit Chance (Close Range)")
 	TestUtils.free_node(gm)
+	TestUtils.free_node(attacker)
+	TestUtils.free_node(target)
 
 func test_range_falloff():
 	var gm = MockGridManager.new()
@@ -87,6 +88,8 @@ func test_range_falloff():
 	var expected = 65 - 10
 	assert_eq(int(result["hit_chance"]), expected, "Range Falloff (7 tiles)")
 	TestUtils.free_node(gm)
+	TestUtils.free_node(attacker)
+	TestUtils.free_node(target)
 
 func test_min_hit_chance():
 	var gm = MockGridManager.new()
@@ -101,8 +104,10 @@ func test_min_hit_chance():
 	target.grid_pos = Vector2(50, 0)
 	
 	var result = CombatResolver.calculate_hit_chance(attacker, target, gm)
-	assert_eq(int(result["hit_chance"]), 5, "Minimum Hit Chance Clamp (5%)")
+	assert_eq(int(result["hit_chance"]), 0, "Minimum Hit Chance Clamp (0%)")
 	TestUtils.free_node(gm)
+	TestUtils.free_node(attacker)
+	TestUtils.free_node(target)
 
 func test_max_hit_chance():
 	var gm = MockGridManager.new()
@@ -115,6 +120,8 @@ func test_max_hit_chance():
 	var result = CombatResolver.calculate_hit_chance(attacker, target, gm)
 	assert_eq(int(result["hit_chance"]), 100, "Maximum Hit Chance Clamp (100%)")
 	TestUtils.free_node(gm)
+	TestUtils.free_node(attacker)
+	TestUtils.free_node(target)
 	
 func test_null_target():
 	var gm = MockGridManager.new()
@@ -126,3 +133,4 @@ func test_null_target():
 	assert_eq(int(result["hit_chance"]), 0, "Null Target Safety (Hit Chance)")
 	assert_eq(result["breakdown"], "No Target", "Null Target Safety (Breakdown)")
 	TestUtils.free_node(gm)
+	TestUtils.free_node(attacker)
