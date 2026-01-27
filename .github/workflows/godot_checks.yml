@@ -119,25 +119,38 @@ jobs:
           apt-get install -y powershell
 
       - name: Generate Patch Notes
+        if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         run: |
           Write-Host "DEBUG: Ref is ${{ github.ref }}"
-          # Detect version from tag or default to "next"
-          $Version = if ("${{ github.ref }}" -like "refs/tags/v*") { "${{ github.ref_name }}".Substring(1) } else { "next" }
+          $Version = "${{ github.ref_name }}".Substring(1)
           Write-Host "DEBUG: Detected Version: $Version"
           ./tools/generate_patch_notes.ps1 -Version $Version
 
       - name: Commit and Push Patch Notes
-        # Only run on main/tags, not PRs
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v')
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Check for changes to stash
+          STASHED=0
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Stashing changes..."
+            git stash --include-untracked
+            STASHED=1
+          fi
           
           # Switch to main branch to ensure we push to the correct target
           git fetch origin main
           git checkout main
           git pull origin main --rebase
+          
+          # Restore changes
+          if [ "$STASHED" -eq 1 ]; then
+            echo "Popping stash..."
+            git stash pop
+          fi
           
           git add patch_notes/
           if git diff --staged --quiet; then
@@ -148,6 +161,7 @@ jobs:
           fi
 
       - name: Upload Patch Notes Artifact
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
           name: patch-notes
