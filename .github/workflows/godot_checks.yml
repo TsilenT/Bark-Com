@@ -78,6 +78,9 @@ jobs:
         with:
           fetch-depth: 0 # CRITICAL: Required for patch notes generation
 
+      - name: Fix Git Trust
+        run: git config --global --add safe.directory '*'
+
       - name: Setup PowerShell
         run: |
           apt-get update
