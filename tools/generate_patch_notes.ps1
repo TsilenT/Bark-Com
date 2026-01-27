@@ -21,33 +21,38 @@ $StartRef = $null
 $EndRef = $null
 $DetectedVersion = "0.0.1"
 
-if ($null -eq $LatestTag) {
-    Write-Host "No tags found. Generating notes for all commits." -ForegroundColor Yellow
-    $EndRef = "HEAD"
-} else {
-    $LatestTagHash = git rev-parse $LatestTag
-
-    if ($HeadHash -eq $LatestTagHash) {
-        Write-Host "HEAD is currently at tag $LatestTag." -ForegroundColor Cyan
-        $EndRef = $LatestTag
-        $DetectedVersion = $LatestTag
-
-        try {
-            $PreviousTag = git describe --tags --abbrev=0 "$LatestTag^" 2>$null
-        } catch {
-            $PreviousTag = $null
-        }
-
-        if ($PreviousTag) {
-            $StartRef = $PreviousTag
-        }
-    } else {
-        Write-Host "HEAD is ahead of tag $LatestTag." -ForegroundColor Cyan
-        $StartRef = $LatestTag
+    if ($null -eq $LatestTag) {
+        Write-Host "No tags found. Generating notes for all commits." -ForegroundColor Yellow
         $EndRef = "HEAD"
-        $DetectedVersion = "Unreleased" 
+    } else {
+        # Ensure we get the commit hash, handling annotated tags correctly
+        $LatestTagHash = git rev-parse "$LatestTag^{commit}" 2>$null
+        if (-not $LatestTagHash) {
+            $LatestTagHash = git rev-parse $LatestTag
+        }
+
+        if ($HeadHash -eq $LatestTagHash) {
+            Write-Host "HEAD is currently at tag $LatestTag." -ForegroundColor Cyan
+            $EndRef = $LatestTag
+            $DetectedVersion = $LatestTag
+
+            try {
+                # Find the tag immediately preceding the latest one
+                $PreviousTag = git describe --tags --abbrev=0 "$LatestTag^" 2>$null
+            } catch {
+                $PreviousTag = $null
+            }
+
+            if ($PreviousTag) {
+                $StartRef = $PreviousTag
+            }
+        } else {
+            Write-Host "HEAD is ahead of tag $LatestTag." -ForegroundColor Cyan
+            $StartRef = $LatestTag
+            $EndRef = "HEAD"
+            $DetectedVersion = "Unreleased" 
+        }
     }
-}
 
 if ($Version) {
     $DetectedVersion = $Version

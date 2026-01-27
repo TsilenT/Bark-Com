@@ -19,15 +19,39 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
         
+      - name: Check for Code Changes
+        id: filter
+        run: |
+          # Get list of changed files
+          # For PRs this might need smarter logic, but for simple push workflow this works
+          CHANGED=$(git diff --name-only HEAD^ HEAD || git ls-files)
+          
+          echo "Changed files:"
+          echo "$CHANGED"
+          
+          # Check if any file is a game file (.gd, .tscn, .tres, project.godot)
+          if echo "$CHANGED" | grep -qE "\.(gd|tscn|tres|import|json|cfg)$|project\.godot|tests/"; then
+            echo "run_tests=true" >> $GITHUB_OUTPUT
+            echo "Game logic modified -> Running Tests"
+          else
+            echo "run_tests=false" >> $GITHUB_OUTPUT
+            echo "Only non-game files modified -> Skipping Tests"
+          fi
+
       - name: Setup
+        if: steps.filter.outputs.run_tests == 'true'
         run: |
           mkdir -p ~/.config/godot
       
       - name: Import Project (Generate Cache)
+        if: steps.filter.outputs.run_tests == 'true'
         run: godot --headless --editor --quit
           
       - name: Run Dynamic Tests
+        if: steps.filter.outputs.run_tests == 'true'
         timeout-minutes: 15
         run: |
           echo "🔍 Discovering Tests..."
@@ -177,10 +201,14 @@ jobs:
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
         run: |
-          # Download Butler
-          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          # Download Butler (try broth first, then GitHub)
+          echo "Downloading Butler..."
+          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default --retry 5 --retry-delay 5 || \
+          curl -L -o butler.zip https://github.com/itchio/butler/releases/download/v15.21.0/butler-linux-amd64.zip
+          
           unzip butler.zip
           chmod +x butler
+          ./butler -V
           
           # Deploy Windows
           echo "Deploying Windows..."
@@ -216,6 +244,7 @@ jobs:
       - name: Find Patch Notes File
         id: notes
         run: |
+          ls -R release_notes
           FILE=$(find release_notes -name "release_*_patch_notes.md" | head -n 1)
           echo "patch_notes_file=$FILE" >> $GITHUB_OUTPUT
           echo "Found patch notes: $FILE"
