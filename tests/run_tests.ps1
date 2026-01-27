@@ -2,7 +2,8 @@
 # Usage: .\tests\run_tests.ps1 [-Strict:$false]
 
 param (
-    [bool]$Strict = $true
+    [bool]$Strict = $true,
+    [string[]]$Targets = @()
 )
 
 $GodotPath = "C:\Users\smili\Documents\Godot\Installs\Godot_v4.5.1-stable_win64.exe"
@@ -12,10 +13,37 @@ $LogFile = "test_log.txt"
 # Clear Log File
 "--- TEST RUN STARTED: $(Get-Date) ---" | Out-File -FilePath $LogFile -Encoding UTF8
 
-Write-Host "Searching for Tests..." -ForegroundColor Cyan
-
-$TestScenes = Get-ChildItem -Path "tests" -Filter "*.tscn" -Recurse
-$TestScripts = Get-ChildItem -Path "tests" -Filter "*.gd" -Recurse
+if ($Targets.Count -gt 0) {
+    Write-Host "Running Specific Targets: $Targets" -ForegroundColor Cyan
+    $TestScenes = @()
+    $TestScripts = @()
+    
+    foreach ($T in $Targets) {
+        # Check if direct file path
+        if (Test-Path $T) {
+            $Item = Get-Item $T
+            if ($Item.Extension -eq ".tscn") { $TestScenes += $Item }
+            elseif ($Item.Extension -eq ".gd") { $TestScripts += $Item }
+        }
+        # Check if pattern/name
+        else {
+            $Matches = Get-ChildItem -Path "tests" -Recurse | Where-Object { $_.Name -like "*$T*" }
+            foreach ($M in $Matches) {
+                if ($M.Extension -eq ".tscn") { $TestScenes += $M }
+                elseif ($M.Extension -eq ".gd") { $TestScripts += $M }
+            }
+        }
+    }
+    
+    # Deduplicate
+    $TestScenes = $TestScenes | Select-Object -Unique
+    $TestScripts = $TestScripts | Select-Object -Unique
+}
+else {
+    Write-Host "Searching for All Tests..." -ForegroundColor Cyan
+    $TestScenes = Get-ChildItem -Path "tests" -Filter "*.tscn" -Recurse
+    $TestScripts = Get-ChildItem -Path "tests" -Filter "*.gd" -Recurse
+}
 
 $GlobalExitCode = 0
 
