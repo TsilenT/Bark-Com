@@ -180,10 +180,34 @@ func _spawn_objectives(type: int, count: int):
 						GameManager.log(LOG_PREFIX, "Crate at ", pos, " contains loot: ", picked)
 				
 		elif type == 1: # RESCUE
-			var h_script = load("res://scripts/entities/ObjectiveUnit.gd")
-			if h_script:
-				obj_node = h_script.new()
-				obj_node.name = "Lost Human"
+			var recruit_data = active_mission_config.reward_recruit_data
+			if recruit_data.is_empty():
+				# Fallback
+				GameManager.log(LOG_PREFIX, "Warning: No recruit data for Rescue mission. Using default.")
+				var h_script = load("res://scripts/entities/ObjectiveUnit.gd")
+				if h_script:
+					obj_node = h_script.new()
+					obj_node.name = "Lost Human"
+			else:
+				# Spawn Actual Corgi
+				var unit_script = load("res://scripts/entities/CorgiUnit.gd")
+				if unit_script:
+					obj_node = unit_script.new()
+					obj_node.name = recruit_data.get("name", "Rescuee")
+					obj_node.unit_name = obj_node.name
+					
+					# Setup Stats/Visuals
+					obj_node.apply_class_stats(recruit_data.get("class", "Recruit"))
+					if recruit_data.has("level"):
+						obj_node.rank_level = recruit_data["level"]
+						obj_node.recalculate_stats() # Apply level bonuses
+					
+					obj_node.faction = "Neutral" # Passive until rescued
+					
+					# Create Bouncing Arrow
+					_attach_rescue_beacon(obj_node)
+			
+			if obj_node:
 				obj_node.add_to_group("RescueTargets")
 		
 		elif type == 4: # DEFENSE (Golden Hydrant)
@@ -801,24 +825,54 @@ func setup_acidsplosion_scenario(grid_manager, unit_container):
 			grid_manager.grid_data[pos]["walkable"] = true
 			grid_manager.grid_data[pos]["cover"] = 0.0
 
-		var barrel_script = load("res://scripts/entities/ExplosiveBarrel.gd")
-		if barrel_script:
-			var barrel = barrel_script.new()
-			# IMPORTANT: Add to scene FIRST if _ready depends on tree, otherwise set props.
-			# But position needs to be set.
-			if grid_manager and grid_manager.get_parent():
-				grid_manager.get_parent().add_child(barrel)
-			
-			barrel.grid_pos = pos
-			barrel.position = grid_manager.get_world_position(pos)
-			
-			if barrel.has_method("initialize"):
-				barrel.initialize(pos, grid_manager)
-			else:
-				if grid_manager.grid_data.has(pos):
-					grid_manager.grid_data[pos]["unit"] = barrel
+		var barrel = load("res://scripts/entities/ExplosiveBarrel.gd").new()
+		# Add to scene
+		unit_container.add_child(barrel)
+		barrel.position = grid_manager.get_world_position(pos)
+		barrel.initialize(pos, grid_manager)
+		barrel.add_to_group("Destructible")
+		
+		GameManager.log(LOG_PREFIX, "Spawned Barrel at ", pos)
 
 	print("MissionManager: Acidsplosion setup complete.")
+
+
+func _attach_rescue_beacon(parent_node: Node3D):
+	# 1. Container
+	var beacon_pivot = Node3D.new()
+	beacon_pivot.name = "RescueBeacon"
+	beacon_pivot.position = Vector3(0, 3.5, 0) # High above head
+	parent_node.add_child(beacon_pivot)
+	
+	# 2. Arrow Mesh (Prism pointing down)
+	var mesh_inst = MeshInstance3D.new()
+	var mesh = PrismMesh.new()
+	mesh.size = Vector3(0.8, 1.2, 0.2) # Flat arrow
+	mesh_inst.mesh = mesh
+	mesh_inst.rotation_degrees.z = 180 # Point down
+	
+	# 3. Material (Gaudy Gold)
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.84, 0.0) # Gold
+	mat.metallic = 1.0
+	mat.roughness = 0.2
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.84, 0.0)
+	mat.emission_energy_multiplier = 2.0
+	mesh_inst.material_override = mat
+	
+	beacon_pivot.add_child(mesh_inst)
+	
+	# 4. Animation (Tween)
+	var tween = beacon_pivot.create_tween().set_loops()
+	
+	# Bounce
+	tween.tween_property(mesh_inst, "position:y", 0.5, 0.8).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(mesh_inst, "position:y", 0.0, 0.8).set_trans(Tween.TRANS_SINE)
+	
+	# Spin (Separate Tween)
+	var spin_tween = beacon_pivot.create_tween().set_loops()
+	spin_tween.tween_property(mesh_inst, "rotation_degrees:y", 360.0, 2.0).as_relative()
 
 func _spawn_nemesis(data: Resource):
 	if not grid_manager: return

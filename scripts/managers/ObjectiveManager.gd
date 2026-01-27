@@ -238,7 +238,18 @@ func get_objective_text() -> String:
 			if rescue_secured:
 				return "EXTRACT! Hold: " + str(max(0, rescue_win_turn - current_turn))
 			else:
-				return "Rescue the Human!"
+				var target_name = "Target"
+				var t_node = rescue_target
+				if not is_instance_valid(t_node):
+					t_node = get_tree().get_first_node_in_group("RescueTargets")
+				
+				if is_instance_valid(t_node):
+					if "unit_name" in t_node and t_node.unit_name != "":
+						target_name = t_node.unit_name
+					else:
+						target_name = t_node.name
+				
+				return "Rescue " + target_name + "!"
 	
 	return "Objective Unknown"
 

@@ -660,13 +660,22 @@ func _check_retrieve_action(unit):
 	# Check for "Treat Bag" or "Lost Human" adjacent
 	var objs = get_tree().get_nodes_in_group("Objectives")
 	for obj in objs:
-		if is_instance_valid(obj) and (obj.name == "Treat Bag" or obj.name == "Lost Human"):
+		# Use Groups for robust checking
+		var is_rescue = obj.is_in_group("RescueTargets")
+		var is_treat = obj.is_in_group("TreatBags") or obj.name == "Treat Bag" or obj.name == "LootCrate"
+		
+		# Allow interacting with explicit "Interactables" (Doors/Switches) provided they are in Objectives
+		var is_interactive = obj.is_in_group("Interactive")
+
+		if is_instance_valid(obj) and (is_rescue or is_treat or is_interactive):
 			var dist = unit.grid_pos.distance_to(obj.grid_pos)
 			if dist <= 1.5:  # Adjacent or Diagonal
 				# Use generic "Interact" label? Or specific?
-				var label = "Retrieve"
-				if obj.name == "Lost Human":
+				var label = "Interact"
+				if is_rescue:
 					label = "Rescue"
+				elif is_treat:
+					label = "Retrieve"
 				_create_action_button(
 					label + "\n(1 AP)", func(): emit_signal("action_requested", "Interact")
 				)

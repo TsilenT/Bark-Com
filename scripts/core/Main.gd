@@ -179,6 +179,9 @@ func _ready():
 			if "objective_target_count" in active_mission_data:
 				mission_config.objective_target_count = active_mission_data.objective_target_count
 
+			if "reward_recruit_data" in active_mission_data:
+				mission_config.reward_recruit_data = active_mission_data.reward_recruit_data
+
 			if mission_config.is_final_defense:
 				# BASE DEFENSE: 10 Waves, Point Buy (5 + Level)
 				for i in range(10):
@@ -584,6 +587,10 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 	for h in old_hazards:
 		if is_instance_valid(h):
 			h.queue_free()
+
+	# Initialize ObjectiveManager
+	if objective_manager and mission:
+		objective_manager.initialize(mission.objective_type, turn_manager, mission.objective_target_count)
 
 	# Spawn Explosive Barrels
 	# Spawn Explosive Barrels (Randomized 1-20)
@@ -1440,6 +1447,69 @@ func _on_action_requested(action):
 	elif action == "Overwatch":
 		# Placeholder
 		print("Overwatch not implemented yet.")
+		
+	elif action == "Interact":
+		_try_context_interaction()
+
+
+
+func _try_context_interaction():
+	if not selected_unit: return
+	if not objective_manager: return
+	
+	# Check AP
+	if selected_unit.current_ap < 1:
+		if game_ui:
+			SignalBus.on_combat_log_event.emit("Not enough AP!", Color.RED)
+		return
+	
+	GameManager.log(LOG_PREFIX, "Attempting Context Interaction...")
+	
+	# Scan adjacent tiles
+	var neighbors = grid_manager.get_adjacent_tiles(selected_unit.grid_pos)
+	for n in neighbors:
+		var target = _get_interactive_in_tile(n)
+		if target:
+			GameManager.log(LOG_PREFIX, "Context Interaction found: ", target.name)
+			_process_interaction(selected_unit, target)
+			return
+
+	GameManager.log(LOG_PREFIX, "No valid interaction target found.")
+	if game_ui:
+		SignalBus.on_combat_log_event.emit("Nothing to interact with.", Color.GRAY)
+
+func _get_interactive_in_tile(grid_pos):
+	if not grid_manager.grid_data.has(grid_pos): return null
+	
+	# 1. Check Unit/Prop in Grid
+	var unit = grid_manager.grid_data[grid_pos].get("unit")
+	if unit:
+		if unit.is_in_group("Interactive") or unit.is_in_group("Objectives") or unit.is_in_group("RescueTargets") or unit.is_in_group("TreatBags"):
+			return unit
+			
+	# 2. Check Overlap (Physics/Scene) if Grid empty? 
+	# (Usually Grid is authoritative for logic)
+	return null
+
+func _process_interaction(user, target):
+	# Delegate to ObjectiveManager
+	var result = objective_manager.handle_interaction(user, target)
+	
+	if result:
+		# Success feedback
+		if game_ui:
+			SignalBus.on_combat_log_event.emit("Interaction Successful!", Color.GREEN)
+			
+		# Spend AP (Interaction costs 1)
+		selected_unit.spend_ap(1)
+		
+		# Refresh UI and Spend AP?
+		# ObjectiveManager usually updates state.
+		# Signal unit step to refresh visibility/UI
+		SignalBus.on_unit_step_completed.emit(user)
+	else:
+		if game_ui:
+			SignalBus.on_combat_log_event.emit("Nothing happened.", Color.GRAY)
 
 
 func _on_ability_requested(ability):
