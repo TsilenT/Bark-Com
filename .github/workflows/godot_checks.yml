@@ -173,25 +173,22 @@ jobs:
         with:
           name: web-build
 
-      - name: Deploy Windows
-        uses: manleydev/butler-publish-itchio-action@master
+      - name: Install and Run Butler
         env:
-          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
-          CHANNEL: windows
-          ITCH_GAME: bark-com
-          ITCH_USER: eldritch-dream
-          PACKAGE: windows_build.zip
-          VERSION: ${{ github.ref_name }}
-
-      - name: Deploy Web
-        uses: manleydev/butler-publish-itchio-action@master
-        env:
-          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
-          CHANNEL: web
-          ITCH_GAME: bark-com
-          ITCH_USER: eldritch-dream
-          PACKAGE: web_build.zip
-          VERSION: ${{ github.ref_name }}
+          BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
+        run: |
+          # Download Butler
+          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          unzip butler.zip
+          chmod +x butler
+          
+          # Deploy Windows
+          echo "Deploying Windows..."
+          ./butler push windows_build.zip eldritch-dream/bark-com:windows --userversion "${{ github.ref_name }}"
+          
+          # Deploy Web
+          echo "Deploying Web..."
+          ./butler push web_build.zip eldritch-dream/bark-com:web --userversion "${{ github.ref_name }}"
 
   release_github:
     name: 🏷️ Create GitHub Release
@@ -216,11 +213,18 @@ jobs:
           name: patch-notes
           path: release_notes
 
+      - name: Find Patch Notes File
+        id: notes
+        run: |
+          FILE=$(find release_notes -name "release_*_patch_notes.md" | head -n 1)
+          echo "patch_notes_file=$FILE" >> $GITHUB_OUTPUT
+          echo "Found patch notes: $FILE"
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             windows_build.zip
             web_build.zip
-          body_path: release_notes/release_${{ github.ref_name }}_patch_notes.md # Assumes filename matching tag version
+          body_path: ${{ steps.notes.outputs.patch_notes_file }}
           fail_on_unmatched_files: true
