@@ -21,12 +21,16 @@ func get_valid_tiles(grid_manager, user) -> Array[Vector2]:
 	var units = tree.get_nodes_in_group("Units")
 	for u in units:
 		if is_instance_valid(u) and "current_hp" in u and u.current_hp > 0:
-			if "faction" in u and "faction" in user and u.faction != user.faction:
-				# Enemy found
-				# OBJECTIVE SAFEGUARD (Units)
-				if user.faction == "Player":
-					if u.is_in_group("Objectives") or u.is_in_group("TreatBags"):
-						continue
+			if "faction" in u and "faction" in user:
+				var is_enemy = (u.faction != user.faction)
+				var is_friendly_heal = (u.faction == user.faction and user.get("primary_weapon") and user.primary_weapon.display_name == "Syringe Gun")
+				
+				if is_enemy or is_friendly_heal:
+					# Enemy or Heal Target found
+					# OBJECTIVE SAFEGUARD (Units)
+					if user.faction == "Player":
+						if u.is_in_group("Objectives") or u.is_in_group("TreatBags"):
+							continue
 
 				if u.get("grid_pos") and u.grid_pos.distance_to(user.grid_pos) <= r:
 					valid.append(u.grid_pos)

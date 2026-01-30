@@ -1807,7 +1807,10 @@ func _on_mouse_hover(grid_pos: Vector2):
 			if hover_unit.faction == "Enemy":
 				cursor_shape = Input.CURSOR_CROSS
 			# Player/Neutral units typically don't need special cursor unless interactive?
-			# e.g. Syringe Gun targeting friendly? Leave arrow for now.
+			# Syringe Gun targeting friendly
+			if hover_unit.faction == "Player" and selected_unit and selected_unit.faction == "Player":
+				if selected_unit.primary_weapon and selected_unit.primary_weapon.display_name == "Syringe Gun":
+					cursor_shape = Input.CURSOR_CROSS
 	
 	# Check for Interactables (if no unit override)
 	if cursor_shape == Input.CURSOR_ARROW:
