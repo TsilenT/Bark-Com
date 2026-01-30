@@ -82,22 +82,30 @@ $Cats_Docs = @()
 $Cats_Other = @()
 
 foreach ($Commit in $RawCommits) {
-    if ($Commit -match "(?i)^(feat|new|add|implement)") {
+    $Matched = $false
+
+    if ($Commit -match "(?i)(^(feat|new|add|implement))|(\s(feat|new|add|implement):)") {
         $Cats_Features += "- $Commit"
+        $Matched = $true
     }
-    elseif ($Commit -match "(?i)^(fix|bug|repair|resolve|hotfix)") {
+    if ($Commit -match "(?i)(^(fix|bug|repair|resolve|hotfix))|(\s(fix|bug|repair|resolve|hotfix):)") {
         $Cats_Fixes += "- $Commit"
+        $Matched = $true
     }
-    elseif ($Commit -match "(?i)^(style|ui|visual|art|shader|polish)") {
+    if ($Commit -match "(?i)(^(style|ui|visual|art|shader|polish))|(\s(style|ui|visual|art|shader|polish):)") {
         $Cats_Visuals += "- $Commit"
+        $Matched = $true
     }
-    elseif ($Commit -match "(?i)^(refactor|perf|optim|clean|test|ci|chore)") {
+    if ($Commit -match "(?i)(^(refactor|perf|optim|clean|test|ci|chore))|(\s(refactor|perf|optim|clean|test|ci|chore):)") {
         $Cats_Tech += "- $Commit"
+        $Matched = $true
     }
-    elseif ($Commit -match "(?i)^(doc|readme|comment)") {
+    if ($Commit -match "(?i)(^(doc|readme|comment))|(\s(doc|readme|comment):)") {
         $Cats_Docs += "- $Commit"
+        $Matched = $true
     }
-    else {
+    
+    if (-not $Matched) {
         $Cats_Other += "- $Commit"
     }
 }
