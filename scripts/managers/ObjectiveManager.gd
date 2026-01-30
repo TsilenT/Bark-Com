@@ -155,7 +155,7 @@ func handle_interaction(interactor, target):
 
 	# print("ObjectiveManager: Handling Interaction... (Moved to top)")
 	if current_mission_type == MissionType.RETRIEVE:
-		if target.is_in_group("TreatBags") or target is LootCrate:
+		if target.is_in_group("TreatBags") or target.is_in_group("LootCrate"):
 			current_retrievals += 1
 			print(interactor.name, " secured a Treat Bag! Progress: ", current_retrievals, "/", target_count)
 			SignalBus.on_request_floating_text.emit(target, "SECURED " + str(current_retrievals) + "/" + str(target_count), Color.CYAN)

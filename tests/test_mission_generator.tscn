@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://test_mission_generator_runner_123"]
+
+[ext_resource type="Script" path="res://tests/test_mission_generator.gd" id="1_d4f5g"]
+
+[node name="TestMissionGenerator" type="Node"]
+script = ExtResource("1_d4f5g")

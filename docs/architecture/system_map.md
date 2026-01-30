@@ -10,7 +10,8 @@
 | **Global State (Base/Mission)** | `scripts/core/GameManager.gd` (Autoload) |
 | **Event Bus** | `scripts/core/SignalBus.gd` (Autoload) |
 | **Input Handling** | `scripts/core/InputManager.gd` (Autoload) |
-| **Mission Initialization** | `scripts/builders/MissionInitializer.gd` (Planned) |
+| **Mission Initialization** | `scripts/builders/MissionInitializer.gd` |
+| **Objective Spawning** | `scripts/builders/ObjectiveSpawner.gd` |
 
 ## Units & Entities
 | Concept | File Location |

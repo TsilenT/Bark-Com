@@ -4,6 +4,7 @@ class_name CorgiUnit
 # Corgi Specifics
 var is_splooting: bool = false
 var turns_without_attack: int = 0
+var is_rescue_target: bool = false
 
 
 func _ready():

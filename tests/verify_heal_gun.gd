@@ -15,6 +15,9 @@ func _ready():
 	_cleanup()
 	await get_tree().process_frame
 	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
 	get_tree().quit(0)
 
 func test_syringe_targets_friendly():
@@ -39,7 +42,7 @@ func test_syringe_targets_friendly():
 	# 2. Spawn Healer (Player Faction)
 	var healer_script = load("res://tests/MockHealerUnit.gd")
 	healer_unit = healer_script.new()
-	healer_unit.set_script(healer_script)
+	# healer_unit.set_script(healer_script) # Redundant
 	healer_unit.name = "Healer"
 	healer_unit.faction = "Player"
 	healer_unit.grid_pos = Vector2(5, 5)
@@ -62,7 +65,7 @@ func test_syringe_targets_friendly():
 	
 	# 3. Spawn Patient (Player Faction)
 	patient_unit = healer_script.new()
-	patient_unit.set_script(healer_script) # Reuse script
+	# patient_unit.set_script(healer_script) # Redundant
 	patient_unit.name = "Patient"
 	patient_unit.faction = "Player"
 	patient_unit.max_hp = 10
@@ -110,29 +113,41 @@ func test_syringe_targets_friendly():
 	else:
 		fail_test("Patient was NOT healed. HP remained " + str(patient_unit.current_hp))
         
-	# Cleanup local resources
+	# CLEANUP (Aggressive to prevent leaks)
+	if is_instance_valid(healer_unit):
+		healer_unit.primary_weapon = null
+	
+	if is_instance_valid(main_node) and main_node.turn_manager and is_instance_valid(main_node.turn_manager):
+		main_node.turn_manager.units.clear()
+	
 	std_attack = null
 	syringe = null
 
 func _cleanup():
-	# Break Resource Cycles
+	# 1. Break Logic References
 	if healer_unit and is_instance_valid(healer_unit):
 		healer_unit.primary_weapon = null
-
-    # Break Circular Refs
+		
+	# 2. Clear Arrays holding references
 	if main_node and is_instance_valid(main_node):
-		if "turn_manager" in main_node and main_node.turn_manager:
-			if "units" in main_node.turn_manager:
-				main_node.turn_manager.units.clear()
+		if main_node.turn_manager and is_instance_valid(main_node.turn_manager):
+			main_node.turn_manager.units.clear()
+			
+	# 3. Explicit Node Destruction (Immediate free)
+	if healer_unit and is_instance_valid(healer_unit):
+		healer_unit.free()
+	if patient_unit and is_instance_valid(patient_unit):
+		patient_unit.free()
 		
-		# Clear Main vars if needed
-		main_node.selected_unit = null
-		
-		main_node.queue_free()
 	if grid_manager and is_instance_valid(grid_manager):
 		grid_manager.free()
-    # Children are freed by main_node
-
+		
+	if main_node and is_instance_valid(main_node):
+		# TurnManager is valid here?
+		if main_node.turn_manager and is_instance_valid(main_node.turn_manager):
+			main_node.turn_manager.free()
+			
+		main_node.free()
 
 func pass_test(msg):
 	print("PASS: " + msg)

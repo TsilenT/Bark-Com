@@ -11,6 +11,7 @@ func _ready():
 	faction = "Neutral"
 	can_be_targeted = false
 	add_to_group("Interactive") # Required for Main.gd interaction check
+	add_to_group("LootCrate")
 
 	# Visuals (Box)
 	var mesh_inst = MeshInstance3D.new()
@@ -26,7 +27,7 @@ func _ready():
 
 var grid_manager_ref
 func initialize(pos: Vector2, _grid_manager = null):
-	super.initialize(pos)
+	super.initialize(pos, _grid_manager)
 	
 	# Fallback if not passed (Legacy spawner compatibility)
 	if not _grid_manager:

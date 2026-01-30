@@ -168,6 +168,11 @@ func new_game(enable_iron_dog: bool = false):
 		roster[2]["primary_weapon"] = load("res://resources/weapons/SyringeGun.tres")
 	if roster.size() > 3:
 		roster[3]["primary_weapon"] = load("res://resources/weapons/TennisBallLauncher.tres")
+	
+	# Refresh Missions (Phase 8 Fix)
+	# Force regeneration so difficulty scales to Level 1 roster
+	_generate_daily_batch()
+	
 	print("GameManager: New Game Initialized.")
 	SignalBus.on_kibble_changed.emit(kibble)
 
@@ -264,14 +269,24 @@ func _generate_daily_batch():
 		m.mission_name = locs.pick_random() + " " + type_name
 		m.biome_type = randi() % LevelGenerator.Biome.size() # Random Biome
 		
+
 		# DIFFICULTY LOGIC
+		var roster_str = get_roster_strength()
+		
 		if i == 0:
-			# GUARANTEED LEVEL 1 for first slot
+			# GUARANTEED TRAINING (Level 1)
 			m.difficulty_rating = 1
 			m.mission_name = "[Training] " + m.mission_name
+		elif i == 1:
+			# Standard (Match Strength)
+			m.difficulty_rating = roster_str
+		elif i == 2:
+			# Hard (Strength + 1~2)
+			m.difficulty_rating = roster_str + randi_range(1, 2)
 		else:
-			# Random 1-3
-			m.difficulty_rating = (randi() % 3) + 1
+			# Elite (Strength + 2~4)
+			m.difficulty_rating = roster_str + randi_range(2, 4)
+			m.mission_name = "[ELITE] " + m.mission_name
 			
 		m.reward_kibble = m.difficulty_rating * 25 + (randi() % 20)
 		
@@ -440,6 +455,26 @@ func equip_weapon(corgi_name: String, inventory_index: int) -> bool:
 
 func get_roster() -> Array:
 	return roster
+
+
+func get_roster_strength() -> int:
+	if roster.is_empty():
+		return 1
+	
+	# Sort by level descending
+	var levels = []
+	for member in roster:
+		levels.append(member.get("level", 1))
+	levels.sort()
+	levels.reverse()
+	
+	# Average top 4 (or less)
+	var count = min(levels.size(), 4)
+	var total = 0
+	for i in range(count):
+		total += levels[i]
+	
+	return maxi(1, int(total / count))
 
 
 func get_ready_corgis() -> Array:

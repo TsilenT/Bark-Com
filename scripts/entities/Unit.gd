@@ -194,7 +194,7 @@ func _setup_fsm():
 	add_child(state_machine)
 
 
-func initialize(start_grid_pos: Vector2):
+func initialize(start_grid_pos: Vector2, _grid_manager = null):
 	grid_pos = start_grid_pos
 	# Snap to world position (assuming GridManager exists globally or passed)
 	update_cosmetics()

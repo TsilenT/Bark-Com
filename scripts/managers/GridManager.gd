@@ -51,6 +51,20 @@ func generate_tactical_grid(biome_override: int = -1):
 	emit_signal("grid_generated")
 
 
+## Returns all valid tiles within a given range (Euclidean/Radius) from center.
+func get_tiles_in_range(center: Vector2, max_range: float) -> Array:
+	var result = []
+	var r_ceil = ceil(max_range)
+	
+	for x in range(center.x - r_ceil, center.x + r_ceil + 1):
+		for y in range(center.y - r_ceil, center.y + r_ceil + 1):
+			var tile = Vector2(x, y)
+			if grid_data.has(tile):
+				if tile.distance_to(center) <= max_range:
+					result.append(tile)
+	return result
+
+
 func register_item(coord: Vector2, item_node: Node):
 	if grid_data.has(coord):
 		if not grid_data[coord].has("items"):

@@ -1,5 +1,6 @@
 extends Unit
-class_name ObjectiveUnit
+# class_name ObjectiveUnit
+
 
 
 func _ready():
@@ -62,8 +63,8 @@ func _ready():
 var can_be_targeted: bool = true
 
 
-func initialize(pos: Vector2):
-	super.initialize(pos)
+func initialize(pos: Vector2, _grid_manager = null):
+	super.initialize(pos, _grid_manager)
 	current_hp = 12  # Durability Buff (Was 1)
 	max_hp = 12
 	max_ap = 0
@@ -92,8 +93,8 @@ func die():
 	# ObjectiveManager checks status. If target is null/freed, it might auto-fail?
 	# Let's rely on ObjectiveManager to catch it, or emit a specific signal.
 	if name == "Treat Bag":
-		# Hacky check, but robust for now
-		if GameManager:
-			GameManager.call_deferred("fail_mission_generic", "Objective Destroyed!")
+		var gm = get_node_or_null("/root/GameManager")
+		if gm:
+			gm.call_deferred("fail_mission_generic", "Objective Destroyed!")
 		elif get_node_or_null("/root/Main/ObjectiveManager"):
 			get_node("/root/Main/ObjectiveManager").mission_failed("Objective Destroyed!")

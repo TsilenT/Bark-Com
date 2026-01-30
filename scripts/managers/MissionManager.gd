@@ -12,6 +12,7 @@ var active_mission_config: MissionConfig
 var current_wave_index: int = 0
 var spawned_units: Array = []
 var grid_manager = null  # Reference to GridManager
+var turn_manager = null  # Reference to TurnManager
 var _mission_ended_flag: bool = false
 const LOG_PREFIX = "MissionManager: "
 
@@ -37,82 +38,8 @@ const ENEMY_SCRIPTS = {
 	"Nemesis": "res://scripts/entities/EnemyUnit.gd" # Placeholder
 }
 func generate_mission_config(level: int) -> MissionConfig:
-	var config = MissionConfig.new()
-	config.mission_name = "Sector Sweep (Level " + str(level) + ")"
-	config.description = "Clear all hostiles in the sector."
-	config.reward_kibble = 50 * level
-	config.biome_type = randi() % LevelGenerator.Biome.size() # Random Biome
-	
-	if level == 1:
-		# Level 1: 1 Wave, Max Threat 5, Only Snipers/Rushers
-		var wave1 = _create_wave(5, ["Rusher", "Sniper"])
-		wave1.wave_message = "Hostiles Detected!"
-		config.waves.append(wave1)
-
-	elif level == 2:
-		# Level 2: 2 Waves, Spitter Limit 1 (per wave), Rushers/Snipers/Spitters
-		
-		# Wave 1: Intro (Lighter)
-		var wave1 = _create_wave(6, ["Rusher", "Sniper"]) 
-		wave1.wave_message = "First Wave Incoming!"
-		config.waves.append(wave1)
-		
-		# Wave 2: Escalation (With Spitter)
-		# Spitter Cost 3. Budget 8 allows 1 Spitter + 5 Rushers or 1 Spitter + 2 Snipers + 1 Rusher
-		# We need to enforce max 1 Spitter. _create_wave logic needs to handle this or we constrain budget/rng.
-		# For now, relying on luck + budget is risky.
-		# Let's use guaranteed spawn for the Spitter to ensure it appears (and limit it to 1 via param if we add it).
-		
-		var wave2 = _create_wave(8, ["Rusher", "Sniper", "Spitter"])
-		# Force 1 Spitter if random doesn't pick it? 
-		# Or just allow random. The requirement is "Maximum 1 Spitter active".
-		# Since we reset waves, max 1 spitter PER WAVE meets this if we only spawn 1.
-		# Cost 3 means at budget 8, you could theoretically get 2 spitters (6) + 2 rushers (2).
-		# We should manually enforce the limit in _create_wave or just use guaranteed.
-		wave2.guaranteed_spawns["Spitter"] = 1
-		# Reduce budget by Spitter cost (3) -> 5 remaining for randoms
-		wave2.budget_points = 5 
-		wave2.allowed_archetypes = ["Rusher", "Sniper"] # Don't allow more Random Spitters
-		wave2.wave_message = "Reinforcements! Caution: Acid Detected!"
-		config.waves.append(wave2)
-
-	elif level >= 3:
-		# Level 3+: 3 Waves, Any Enemies.
-		var w1 = _create_wave(8, ["Rusher", "Sniper"])
-		config.waves.append(w1)
-		
-		var w2 = _create_wave(10, ["Rusher", "Sniper", "Spitter"])
-		config.waves.append(w2)
-		
-		var w3 = _create_wave(12 + (level * 2), ["Rusher", "Sniper", "Spitter", "Whisperer", "Exploder", "Tank", "Flying", "Infiltrator"])
-		config.waves.append(w3)
-	
-	# Randomize Objective Type (Level 1 is always Deathmatch for simplicity)
-	if level > 1:
-		var types = [0, 2, 3] # Deathmatch, Retrieve, Hacker
-		# Level 2 focuses on Retrieve logic, Level 3 introduces Hacker? 
-		# Or generic randomization.
-		# Let's weight it? No, flat is fine.
-		config.objective_type = types.pick_random()
-		
-		# Debug override for testing
-		# config.objective_type = 2 
-		
-		match config.objective_type:
-			2: # Retrieve
-				config.objective_target_count = randi_range(5, 7)
-				config.mission_name = "Supply Run (Level " + str(level) + ")"
-				config.description = "Retrieve " + str(config.objective_target_count) + " Treat Bags."
-			3: # Hacker
-				config.objective_target_count = randi_range(3, 4)
-				config.mission_name = "Network Breach (Level " + str(level) + ")"
-				config.description = "Hack " + str(config.objective_target_count) + " Terminals."
-			_:
-				config.objective_type = 0 # Default Deathmatch
-				config.mission_name = "Sector Sweep (Level " + str(level) + ")"
-				config.description = "Eliminate all hostiles."
-	
-	return config
+	var generator = load("res://scripts/builders/MissionGenerator.gd").new()
+	return generator.generate_mission_config(level)
 
 
 func _create_wave(budget: int, allowed: Array) -> WaveDefinition:
@@ -127,345 +54,30 @@ func start_mission(config: MissionConfig, grid: GridManager):
 	grid_manager = grid
 	current_wave_index = 0
 	spawned_units.clear()
+	
+	if grid_manager:
+		turn_manager = grid_manager.get_node_or_null("../TurnManager")
 
 	GameManager.log(LOG_PREFIX, "--- MISSION STARTED: ", config.mission_name, " ---")
+	
+	var spawner = load("res://scripts/builders/ObjectiveSpawner.gd").new()
 
-	# Spawn Loot (10% Chance if Deathmatch, or Default for other?)
-	# Use standard Logic
 	GameManager.log(LOG_PREFIX, "Objective Type is ", active_mission_config.objective_type)
 	if active_mission_config.objective_type != 0:
-		_spawn_objectives(active_mission_config.objective_type, active_mission_config.objective_target_count)
+		var count = spawner.spawn_objectives(active_mission_config.objective_type, active_mission_config.objective_target_count, active_mission_config, grid_manager)
+		
+		# Sync ObjectiveManager if counts differ (e.g. spawner failures)
+		if count < active_mission_config.objective_target_count:
+			GameManager.log(LOG_PREFIX, "Syncing ObjectiveManager to actual spawn count: ", count)
+			var om = get_node_or_null("../ObjectiveManager")
+			if om: om.target_count = count
+			
 	else:
 		if randf() <= 0.1:
-			_spawn_loot()
+			spawner.spawn_loot(grid_manager)
 
 	# Start First Wave
 	start_next_wave()
-
-
-func _spawn_objectives(type: int, count: int):
-	GameManager.log(LOG_PREFIX, "Spawning ", count, " Objectives (Type ", type, ")...")
-	
-	var successful_spawns = 0
-	for i in range(count):
-		var pos = _find_valid_loot_pos()
-		if pos == Vector2(-1, -1):
-			GameManager.log(LOG_PREFIX, "Could not find spot for objective ", i)
-			continue
-			
-		var obj_node = null
-		
-		# Define Objective based on Type
-		if type == 3: # HACKER
-			var t_script = load("res://scripts/entities/Terminal.gd")
-			if t_script:
-				obj_node = t_script.new()
-				obj_node.add_to_group("Terminals")
-				
-		elif type == 2: # RETRIEVE
-			var l_script = load("res://scripts/entities/LootCrate.gd")
-			if l_script:
-				obj_node = l_script.new()
-				obj_node.add_to_group("TreatBags")
-				# Add Reward (10% Chance)
-				if randf() <= 0.1:
-					var pool = [
-						"res://scripts/resources/items/SanityTreat.gd",
-						"res://scripts/resources/items/Medkit.gd",
-						"res://scripts/resources/items/GrenadeItem.gd"
-					]
-					var picked = pool.pick_random()
-					var script = load(picked)
-					if script:
-						obj_node.loot_table.append(script.new())
-						GameManager.log(LOG_PREFIX, "Crate at ", pos, " contains loot: ", picked)
-				
-		elif type == 1: # RESCUE
-			var recruit_data = active_mission_config.reward_recruit_data
-			if recruit_data.is_empty():
-				# Fallback
-				GameManager.log(LOG_PREFIX, "Warning: No recruit data for Rescue mission. Using default.")
-				var h_script = load("res://scripts/entities/ObjectiveUnit.gd")
-				if h_script:
-					obj_node = h_script.new()
-					obj_node.name = "Lost Human"
-			else:
-				# Spawn Actual Corgi
-				var unit_script = load("res://scripts/entities/CorgiUnit.gd")
-				if unit_script:
-					obj_node = unit_script.new()
-					obj_node.name = recruit_data.get("name", "Rescuee")
-					obj_node.unit_name = obj_node.name
-					
-					# Setup Stats/Visuals
-					obj_node.apply_class_stats(recruit_data.get("class", "Recruit"))
-					if recruit_data.has("level"):
-						obj_node.rank_level = recruit_data["level"]
-						obj_node.recalculate_stats() # Apply level bonuses
-					
-					obj_node.faction = "Neutral" # Passive until rescued
-					
-					# Create Bouncing Arrow
-					_attach_rescue_beacon(obj_node)
-			
-			if obj_node:
-				obj_node.add_to_group("RescueTargets")
-		
-		elif type == 4: # DEFENSE (Golden Hydrant)
-			var gh_script = load("res://scripts/entities/GoldenHydrant.gd")
-			if gh_script:
-				obj_node = gh_script.new()
-				obj_node.name = "GoldenHydrant"
-				# Center of map (Assuming 20x20)
-				# Override position logic to force center
-				# SPIRAL SEARCH FOR VALID & REACHABLE TILE
-				# Center (10,10) might be unreachable. Check reachability from Player Start (Approx 1,1)
-				var center = Vector2(10, 10)
-				var best_pos = Vector2(-1, -1)
-				var player_start_approx = Vector2(1, 1)
-
-				# Check Center First
-				var path = grid_manager.get_move_path(player_start_approx, center)
-				if not path.is_empty():
-					best_pos = center
-				else:
-					GameManager.log(LOG_PREFIX, "Center (10,10) unreachable. Spiraling search...")
-					var found = false
-					for r in range(1, 10): # Radius 1 to 9
-						for x in range(center.x - r, center.x + r + 1):
-							for y in range(center.y - r, center.y + r + 1):
-								var p = Vector2(x, y)
-								if not grid_manager.grid_data.has(p):
-									continue
-
-								
-								# Distance heuristic (Manhattan from center) = max(abs(dx), abs(dy))
-								# But just check walkability + reachability
-								if grid_manager.is_walkable(p):
-									var p_path = grid_manager.get_move_path(player_start_approx, p)
-									if not p_path.is_empty():
-										best_pos = p
-										found = true
-										GameManager.log(LOG_PREFIX, "Found suitable Hydrant spot at ", p)
-										break
-							if found: break
-						if found: break
-				
-				if best_pos != Vector2(-1, -1):
-					pos = best_pos
-				else:
-					# Fallback to center and hope clearing works
-					pos = center
-					GameManager.log(LOG_PREFIX, "Could not find reachable spot? Forcing Center.")
-
-				
-				# CRITICAL: Force clear the tile so it doesn't spawn in a wall
-				if grid_manager.grid_data.has(pos):
-					grid_manager.grid_data[pos]["walkable"] = true
-					grid_manager.grid_data[pos]["cover"] = 0.0
-					grid_manager.grid_data[pos]["unit"] = null # Clear any existing unit placeholder
-					GameManager.log(LOG_PREFIX, "Force-cleared tile for Hydrant at ", pos)
-					
-					# PHYSICS CLEANUP: Destroy any visual/collision walls here
-					var world_pos = grid_manager.get_world_position(pos)
-					# GridManager is Node, not Node3D. Use Viewport to get World3D.
-					var space_state = grid_manager.get_viewport().world_3d.direct_space_state
-					
-					# Check for obstacles (Walls are usually StaticBody3D on Layer 1)
-					var query = PhysicsPointQueryParameters3D.new()
-					query.position = world_pos + Vector3(0, 0.5, 0) # Raise slightly
-					query.collision_mask = 1 # Layer 1 (World/Walls)
-					query.collide_with_bodies = true
-					
-					var results = space_state.intersect_point(query)
-					for res in results:
-						if res.collider and res.collider.is_class("StaticBody3D"):
-							GameManager.log(LOG_PREFIX, "Destroying Wall at Hydrant Point! ", res.collider)
-							res.collider.queue_free()
-
-
-
-		
-		if obj_node:
-			# Setup
-			grid_manager.get_parent().add_child(obj_node)
-			obj_node.position = grid_manager.get_world_position(pos)
-			obj_node.grid_pos = pos
-			
-			if obj_node.has_method("initialize"):
-				# Type 3 (Terminal) and Type 4 (Hydrant/Destructible) expect (pos, gm)
-				if type == 3 or type == 4:
-					obj_node.initialize(pos, grid_manager)
-				else:
-					# Type 1 & 2 (Unit/Loot) -> initialize(pos)
-					obj_node.initialize(pos)
-			
-			obj_node.add_to_group("Objectives")
-			# Register as Occupant (Prevents overlaps)
-			if grid_manager.grid_data.has(pos):
-				grid_manager.grid_data[pos]["unit"] = obj_node
-
-			GameManager.log(LOG_PREFIX, "Spawned Objective (Type ", type, ") at ", pos)
-			successful_spawns += 1
-		else:
-			GameManager.log(LOG_PREFIX, "Failed to create objective node for type ", type)
-
-	# Desperation Spawn (Ensure at least 1)
-	if successful_spawns == 0 and count > 0:
-		GameManager.log(LOG_PREFIX, "CRITICAL! No valid spots found. Attempting ROBUST Desperation Spawn.")
-		# Search area around player start for ANY valid tile
-		var spawned_desperation = false
-		for x in range(1, 6):
-			for y in range(1, 6):
-				var fallback_pos = Vector2(x, y)
-				if grid_manager.is_walkable(fallback_pos):
-					var obj_node = null
-					if type == 2:
-						var l_script = load("res://scripts/entities/LootCrate.gd")
-						obj_node = l_script.new()
-						obj_node.add_to_group("TreatBags")
-					# Handle other types if needed, but currently mostly Retrieve fails
-					
-					if obj_node:
-						grid_manager.get_parent().add_child(obj_node)
-						obj_node.position = grid_manager.get_world_position(fallback_pos)
-						obj_node.grid_pos = fallback_pos
-						if obj_node.has_method("initialize"):
-							obj_node.initialize(fallback_pos)
-						obj_node.add_to_group("Objectives")
-						successful_spawns += 1
-						spawned_desperation = true
-						GameManager.log(LOG_PREFIX, "Desperation Spawn Successful at ", fallback_pos)
-						break
-			if spawned_desperation:
-				break
-				
-	if successful_spawns < count:
-		GameManager.log(LOG_PREFIX, "WARN - Only spawned ", successful_spawns, "/", count, " objectives.")
-		
-		# Prevent Instant Win by ensuring target is at least 1 (unless count was 0)
-		var final_target = successful_spawns
-		if final_target == 0 and count > 0:
-			GameManager.log(LOG_PREFIX, "ERROR! Failed to spawn ANY objectives even with desperation. Forcing target to 1 to prevent instant win.")
-			final_target = 1
-		
-		active_mission_config.objective_target_count = final_target
-		
-		var om = grid_manager.get_node_or_null("../ObjectiveManager")
-		if om:
-			GameManager.log(LOG_PREFIX, "Syncing ObjectiveManager to new count: ", final_target)
-			om.target_count = final_target
-		else:
-			GameManager.log(LOG_PREFIX, "CRITICAL! Could not find ObjectiveManager to sync count! Main scene structure mismatch?")
-	else:
-		GameManager.log(LOG_PREFIX, "All ", count, " objectives spawned successfully.")
-
-
-func _spawn_loot():
-	if not grid_manager:
-		return
-	GameManager.log(LOG_PREFIX, "Spawning Loot Crate...")
-
-	valid_loot_pos = _find_valid_loot_pos()
-	if valid_loot_pos == Vector2(-1, -1):
-		return
-
-	var crate_script = load("res://scripts/entities/LootCrate.gd")
-	var crate = crate_script.new()
-
-	# Add Medkit to Loot Table directly
-	var medkit_script = load("res://scripts/resources/items/Medkit.gd")
-	if medkit_script:
-		crate.loot_table.append(medkit_script.new())
-
-	# 2. Spawn Explosive Barrels
-	var barrel_positions = [
-		Vector2(2, 5), Vector2(4, 5), Vector2(6, 5), Vector2(8, 5),
-		Vector2(3, 7), Vector2(5, 7), Vector2(7, 7),
-		Vector2(5, 5) # Central one
-	]
-	
-	for pos in barrel_positions:
-		var barrel = load("res://scripts/entities/ExplosiveBarrel.gd").new()
-		# Initialize barrel if needed (assuming _ready handles it, just set pos)
-		barrel.position = grid_manager.get_world_position(pos)
-		barrel.grid_pos = pos
-		grid_manager.get_parent().add_child(barrel) # Changed unit_container to grid_manager.get_parent()
-		
-		# Register prop in grid?
-		# Static props might not need move registration, but Blocking check needs it.
-		# Better to register if it blocks tiles.
-		if barrel.has_method("initialize"):
-			barrel.initialize(pos, grid_manager)
-		else:
-			# Manual registration fallback
-			if grid_manager.grid_data.has(pos):
-				grid_manager.grid_data[pos]["unit"] = barrel
-
-		# Register with TurnManager (Ensure it's tracked as a unit/active prop)
-		var tm = grid_manager.get_node_or_null("../TurnManager")
-		if tm:
-			tm.register_unit(barrel)
-
-	# The original instruction had a print statement here that referenced `spitter_positions.size()`,
-	# which is not defined in this function. Removing it to avoid errors.
-	# print("MissionManager: Acidsplosion setup complete with ", spitter_positions.size(), " spitters and ", barrel_positions.size(), " barrels.")
-
-	# Setup Position
-	crate.grid_pos = valid_loot_pos
-	crate.position = grid_manager.get_world_position(valid_loot_pos)
-	
-	grid_manager.get_parent().add_child(crate)
-	
-	# Proper Initialization (Registers with GridManager for Smart Looting)
-	crate.initialize(valid_loot_pos, grid_manager)
-
-	# Add to Scene (Same parent as units) - Moved above initialize just in case
-
-
-	# Ensure it is in 'Objectives' group for interaction check if needed?
-	# Main._try_interact checks "Objectives" group?
-	# LootCrate should probably be in "Objectives" or "Interactables"
-	crate.add_to_group("Objectives")  # _try_interact scans this group
-
-	GameManager.log(LOG_PREFIX, "Spawned Loot Crate at ", valid_loot_pos)
-
-
-var valid_loot_pos = Vector2(-1, -1)
-
-
-func _find_valid_loot_pos() -> Vector2:
-	var player_start = Vector2(1, 1) # Default
-	# Search for actual valid start if 1,1 is blocked
-	if not grid_manager.is_walkable(player_start):
-		for x in range(1, 4):
-			for y in range(1, 4):
-				if grid_manager.is_walkable(Vector2(x, y)):
-					player_start = Vector2(x, y)
-					break
-			if player_start != Vector2(1, 1): break
-
-	# Try random positions (Strict)
-	for i in range(30): # Increased attempts due to stricter filter
-		var pos = grid_manager.get_random_valid_position()
-		# Avoid start zone
-		if pos.distance_to(player_start) > 5:
-			# REACHABILITY CHECK
-			var path = grid_manager.get_move_path(player_start, pos)
-			if not path.is_empty():
-				return pos
-			
-	# Fallback (Lenient)
-	for i in range(20):
-		var pos = grid_manager.get_random_valid_position()
-		if pos != Vector2(0,0) and pos != player_start: 
-			# Just ensure it's reachable, distance doesn't matter as much for fallback
-			var path = grid_manager.get_move_path(player_start, pos)
-			if not path.is_empty():
-				GameManager.log(LOG_PREFIX, "Using fallback reachable spawn pos at ", pos)
-				return pos
-			
-	return Vector2(-1, -1)
 
 
 func register_player_units(_player_units: Array):
@@ -557,11 +169,14 @@ func start_next_wave():
 
 
 func _spawn_wave(wave_def: WaveDefinition):
+	var spawner = load("res://scripts/builders/UnitSpawner.gd").new()
+
 	# 1. Guaranteed Spawns
 	for type in wave_def.guaranteed_spawns:
 		var count = wave_def.guaranteed_spawns[type]
 		for _i in range(count):
-			_spawn_enemy(type)
+			var unit = spawner.spawn_enemy(type, grid_manager, turn_manager)
+			if unit: spawned_units.append(unit)
 
 
 	# 0. Check for Nemesis Invasions (NemesisManager)
@@ -572,70 +187,29 @@ func _spawn_wave(wave_def: WaveDefinition):
 			var invaders = nm.get_invasion_candidates(wave_def.budget_points)
 			for invader_data in invaders:
 				if wave_def.budget_points >= 4: # Min budget check to ensure slot
-					_spawn_nemesis(invader_data)
+					var unit = spawner.spawn_nemesis(invader_data, grid_manager, turn_manager)
+					if unit: spawned_units.append(unit)
 					wave_def.budget_points -= 5 # Explicit cost for Nemesis
 					GameManager.log(LOG_PREFIX, "WARNING: Nemesis Invasion! ", invader_data.display_name)
 	
 	# 2. Budget Spawns
+	var generator = load("res://scripts/builders/MissionGenerator.gd").new()
 	var budget = wave_def.budget_points
 	var attempts = 0
 	while budget > 0 and attempts < 100:
-		var type = _pick_random_archetype(wave_def)
+		var type = generator.pick_random_archetype(wave_def)
 		if type == "":
 			break  # No valid types
 
-		var cost = _get_cost(type)
+		var cost = generator.get_cost(type)
 
 		if cost <= budget:
-			_spawn_enemy(type)
-			budget -= cost
+			var unit = spawner.spawn_enemy(type, grid_manager, turn_manager)
+			if unit: 
+				spawned_units.append(unit)
+				budget -= cost
 		else:
 			attempts += 1  # Try to find cheaper unit or exit
-
-
-func _pick_random_archetype(wave_def: WaveDefinition) -> String:
-	# Use Allowed List if present
-	# Use Allowed List if present
-	var pool = []
-	if not wave_def.allowed_archetypes.is_empty():
-		pool = wave_def.allowed_archetypes
-		# print("Debug: using allowed archetypes: ", pool)
-	else:
-		GameManager.log(LOG_PREFIX, "Debug: allowed_archetypes EXPECTED but EMPTY! Falling back to defaults.")
-		# Fallback: Random key from ENEMIES (excluding Nemesis/Whisperer usually unless specified?)
-		pool = ["Rusher", "Sniper", "Spitter", "Exploder", "Flying", "Tank"]
-	
-	if pool.is_empty():
-		return ""
-	var choice = pool[randi() % pool.size()]
-	# print("Debug: Picked archetype: ", choice)
-	return choice
-
-
-func _get_cost(type_name: String) -> int:
-	match type_name:
-		"Rusher":
-			return 1
-		"Sniper":
-			return 2
-		"Spitter":
-			return 3
-		"Whisperer":
-			return 4
-		"Exploder":
-			return 2
-		"Tank":
-			return 4
-		"Flying":
-			return 3
-		"Infiltrator":
-			return 4
-		"Boss":
-			return 99 # Boss wave only
-		"Nemesis":
-			return 5
-		_:
-			return 1
 
 
 func _spawn_enemy(type_name: String):
@@ -874,46 +448,3 @@ func _attach_rescue_beacon(parent_node: Node3D):
 	# Spin (Separate Tween)
 	var spin_tween = beacon_pivot.create_tween().set_loops()
 	spin_tween.tween_property(mesh_inst, "rotation_degrees:y", 360.0, 2.0).as_relative()
-
-func _spawn_nemesis(data: Resource):
-	if not grid_manager: return
-	
-	# Determine Script
-	var script_path = ENEMY_SCRIPTS.get(data.archetype_name, "res://scripts/entities/EnemyUnit.gd")
-	var enemy_res = load(script_path)
-	var enemy = null
-	if enemy_res is PackedScene:
-		enemy = enemy_res.instantiate()
-	else:
-		enemy = enemy_res.new()
-	
-	var spawn_pos = grid_manager.get_random_valid_position()
-	for i in range(20):
-		var candidate = grid_manager.get_random_valid_position()
-		var path = grid_manager.get_move_path(Vector2(1,1), candidate)
-		if not path.is_empty():
-			spawn_pos = candidate
-			break
-			
-	enemy.position = grid_manager.get_world_position(spawn_pos)
-	enemy.grid_pos = spawn_pos
-	
-	if grid_manager.grid_data.has(spawn_pos):
-		grid_manager.grid_data[spawn_pos]["unit"] = enemy
-		
-	enemy.visible = false
-	grid_manager.get_parent().add_child(enemy)
-	enemy.add_to_group("Units")
-	enemy.add_to_group("Enemies")
-	spawned_units.append(enemy)
-	
-	var tm = grid_manager.get_node_or_null("../TurnManager")
-	if tm: tm.register_unit(enemy)
-	
-	enemy.initialize_from_data(data)
-	enemy.set_meta("is_nemesis", true)
-	
-	if enemy.has_method("initialize"):
-		enemy.initialize(spawn_pos)
-		
-	GameManager.log(LOG_PREFIX, "🚨 SPAWNED NEMESIS: ", data.display_name, " at ", spawn_pos)

@@ -338,9 +338,10 @@ func _on_mission_completed():
 		mission_manager.active_mission_config
 		and mission_manager.active_mission_config.is_final_defense
 	):
-		_trigger_victory_scene()
+		# Trigger Victory Scene directly for defense
+		_on_mission_ended_handler(true, reward) 
 	else:
-		_end_mission(true)
+		SignalBus.on_mission_ended.emit(true, reward)
 var _mission_end_processed = false
 var unspawned_survivors: Array = [] # Tracks units that exceeded spawn limit or failed to find spot
 
@@ -2354,9 +2355,14 @@ func _on_unit_death(unit):
 	if players_alive == 0:
 		GameManager.log(LOG_PREFIX, "LAST SQUAD MEMBER FALLEN!")
 		# Iron Dog check happens in GameManager on mission complete, but we need to trigger mission end.
-		_on_mission_ended_handler(false)
+		_on_mission_ended_handler(false, 0)
 		return
-	# End of file
+
+
+
+
+
+
 	
 func _exit_tree():
 	# Cleanup cyclic references to prevent leaks

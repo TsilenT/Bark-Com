@@ -48,6 +48,8 @@ func _ready():
 	print("Pre-Loot Path Size: ", path_pre.size()) 
 	
 	# 3. Spawn LootCrate on Ladder
+	# Force load dependency to ensure it's parsed
+	var _dep = load("res://scripts/entities/ObjectiveUnit.gd")
 	var crate_script = load("res://scripts/entities/LootCrate.gd")
 	var crate = crate_script.new()
 	add_child(crate)

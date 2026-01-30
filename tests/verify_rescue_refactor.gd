@@ -105,8 +105,13 @@ func check_spawn(mm, om, p_grid_manager):
 		print("FAIL: Target not in RescueTargets group.")
 		get_tree().quit(1)
 		return
+
+	if not target.is_in_group("Objectives"):
+		print("FAIL: Target not in Objectives group (GameUI will MISS it).")
+		get_tree().quit(1)
+		return
 		
-	print("SUCCESS: Target is in RescueTargets group (GameUI will see it).")
+	print("SUCCESS: Target is in RescueTargets and Objectives groups (GameUI will see it).")
 	
 	# Regression Test: Check get_adjacent_tiles existence (Crash Fix)
 	print("Checking get_adjacent_tiles...")
