@@ -19,6 +19,9 @@ This document serves as the central hub for AI agents and developers working on 
 
 This project enforces strict rules for Testing, Persistence, and State Management. Failure to follow these leads to subtle regressions (e.g., units resetting to "Recruit").
 
+> [!TIP]
+> **Lost in the Code?** Consult **[docs/architecture/system_map.md](docs/architecture/system_map.md)** to find where specific concepts live.
+
 -   **Persistence**: [View detailed rules](docs/architecture/persistence_rules.md).
     -   *Rule*: `unit_class` string is the Source of Truth. Never rely on Resources for identity.
     -   *Rule*: Restore Class Data `apply_class_stats()` BEFORE recalculating stats.

@@ -33,46 +33,20 @@ func _ready():
 	if GameManager:
 		GameManager.current_state = GameManager.GameState.MISSION
 	
-	# Setup Initialization
-	var gm = GridManager.new()
-	gm.name = "GridManager"
-	grid_manager = gm
-
-	var gv = null
+	# --- STAGE 1: COMPONENT INITIALIZATION ---
+	var initializer = load("res://scripts/builders/MissionInitializer.gd").new()
+	var refs = initializer.setup(self, is_test_mode)
+	
+	# Hydrate Dependencies
+	grid_manager = refs.get("grid_manager")
+	mission_manager = refs.get("mission_manager")
+	turn_manager = refs.get("turn_manager")
+	game_ui = refs.get("game_ui")
+	vision_manager = null # Assigned if needed, or via Initializer if extended
+	
 	if not is_test_mode:
-		gv = load("res://scripts/ui/GridVisualizer.gd").new()
-		gv.name = "GridVisualizer"
-		gv.grid_manager = gm
-
-		add_child(gv)
-	add_child(gm)
-
-	# Mission Manager
-	mission_manager = MissionManager.new()
-	mission_manager.name = "MissionManager"
-	add_child(mission_manager)
-	
-	# Turn Manager
-	
-	turn_manager = null
-	for child in get_children():
-		# Duck Typing Check (safer than script path)
-		if child.has_method("start_game") and child.has_method("register_unit"):
-			turn_manager = child
-			break
-			
-	if not turn_manager:
-		turn_manager = get_node_or_null("TurnManager") 
-
-	if not turn_manager:
-		var tm_script = load("res://scripts/managers/TurnManager.gd")
-		if tm_script:
-			turn_manager = tm_script.new()
-			turn_manager.name = "TurnManager"
-			add_child(turn_manager)
-
-
-
+		main_camera = refs.get("main_camera")
+		selection_marker = refs.get("selection_marker")
 
 	# Connect Mission Signals
 	mission_manager.wave_started.connect(
@@ -80,79 +54,23 @@ func _ready():
 	)
 	mission_manager.mission_completed.connect(func(_data): _on_mission_completed())
 
-	# Setup UI/Feedback Managers
-	# var ftm = load("res://scripts/managers/FloatingTextManager.gd").new()
-	# add_child(ftm)
+	# --- STAGE 2: CONTROLLER SETUP ---
+	_setup_controllers(grid_manager, refs.get("grid_visualizer"))
 
-	var vfxm = load("res://scripts/managers/VFXManager.gd").new()
-	add_child(vfxm)
+	# --- STAGE 3: MISSION CONFIGURATION ---
+	_setup_mission_data()
 
-	# Also add a Camera so the user can see
-	if not is_test_mode:
-		main_camera = Camera3D.new()
-		main_camera.set_script(load("res://scripts/core/CameraController.gd"))
-		main_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-		main_camera.size = 18  # Revert Zoom (User Request)
-		main_camera.current = true
-	
-		# User-Defined Initial Position (Refined for Tactical View)
-		# Centered better on 0-10 grid
-		main_camera.position = Vector3(5.0, 10.0, 10.0)
-		main_camera.rotation_degrees = Vector3(-45, -45, 0)  # Classic Iso Angle
-	
-		add_child(main_camera)
+	# Connect System Signals (to exit scene on done)
+	if not SignalBus.on_mission_ended.is_connected(_on_mission_ended_handler):
+		SignalBus.on_mission_ended.connect(_on_mission_ended_handler)
+	if not SignalBus.on_turn_changed.is_connected(_on_turn_changed):
+		SignalBus.on_turn_changed.connect(_on_turn_changed)
+	if not SignalBus.on_unit_step_completed.is_connected(_on_unit_step_completed):
+		SignalBus.on_unit_step_completed.connect(_on_unit_step_completed)
+	if not SignalBus.on_request_camera_focus.is_connected(_on_camera_focus_requested):
+		SignalBus.on_request_camera_focus.connect(_on_camera_focus_requested)
 
-	# Setup GameUI
-	var gui_script = load("res://scripts/ui/GameUI.gd")
-	if gui_script:
-		game_ui = gui_script.new()
-		game_ui.name = "GameUI"
-		add_child(game_ui)
-		# Initialize Dependencies (GameUI needs them early)
-		game_ui.initialize(turn_manager, grid_manager)
-
-	# --- CONTROLLER REFACTOR ---
-	_setup_controllers(gm, gv)
-
-
-	# Cinematic Director
-	if not is_test_mode:
-		var camera_script = load("res://scripts/systems/CinematicCamera.gd")
-		if camera_script:
-			var cam_controller = camera_script.new(main_camera)
-			add_child(cam_controller)
-
-	# Selection Marker (Crystal)
-	if not is_test_mode:
-		var marker_mesh = MeshInstance3D.new()
-		marker_mesh.mesh = SphereMesh.new()
-		marker_mesh.mesh.radius = 0.22
-		marker_mesh.mesh.height = 0.44
-		
-		var marker_mat = StandardMaterial3D.new()
-		marker_mat.albedo_color = Color.CYAN
-		marker_mat.emission_enabled = true
-		marker_mat.emission = Color.CYAN
-		marker_mat.emission_energy_multiplier = 2.0
-		marker_mesh.material_override = marker_mat
-		
-		selection_marker = marker_mesh # Assign to wrapper or direct? Direct for now.
-		selection_marker.set_script(load("res://scripts/ui/BouncingMarker.gd"))
-		add_child(selection_marker)
-		selection_marker.visible = false
-
-		var light = DirectionalLight3D.new()
-		add_child(light)
-		light.position = Vector3(10, 20, 15)
-		light.look_at(Vector3(10, 0, 10))
-		light.shadow_enabled = true  # Enable shadows for depth
-
-	# Mission Setup
-	# Mission Setup
-	# Logic:
-	# 1. Check if GameManager has a mission pending.
-	# 2. If not, default to Tutorial (Phase 79 verification).
-
+func _setup_mission_data():
 	var mission_config = null
 
 	# Fetch from GameManager if local property is empty (Standard Flow)
@@ -171,8 +89,6 @@ func _ready():
 			# AUTO-ADAPTER: Convert Legacy Data to Config
 			GameManager.log(LOG_PREFIX, "Adapting Legacy MissionData -> MissionConfig")
 			mission_config = MissionConfig.new()
-			mission_config.mission_name = active_mission_data.mission_name
-			mission_config.description = active_mission_data.description
 			mission_config.mission_name = active_mission_data.mission_name
 			mission_config.description = active_mission_data.description
 			mission_config.is_final_defense = (active_mission_data.mission_name == "BASE DEFENSE")
@@ -218,9 +134,6 @@ func _ready():
 				w.wave_message = "Hostiles Detected!"
 				mission_config.waves.append(w)
 	else:
-		# print("Main: No active mission found. Defaulting to Tutorial.")
-		# mission_config = load("res://scripts/resources/missions/TutorialMission.gd").new()
-		
 		# DYNAMIC SCALING MISSION
 		var level = 1
 		if GameManager:
@@ -229,25 +142,12 @@ func _ready():
 		mission_config = mission_manager.generate_mission_config(level)
 
 	# Perform Game Logic Setup (UI, TurnManager, Players)
-	# Logic:
-	# 1. We have 'mission_config' potentially from Adapter or Generation.
-	# 2. We pass this to spawn_test_scenario to RUN the mission.
 	if not is_test_mode:
-		spawn_test_scenario(gm, mission_config)
+		spawn_test_scenario(grid_manager, mission_config)
 		
 		# Audio: Mission Theme
 		if GameManager and GameManager.audio_manager:
 			GameManager.audio_manager.play_music("Theme_Mission")
-
-	# Connect System Signals (to exit scene on done)
-	if not SignalBus.on_mission_ended.is_connected(_on_mission_ended_handler):
-		SignalBus.on_mission_ended.connect(_on_mission_ended_handler)
-	if not SignalBus.on_turn_changed.is_connected(_on_turn_changed):
-		SignalBus.on_turn_changed.connect(_on_turn_changed)
-	if not SignalBus.on_unit_step_completed.is_connected(_on_unit_step_completed):
-		SignalBus.on_unit_step_completed.connect(_on_unit_step_completed)
-	if not SignalBus.on_request_camera_focus.is_connected(_on_camera_focus_requested):
-		SignalBus.on_request_camera_focus.connect(_on_camera_focus_requested)
 
 # Phase 75: Input Manager Integration
 	if GameManager:
