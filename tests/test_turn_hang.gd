@@ -5,6 +5,9 @@ var enemy
 var grid_manager
 
 func _ready():
+	# Watchdog
+	add_child(load("res://tests/TestSafeGuard.gd").new())
+
 	print("--- TEST START: Turn Manager Hang ---")
 	
 	# 1. Setup Managers as children of SELF (TestRunner)

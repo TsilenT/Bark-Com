@@ -4,6 +4,9 @@ var grid_manager
 var combat_resolver
 
 func _ready():
+	# Watchdog
+	add_child(load("res://tests/TestSafeGuard.gd").new())
+
 	print("Starting Cover Logic Tests...")
 	setup()
 	test_hydrant_default_cover()

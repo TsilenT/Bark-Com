@@ -116,11 +116,29 @@ func _select_default_squad():
 		return
 
 	var count = 0
+	# Step 1: Restore Previous Squad
+	var ready_units_indices = {} # Map Name -> Index for quick lookup
 	for i in range(game_manager.roster.size()):
-		var unit_data = game_manager.roster[i]
-		if unit_data.get("status", "Ready") == "Ready" and count < max_squad_size:
-			selected_indices.append(i)
-			count += 1
+		var u = game_manager.roster[i]
+		if u.get("status", "Ready") == "Ready":
+			ready_units_indices[u["name"]] = i
+
+	# A. Prioritize Last Squad
+	for name in game_manager.last_squad_ids:
+		if ready_units_indices.has(name):
+			if selected_indices.size() < max_squad_size:
+				selected_indices.append(ready_units_indices[name])
+	
+	# Step 2: Auto-Fill remaining slots
+	if selected_indices.size() < max_squad_size:
+		for i in range(game_manager.roster.size()):
+			if selected_indices.size() >= max_squad_size:
+				break
+				
+			var u = game_manager.roster[i]
+			if u.get("status", "Ready") == "Ready":
+				if not selected_indices.has(i):
+					selected_indices.append(i)
 
 
 func _refresh_ui():
@@ -277,6 +295,16 @@ func _create_mission_card(mission: MissionData):
 	btn.text = (
 		mission.mission_name + "\nDiff: " + str(mission.difficulty_rating) + "\n[" + type_str + "]"
 	)
+	
+	# Biome Display (Fix)
+	var biome_str = "Street"
+	if mission.get("biome_type") != null:
+		biome_str = LevelGenerator.get_biome_string(mission.biome_type)
+	else:
+		print("MissionControlTab: Mission missing biome_type: ", mission)
+
+	btn.text += "\nBiome: " + biome_str
+
 	if mission.objective_target_count > 0:
 		btn.text += "\nTargets: " + str(mission.objective_target_count)
 	

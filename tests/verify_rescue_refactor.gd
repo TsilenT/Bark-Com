@@ -1,6 +1,9 @@
 extends Node
 
 func _ready():
+	# Watchdog
+	add_child(load("res://tests/TestSafeGuard.gd").new())
+
 	print("--- VERIFY RESCUE REFACTOR (SCENE MODE) ---")
 	
 	# Allow Autoloads to initialize
@@ -49,7 +52,7 @@ func _ready():
 	}
 	
 	# 4. Initialize Grid
-	grid_manager.generate_grid()
+	grid_manager.generate_tactical_grid()
 	
 	# 4b. Initialize ObjectiveManager
 	objective_manager.initialize(config.objective_type, turn_manager, config.objective_target_count)

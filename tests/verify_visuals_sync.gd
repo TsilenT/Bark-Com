@@ -10,6 +10,9 @@ var target_pos = Vector2(0,2)
 
 # Use _ready for Scene-based execution
 func _ready():
+	# Watchdog
+	add_child(load("res://tests/TestSafeGuard.gd").new())
+
 	print("Starting Visuals Sync Verification...")
 	await setup()
 	test_normal_cover()

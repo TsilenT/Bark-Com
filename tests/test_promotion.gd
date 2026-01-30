@@ -5,6 +5,9 @@ func _ready():
 	get_tree().quit()
 
 func _run_tests():
+	# Watchdog
+	add_child(load("res://tests/TestSafeGuard.gd").new())
+
 	print("--- Starting Promotion Tests ---")
 	test_unit_promotion_method()
 	print("--- All Promotion Tests Passed ---")

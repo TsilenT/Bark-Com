@@ -10,3 +10,4 @@ class_name MissionData
 @export var objective_type: int = 0  # 0=Deathmatch, 1=Rescue, 2=Retrieve, 3=Hacker
 @export var objective_target_count: int = 0
 @export var reward_recruit_data: Dictionary = {} # Stores {name, class, level} for rescue rewards
+@export var biome_type: int = 2 # 0=Indoors, 1=Garden, 2=Street, 3=Snow, 4=Desert

@@ -50,7 +50,7 @@ func _unhandled_input(event):
 	# BASE might have some inputs? For now assume MISSION is the main consumer of 3D clicks.
 	# Base uses UI mainly, but maybe some 3D interaction later.
 	# Let's restrict raycasting to MISSION or BASE.
-	var state = GameManager.current_state
+	var state = GameManager.get("current_state")
 	var allow_3d_input = (
 		state == GameManager.GameState.MISSION or state == GameManager.GameState.BASE
 	)
@@ -137,7 +137,10 @@ func _handle_camera_controls(event):
 func _process(_delta):
 	if not GameManager:
 		return
-	var state = GameManager.current_state
+	var state = GameManager.get("current_state")
+	if state == null:
+		return # Safety for Mocks
+		
 	if state != GameManager.GameState.MISSION and state != GameManager.GameState.BASE:
 		return
 	if is_input_blocked:

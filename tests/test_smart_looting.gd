@@ -23,7 +23,7 @@ func test_auto_pickup():
 	
 	var gm = GridManager_Script.new()
 	add_child(gm)
-	gm.generate_grid() # Creates empty grid
+	gm.generate_tactical_grid() # Creates empty grid
 	
 	# Spawn Unit
 	var unit = Unit_Script.new()

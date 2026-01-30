@@ -34,13 +34,12 @@ func _ready():
 	add_to_group("GridManager")
 
 
-func generate_grid():
+func generate_tactical_grid(biome_override: int = -1):
 	grid_data.clear()
 
 	# Use LevelGenerator
-	# Use LevelGenerator
 	var generator = load("res://scripts/core/LevelGenerator.gd").new()
-	grid_data = generator.generate_level()
+	grid_data = generator.generate_level(biome_override)
 	generator.free() # Fix Leak: Generator is a Node but not in tree.
 
 	# Initialize 'items' array for every tile

@@ -108,28 +108,26 @@ func _finalize(code):
 	if test_conn and test_conn.is_valid():
 		test_conn.disconnect()
 	
-	# Explicitly remove children first (Immediate Free)
+	# Explicitly remove children first (Queue Free)
 	if enemy and is_instance_valid(enemy):
 		# Manual Resource Cleanup to prevent leak
 		if enemy.get("abilities"): enemy.abilities.clear()
 		if enemy.get("behavior_resource"): enemy.behavior_resource = null
 		if enemy.get("enemy_data"): enemy.enemy_data = null
 		
-		remove_child(enemy)
-		enemy.free()
+		enemy.queue_free()
 		enemy = null
 		
 	if grid_manager and is_instance_valid(grid_manager):
 		if grid_manager.astar:
 			grid_manager.astar.clear()
 			grid_manager.astar = null # Release Ref
-		remove_child(grid_manager)
-		grid_manager.free()
+		grid_manager.queue_free()
 		grid_manager = null
 		
 	# Clean up any remaining children (Guards etc)
 	for c in get_children():
-		c.free()
+		c.queue_free()
 	
 	# Clear Factory Cache
 	var Factory = load("res://scripts/utils/EnemyModelFactory.gd")
@@ -147,5 +145,5 @@ func _exit_tree():
 	# Redundant safety - Disconnect
 	if test_conn and test_conn.is_valid(): test_conn.disconnect() 
 	# Redundant safety
-	if grid_manager and is_instance_valid(grid_manager): grid_manager.free()
-	if enemy and is_instance_valid(enemy): enemy.free()
+	if grid_manager and is_instance_valid(grid_manager): grid_manager.queue_free()
+	if enemy and is_instance_valid(enemy): enemy.queue_free()

@@ -8,6 +8,9 @@ func _ready():
 	gm = grid_manager_script.new()
 	add_child(gm)
 	
+	# Watchdog
+	add_child(load("res://tests/TestSafeGuard.gd").new())
+
 	_test_flat_connectivity()
 	_test_step_up_logic()
 	_test_ladder_cost()

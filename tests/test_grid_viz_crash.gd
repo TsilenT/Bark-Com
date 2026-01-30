@@ -4,6 +4,9 @@ var grid_viz
 var grid_manager
 
 func _ready():
+	# Watchdog
+	add_child(load("res://tests/TestSafeGuard.gd").new())
+
 	print("--- TEST START: GridVisualizer Vertex Fix ---")
 	
 	# Mock GridManager

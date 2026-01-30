@@ -3,6 +3,9 @@ extends Node
 const LOG_PREFIX = "TestClassIcons: "
 
 func _ready():
+	# Watchdog
+	add_child(load("res://tests/TestSafeGuard.gd").new())
+
 	print(LOG_PREFIX, "Starting Class Icon Tests...")
 	var success = true
 	

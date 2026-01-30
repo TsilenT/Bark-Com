@@ -125,7 +125,7 @@ static func get_biome_string(biome: int) -> String:
 ## 2. Applies Biome Logic (Street, Garden, etc).
 ## 3. Stitches chunks into a single Grid.
 ## 4. Validates Connectivity (Flood Fill). Retries if failing.
-func generate_level() -> Dictionary:
+func generate_level(biome_override: int = -1) -> Dictionary:
 	var final_grid = {}
 	var rng = RandomNumberGenerator.new()
 	rng.randomize()
@@ -200,7 +200,6 @@ func generate_level() -> Dictionary:
 					13:
 						template = CHUNK_LABYRINTH
 						biome = Biome.STREET
-
 					14:
 						template = CHUNK_CHECKPOINT
 						biome = Biome.STREET
@@ -216,9 +215,27 @@ func generate_level() -> Dictionary:
 					18:
 						template = CHUNK_OVERLOOK
 						biome = Biome.STREET
+				
+				# Apply Map-Wide Biome Override (unless Chunk is strictly Indoors/Special?)
+				# For now, let's override everything except explicit Indoors rooms (Kitchen) if we want?
+				# The user requested "full biome missions". So even mixing usually means consistency.
+				# Kitchen is explicitly INDOORS. If Mission is GARDEN, we probably shouldn't have a Kitchen chunk?
+				# But for now, simple override of the 'variable' biomes is safest.
+				# Or just force it.
+				
+				if biome_override != -1:
+					# If the chunk was naturally INDOORS (0), should we force it to DESERT?
+					# A Kitchen in the Desert is weird. 
+					# But if we are doing "Full Biome", maybe we avoid mismatched chunks?
+					# For now, override non-Indoors chunks OR just override all. 
+					# Let's override ALL to ensure the goal "Full Biome Missions" is met.
+					# Even if "Kitchen" visually renders as "Desert", it might look like a ruin?
+					# Actually LevelGenerator doesn't change geometry based on biome, only 'biome' tag which changes Props.
+					# So Kitchen Geometry + Desert Props = Desert Ruin? Acceptable.
+					biome = biome_override
 
-				# Biome Variety Override
-				if biome == Biome.STREET:
+				# Biome Variety Override (Only if NO strict override is set)
+				if biome_override == -1 and biome == Biome.STREET:
 					var biome_roll = rng.randf()
 					if biome_roll < 0.1:
 						biome = Biome.SNOW

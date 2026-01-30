@@ -5,6 +5,9 @@ func _ready():
 	get_tree().quit()
 
 func _run_tests():
+	# Watchdog
+	add_child(load("res://tests/TestSafeGuard.gd").new())
+
 	print("--- Starting Unit HP Tests ---")
 	
 	test_level_up_healing()

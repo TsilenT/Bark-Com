@@ -41,6 +41,7 @@ func generate_mission_config(level: int) -> MissionConfig:
 	config.mission_name = "Sector Sweep (Level " + str(level) + ")"
 	config.description = "Clear all hostiles in the sector."
 	config.reward_kibble = 50 * level
+	config.biome_type = randi() % LevelGenerator.Biome.size() # Random Biome
 	
 	if level == 1:
 		# Level 1: 1 Wave, Max Threat 5, Only Snipers/Rushers

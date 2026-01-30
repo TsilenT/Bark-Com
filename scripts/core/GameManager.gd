@@ -12,6 +12,7 @@ var iron_dog_mode: bool = false
 var cheats_enabled: bool = false
 var debug_scenario: String = ""
 var TEST_MOCK_ENABLED: bool = false # explicitly public for testing scripts
+var is_test_mode: bool = false # Used to suppress visuals/audio in integration tests
 
 const FLOATING_TEXT_OFFSET = Vector3(0, 2.0, 0)
 
@@ -261,6 +262,7 @@ func _generate_daily_batch():
 				m.objective_target_count = randi_range(3, 4)
 
 		m.mission_name = locs.pick_random() + " " + type_name
+		m.biome_type = randi() % LevelGenerator.Biome.size() # Random Biome
 		
 		# DIFFICULTY LOGIC
 		if i == 0:

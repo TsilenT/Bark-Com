@@ -5,6 +5,8 @@ var grid_points: Array = []
 var is_moving: bool = false
 var active_tween: Tween
 
+const LOG_PREFIX = "UnitMoveState: "
+
 func enter(msg: Dictionary = {}):
 	if not msg.has("world_path") or not msg.has("grid_path"):
 		state_machine.transition_to("Idle")
@@ -27,12 +29,18 @@ func _start_movement():
 	if unit.visuals:
 		unit.visuals.play_animation("Run")
 
-	for i in range(path_points.size()):
+	var current_path = path_points # Local Reference to protect against overwrite
+	for i in range(current_path.size()):
 		if not is_moving:
 			# print(unit.name, " [MoveState] Movement interrupted!")
 			break  # Interrupted
 
-		var point = path_points[i]
+		# Check for Race Condition (Path Replaced)
+		if path_points != current_path:
+			GameManager.log(LOG_PREFIX, "DEBUG: Race detected. Stopping old loop. i=", i)
+			break
+
+		var point = current_path[i]
 		var from_pos = unit.grid_pos
 
 		# Update Grid Pos
@@ -106,7 +114,7 @@ func _start_movement():
 			for item in items.duplicate():
 				if not is_instance_valid(item):
 					continue
-				print(unit.name, " auto-interacting with ", item.name)
+				GameManager.log(LOG_PREFIX, unit.name, " auto-interacting with ", item.name)
 				
 				# Delegate to ObjectiveManager if possible (Handles Mission Logic & Cleanup)
 				if om and om.has_method("handle_interaction"):

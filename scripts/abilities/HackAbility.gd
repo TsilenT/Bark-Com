@@ -14,9 +14,14 @@ func get_valid_tiles(grid_manager: GridManager, user) -> Array[Vector2]:
 
 	# Determine Range based on Tech Score
 	# Scouts (Tech > 0) get range 5. Others get 1.
-	var effective_range = ability_range
-	if "tech_score" in user and user.tech_score > 0:
-		effective_range = 5
+	# Determine Range based on Tech Score (Scaled)
+	# Base 1.5 (Adjacent) + 0.2 per Tech
+	# Tech 10 -> 3.5 Range. Tech 20 -> 5.5 Range.
+	var tech = 0
+	if "tech_score" in user:
+		tech = user.tech_score
+		
+	var effective_range = 1.5 + (float(tech) * 0.2)
 
 	# Find Terminals
 	var terminals = user.get_tree().get_nodes_in_group("Terminals")
@@ -68,27 +73,20 @@ func execute(user, target_unit, target_tile: Vector2, grid_manager: GridManager)
 	if not user.spend_ap(ap_cost):
 		return "Not enough AP!"
 
-	# Calculate Chance
+	# Calculate Chance (Visual only, Logic is in Terminal)
 	var tech = user.tech_score if "tech_score" in user else 0
 	var chance = 70 + tech
-	chance = clamp(chance, 0, 100)
-
-	print(user.name, " attempting HACK. Chance: ", chance, "% (Base 70 + Tech ", tech, ")")
+	print(user.name, " using HACK ABILITY on ", terminal.name)
 
 	# VFX: Datapad Beam?
 	SignalBus.on_combat_action_started.emit(user, terminal, "Hack", terminal.position)
 
-	# Roll
-	var roll = randi() % 100 + 1
-	var success = roll <= chance
+	# Execute via Terminal (Unified Logic)
+	var success = terminal.hack(user)
 
 	if success:
-		print("HACK SUCCESS!")
-		terminal.on_hack_result(true)
 		SignalBus.on_combat_action_finished.emit(user)
 		return "Hack Successful!"
 	else:
-		print("HACK FAILED!")
-		terminal.on_hack_result(false)
 		SignalBus.on_combat_action_finished.emit(user)
 		return "Hack Failed!"

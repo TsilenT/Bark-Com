@@ -25,6 +25,7 @@ var objective_manager: ObjectiveManager
 var player_controller: PlayerMissionController
 
 var grid_manager
+var is_test_mode = false
 
 
 func _ready():
@@ -37,11 +38,13 @@ func _ready():
 	gm.name = "GridManager"
 	grid_manager = gm
 
-	var gv = load("res://scripts/ui/GridVisualizer.gd").new()
-	gv.name = "GridVisualizer"
-	gv.grid_manager = gm
+	var gv = null
+	if not is_test_mode:
+		gv = load("res://scripts/ui/GridVisualizer.gd").new()
+		gv.name = "GridVisualizer"
+		gv.grid_manager = gm
 
-	add_child(gv)
+		add_child(gv)
 	add_child(gm)
 
 	# Mission Manager
@@ -85,21 +88,19 @@ func _ready():
 	add_child(vfxm)
 
 	# Also add a Camera so the user can see
-	main_camera = Camera3D.new()
-	main_camera.set_script(load("res://scripts/core/CameraController.gd"))
-	main_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	main_camera.size = 18  # Revert Zoom (User Request)
-	main_camera.current = true
-
-	# User-Defined Initial Position (Refined for Tactical View)
-	# Centered better on 0-10 grid
-	main_camera.position = Vector3(5.0, 10.0, 10.0)
-	main_camera.rotation_degrees = Vector3(-45, -45, 0)  # Classic Iso Angle
-
-	main_camera.position = Vector3(5.0, 10.0, 10.0)
-	main_camera.rotation_degrees = Vector3(-45, -45, 0)  # Classic Iso Angle
-
-	add_child(main_camera)
+	if not is_test_mode:
+		main_camera = Camera3D.new()
+		main_camera.set_script(load("res://scripts/core/CameraController.gd"))
+		main_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		main_camera.size = 18  # Revert Zoom (User Request)
+		main_camera.current = true
+	
+		# User-Defined Initial Position (Refined for Tactical View)
+		# Centered better on 0-10 grid
+		main_camera.position = Vector3(5.0, 10.0, 10.0)
+		main_camera.rotation_degrees = Vector3(-45, -45, 0)  # Classic Iso Angle
+	
+		add_child(main_camera)
 
 	# Setup GameUI
 	var gui_script = load("res://scripts/ui/GameUI.gd")
@@ -115,34 +116,36 @@ func _ready():
 
 
 	# Cinematic Director
-	var camera_script = load("res://scripts/systems/CinematicCamera.gd")
-	if camera_script:
-		var cam_controller = camera_script.new(main_camera)
-		add_child(cam_controller)
+	if not is_test_mode:
+		var camera_script = load("res://scripts/systems/CinematicCamera.gd")
+		if camera_script:
+			var cam_controller = camera_script.new(main_camera)
+			add_child(cam_controller)
 
 	# Selection Marker (Crystal)
-	var marker_mesh = MeshInstance3D.new()
-	marker_mesh.mesh = SphereMesh.new()
-	marker_mesh.mesh.radius = 0.22
-	marker_mesh.mesh.height = 0.44
-	
-	var marker_mat = StandardMaterial3D.new()
-	marker_mat.albedo_color = Color.CYAN
-	marker_mat.emission_enabled = true
-	marker_mat.emission = Color.CYAN
-	marker_mat.emission_energy_multiplier = 2.0
-	marker_mesh.material_override = marker_mat
-	
-	selection_marker = marker_mesh # Assign to wrapper or direct? Direct for now.
-	selection_marker.set_script(load("res://scripts/ui/BouncingMarker.gd"))
-	add_child(selection_marker)
-	selection_marker.visible = false
+	if not is_test_mode:
+		var marker_mesh = MeshInstance3D.new()
+		marker_mesh.mesh = SphereMesh.new()
+		marker_mesh.mesh.radius = 0.22
+		marker_mesh.mesh.height = 0.44
+		
+		var marker_mat = StandardMaterial3D.new()
+		marker_mat.albedo_color = Color.CYAN
+		marker_mat.emission_enabled = true
+		marker_mat.emission = Color.CYAN
+		marker_mat.emission_energy_multiplier = 2.0
+		marker_mesh.material_override = marker_mat
+		
+		selection_marker = marker_mesh # Assign to wrapper or direct? Direct for now.
+		selection_marker.set_script(load("res://scripts/ui/BouncingMarker.gd"))
+		add_child(selection_marker)
+		selection_marker.visible = false
 
-	var light = DirectionalLight3D.new()
-	add_child(light)
-	light.position = Vector3(10, 20, 15)
-	light.look_at(Vector3(10, 0, 10))
-	light.shadow_enabled = true  # Enable shadows for depth
+		var light = DirectionalLight3D.new()
+		add_child(light)
+		light.position = Vector3(10, 20, 15)
+		light.look_at(Vector3(10, 0, 10))
+		light.shadow_enabled = true  # Enable shadows for depth
 
 	# Mission Setup
 	# Mission Setup
@@ -176,6 +179,8 @@ func _ready():
 			mission_config.objective_type = active_mission_data.objective_type
 			mission_config.reward_kibble = active_mission_data.reward_kibble
 			
+			if "biome_type" in active_mission_data:
+				mission_config.biome_type = active_mission_data.biome_type
 			if "objective_target_count" in active_mission_data:
 				mission_config.objective_target_count = active_mission_data.objective_target_count
 
@@ -227,11 +232,12 @@ func _ready():
 	# Logic:
 	# 1. We have 'mission_config' potentially from Adapter or Generation.
 	# 2. We pass this to spawn_test_scenario to RUN the mission.
-	spawn_test_scenario(gm, mission_config)
-
-	# Audio: Mission Theme
-	if GameManager and GameManager.audio_manager:
-		GameManager.audio_manager.play_music("Theme_Mission")
+	if not is_test_mode:
+		spawn_test_scenario(gm, mission_config)
+		
+		# Audio: Mission Theme
+		if GameManager and GameManager.audio_manager:
+			GameManager.audio_manager.play_music("Theme_Mission")
 
 	# Connect System Signals (to exit scene on done)
 	if not SignalBus.on_mission_ended.is_connected(_on_mission_ended_handler):
@@ -571,7 +577,10 @@ func _handle_hover(screen_pos):
 
 
 func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  # Updated Signature
-	grid_manager.generate_grid() # Ensure grid exists and signals verify
+	var biome_override = -1
+	if mission and "biome_type" in mission:
+		biome_override = mission.biome_type
+	grid_manager.generate_tactical_grid(biome_override) # Ensure grid exists and signals verify
 	active_mission_data = mission
 	GameManager.log(LOG_PREFIX, "--- TEST SCENARIO START ---")
 
@@ -607,6 +616,8 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 			barrel.initialize(pos, grid_manager)
 			spawned_units.append(barrel) # Treat as Unit for Targeting
 			GameManager.log(LOG_PREFIX, "Spawned Explosive Barrel at ", pos)
+
+
 
 	# --- Spawn Destructible Cover (Props) ---
 	# LevelGenerator only marks grid as COVER. We need to instantiate props.
@@ -818,13 +829,10 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 	# REMOVED: Managed by MissionManager (Phase 79)
 	# _spawn_enemies_point_buy(grid_manager, mission)
 
-	# Mission Setup (Terminals)
-	# Legacy spawning removed. Now we wire up terminals spawned by MissionManager.
-	if mission and mission.objective_type == ObjectiveManager.MissionType.HACKER:
-		# Wait for MissionManager to finish spawning (it happens in start_mission?)
-		# Actually, MissionManager.start_mission is called... where?
-		# It seems Main.gd assumes MissionManager has populated the grid.
-		pass
+	# Mission Setup
+	# Logic handled at end of function (Phase 79 Integration) to ensure proper sequence with Briefing & Enemy Spawning.
+	pass
+
 		
 
 
@@ -851,12 +859,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 	fog_manager.name = "FogManager"
 	add_child(fog_manager)
 
-	if not game_ui.is_connected("action_requested", _on_ui_action):
-		game_ui.connect("action_requested", _on_ui_action)
-	if not game_ui.is_connected("ability_requested", _on_ability_requested):
-		game_ui.connect("ability_requested", _on_ability_requested)
-	if not game_ui.is_connected("item_requested", _on_item_requested):
-		game_ui.connect("item_requested", _on_item_requested)
+	# Signal connections handled in _setup_controllers or verified below.
 	if not game_ui.is_connected("end_turn_requested", _end_player_turn):
 		game_ui.connect("end_turn_requested", _end_player_turn)
 	if not game_ui.is_connected("unit_selection_changed", _handle_unit_selection_from_ui):
@@ -980,6 +983,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 
 	# Collect Enemies for TurnManager
 	if mission_manager:
+		GameManager.log(LOG_PREFIX, "Reaching Mission Setup Phase (Legacy Block).")
 		# Always regenerate config from GameManager data to ensure latest mission is used
 		# (Fixes issue where persistent MissionManager ignored new missions)
 		# Always regenerate config from GameManager data to ensure latest mission is used
@@ -1401,6 +1405,110 @@ func _on_ui_action(action):
 			turn_manager.force_retreat()
 
 
+func _try_interact():
+	if not selected_unit: return
+	
+	# Check adjacency via ObjectiveManager or GridManager helpers?
+	# Better: Use PMC's context logic OR reuse GameUI's robust check?
+	# GameUI has the button, so we assume valid target is adjacent.
+	# We need to FIND the target again.
+	
+	# Find ALL valid targets adjacent
+	var candidate_targets = []
+	
+	# Interactable Groups
+	var groups = ["Interactive", "Objectives", "RescueTargets", "TreatBags"]
+	var checked_nodes = {}
+	
+	for g in groups:
+		for obj in get_tree().get_nodes_in_group(g):
+			if not is_instance_valid(obj): continue
+			if checked_nodes.has(obj): continue # De-dupe
+			
+			checked_nodes[obj] = true
+			
+			var dist = selected_unit.grid_pos.distance_to(obj.grid_pos)
+			
+			# Check Distance (Adjacent = 1.0 or 1.414. Allow slight buffer 1.5)
+			
+			# Dynamic Range Logic
+			var max_dist = 1.5
+			if obj.is_in_group("Terminals") and "tech_score" in selected_unit:
+				max_dist = 1.5 + (float(selected_unit.tech_score) * 0.2)
+			
+			if dist <= max_dist:
+				# Validate State immediately
+				var is_valid = true
+				if "is_hacked" in obj and obj.is_hacked:
+					is_valid = false # Skip already hacked
+				
+				if is_valid:
+					candidate_targets.append({
+						"node": obj,
+						"dist": dist
+					})
+
+	if candidate_targets.is_empty():
+		GameManager.log(LOG_PREFIX, "Interact Failed: No valid target adjacent.")
+		return
+
+	# Sort by distance (Closest first)
+	candidate_targets.sort_custom(func(a, b): return a.dist < b.dist)
+	
+	var target = candidate_targets[0].node
+
+		
+	GameManager.log(LOG_PREFIX, "Interacting with ", target.name)
+	
+	# HACK LOGIC
+	if target.is_in_group("Terminals") or target.has_method("hack"):
+		# Check Property directly (GDScript safe)
+		if "is_hacked" in target and target.is_hacked:
+			GameManager.log(LOG_PREFIX, "Already Hacked!")
+			return
+			
+		# Execute Hack
+		if selected_unit.current_ap < 1:
+			GameManager.log(LOG_PREFIX, "Not enough AP!")
+			return
+			
+		selected_unit.current_ap -= 1
+		SignalBus.on_unit_stats_changed.emit(selected_unit)
+		
+		# Visual/Audio FX?
+		SignalBus.on_request_floating_text.emit(target, "HACKING...", Color.GREEN)
+		
+		if target.has_method("hack"):
+			var success = target.hack(selected_unit) # Terminal returns success boolean
+			if success:
+				if objective_manager:
+					objective_manager.register_hack(true)
+			else:
+				# Fail logic?
+				pass
+		else:
+			# Fallback if no specific script
+			if objective_manager:
+				objective_manager.register_hack(true)
+				
+	elif target.is_in_group("RescueTargets") or target.is_in_group("TreatBags"):
+		# Legacy Objective Logic
+		if objective_manager:
+			objective_manager.handle_interaction(selected_unit, target)
+			# AP Cost? Usually 1.
+			selected_unit.current_ap -= 1
+			SignalBus.on_unit_stats_changed.emit(selected_unit)
+
+	elif target.is_in_group("Interactive") or target.has_method("interact"):
+		if selected_unit.current_ap >= 1:
+			GameManager.log(LOG_PREFIX, "Generic Interaction with ", target.name)
+			target.interact(selected_unit)
+			selected_unit.spend_ap(1)
+			SignalBus.on_unit_step_completed.emit(selected_unit)
+		else:
+			SignalBus.on_combat_log_event.emit("Not enough AP!", Color.RED)
+
+
 func _end_player_turn():
 	GameManager.log(LOG_PREFIX, "Player ended turn. Applying Fog Penalties...")
 
@@ -1449,67 +1557,11 @@ func _on_action_requested(action):
 		print("Overwatch not implemented yet.")
 		
 	elif action == "Interact":
-		_try_context_interaction()
+		_try_interact()
 
 
 
-func _try_context_interaction():
-	if not selected_unit: return
-	if not objective_manager: return
-	
-	# Check AP
-	if selected_unit.current_ap < 1:
-		if game_ui:
-			SignalBus.on_combat_log_event.emit("Not enough AP!", Color.RED)
-		return
-	
-	GameManager.log(LOG_PREFIX, "Attempting Context Interaction...")
-	
-	# Scan adjacent tiles
-	var neighbors = grid_manager.get_adjacent_tiles(selected_unit.grid_pos)
-	for n in neighbors:
-		var target = _get_interactive_in_tile(n)
-		if target:
-			GameManager.log(LOG_PREFIX, "Context Interaction found: ", target.name)
-			_process_interaction(selected_unit, target)
-			return
 
-	GameManager.log(LOG_PREFIX, "No valid interaction target found.")
-	if game_ui:
-		SignalBus.on_combat_log_event.emit("Nothing to interact with.", Color.GRAY)
-
-func _get_interactive_in_tile(grid_pos):
-	if not grid_manager.grid_data.has(grid_pos): return null
-	
-	# 1. Check Unit/Prop in Grid
-	var unit = grid_manager.grid_data[grid_pos].get("unit")
-	if unit:
-		if unit.is_in_group("Interactive") or unit.is_in_group("Objectives") or unit.is_in_group("RescueTargets") or unit.is_in_group("TreatBags"):
-			return unit
-			
-	# 2. Check Overlap (Physics/Scene) if Grid empty? 
-	# (Usually Grid is authoritative for logic)
-	return null
-
-func _process_interaction(user, target):
-	# Delegate to ObjectiveManager
-	var result = objective_manager.handle_interaction(user, target)
-	
-	if result:
-		# Success feedback
-		if game_ui:
-			SignalBus.on_combat_log_event.emit("Interaction Successful!", Color.GREEN)
-			
-		# Spend AP (Interaction costs 1)
-		selected_unit.spend_ap(1)
-		
-		# Refresh UI and Spend AP?
-		# ObjectiveManager usually updates state.
-		# Signal unit step to refresh visibility/UI
-		SignalBus.on_unit_step_completed.emit(user)
-	else:
-		if game_ui:
-			SignalBus.on_combat_log_event.emit("Nothing happened.", Color.GRAY)
 
 
 func _on_ability_requested(ability):
@@ -1912,7 +1964,7 @@ func _clear_targeting():
 	_clear_targeting_visuals()
 
 func _clear_targeting_visuals():
-	var gv = get_node("GridVisualizer")
+	var gv = get_node_or_null("GridVisualizer")
 	if gv:
 		gv.clear_highlights()
 		gv.clear_preview_path()
@@ -1925,34 +1977,7 @@ func _clear_targeting_visuals():
 
 
 
-func _try_interact():
-	# Check adjacent units for objectives
-	if not selected_unit:
-		return
 
-	var om = get_node("ObjectiveManager")
-	var tm = get_node("TurnManager")
-
-	# Find adjacent objective units
-	# Find adjacent objective units
-	var potential_targets = tm.units.duplicate()
-	potential_targets.append_array(get_tree().get_nodes_in_group("Objectives"))
-	
-	for unit in potential_targets:
-		if not is_instance_valid(unit):
-			continue
-		if unit == selected_unit:
-			continue
-		
-		# Distance Check (0 = On Top, 1 or 1.414 = Adjacent)
-		# NOTE: Ladders are 'Connectors', Corgi stands on same tile.
-		if is_instance_valid(unit) and "grid_pos" in unit:
-			if unit.grid_pos.distance_to(selected_unit.grid_pos) <= 1.5:
-				om.handle_interaction(selected_unit, unit)
-				selected_unit.spend_ap(1)
-				return
-
-	GameManager.log(LOG_PREFIX, "Nothing in range to interact with!")
 
 
 func _on_pause_toggle():

@@ -47,6 +47,9 @@ class MockItem:
 	var consume_on_use = true
 
 func _ready():
+	# Watchdog
+	add_child(load("res://tests/TestSafeGuard.gd").new())
+	
 	print("--- STARTING ITEM TARGET REGRESSION TESTS ---")
 	await get_tree().process_frame
 	

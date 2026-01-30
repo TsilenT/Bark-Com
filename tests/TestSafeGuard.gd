@@ -1,26 +1,58 @@
 extends Node
 # TestSafeGuard.gd
-# Helper to prevent tests from ghosting (running forever).
-# Autos-quits after a timeout.
+# Threaded Watchdog to prevent ghosts even if Main Thread freezes.
 
-var timeout: float = 30.0 # Default 30s timeout
+var timeout: float = 30.0
+var _thread: Thread
+var _quit_requested = false
 
 func _ready():
-	# Use SceneTreeTimer which works even if paused (usually)
-	# But a Timer node is safer for cleaning up
-	var timer = Timer.new()
-	timer.wait_time = timeout
-	timer.one_shot = true
-	timer.autostart = true
-	timer.timeout.connect(_on_timeout)
-	add_child(timer)
-	print("TestSafeGuard: Watchdog started. Timeout: ", timeout, "s")
+	_thread = Thread.new()
+	_thread.start(_watchdog_loop)
+	print("TestSafeGuard: Watchdog started (Threaded). Timeout: ", timeout, "s")
 
-func _on_timeout():
+func _exit_tree():
+	_quit_requested = true
+	if _thread.is_started():
+		_thread.wait_to_finish()
+
+func _watchdog_loop():
+	var start_time = Time.get_ticks_msec()
+	var limit_ms = timeout * 1000
+	
+	while not _quit_requested:
+		if Time.get_ticks_msec() - start_time > limit_ms:
+			_force_quit()
+			break
+		OS.delay_msec(500)
+
+func _force_quit():
+	# This runs on a thread. Godot API safety is limited.
+	# Printing to stdout is usually safe.
 	print("!!! TestSafeGuard: TIMEOUT REACHED (", timeout, "s) !!!")
-	print("!!! FORCE QUITTING TO PREVENT GHOSTING !!!")
+	print("!!! FORCE QUITTING (Threaded) !!!")
 	
-	# Attempt to print stack trace?
-	# print_stack() 
+	# Attempt to quit via Main Loop first (if responsive)
+	call_deferred("_main_thread_quit")
 	
-	get_tree().quit(1) # Return error code 1
+	# Hard wait for main thread to react
+	OS.delay_msec(2000)
+	
+	# If still here, panic exit.
+	# OS.kill(OS.get_process_id()) is not available in GDScript 4.x standard API easily?
+	# Using OS.crash() or triggering a fatal error.
+	# print_stack() might help.
+	# We can use OS.alert() but headless...
+	
+	# Try to exit aggressively
+	get_tree().quit(1) 
+	
+	# If main loop is truly deadlocked, get_tree().quit() might queue nicely but never run.
+	# We need a way to kill process.
+	# Since we can't easily OS.kill(pid) in cross-platform GDScript:
+	
+	# We will spam errors to maybe cause crash?
+	printerr("FATAL: WATCHDOG TIMEOUT. PROCESS HUNG.")
+
+func _main_thread_quit():
+	get_tree().quit(1)

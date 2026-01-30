@@ -8,6 +8,9 @@ func _ready():
 	print("--- Starting Grid Reactivity Tests ---")
 	root = self
 	
+	# Watchdog
+	root.add_child(load("res://tests/TestSafeGuard.gd").new())
+	
 	test_reactivity()
 	
 	print("--- All Grid Tests Passed ---")
@@ -37,7 +40,7 @@ func test_reactivity():
 	
 	# 2. Trigger Generation
 	print("  -> Triggering generate_grid()...")
-	gm.generate_grid()
+	gm.generate_tactical_grid()
 	
 	# 3. Assert Reactivity
 	assert_check(gm.grid_data.size() > 0, "GridManager should have data")

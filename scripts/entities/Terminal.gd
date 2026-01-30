@@ -8,6 +8,21 @@ var difficulty: int = 0  # Modifier to hack chance?
 var can_be_targeted: bool = false # Ignored by Enemy AI
 
 
+func initialize(pos: Vector2, gm: Node, biome: String = "", variant_override: int = -1):
+	# Call Base (DestructibleCover) to register with Grid
+	# This WILL overwrite our visuals with a Crate/Variant.
+	super.initialize(pos, gm, biome, variant_override)
+	
+	# RESTORE Terminal Visuals
+	_setup_visuals()
+	
+	# Terminals are Full Cover (Override whatever set_variant did)
+	# (Actually _setup_visuals makes a 2.0 high box, so it matches Full Cover visually)
+	gm.update_tile_state(pos, false, 2.0, GridManager.TileType.COVER_FULL)
+
+
+
+
 func _ready():
 	# super._ready() calls _setup_visuals() via virtual method call,
 	# preventing double mesh creation.
@@ -24,6 +39,15 @@ func take_damage(_amount: int):
 
 
 func _setup_visuals():
+	# Allow suppression via Global Flag
+	if GameManager and "is_test_mode" in GameManager and GameManager.is_test_mode:
+		return
+
+	# 1. Clear existing visuals (from Base Class initialization)
+	for child in get_children():
+		if child is MeshInstance3D:
+			child.queue_free()
+
 	# Override to look like a Terminal (Blue Box/Console)
 	mesh = MeshInstance3D.new()
 	var box = BoxMesh.new()
@@ -31,35 +55,37 @@ func _setup_visuals():
 	mesh.mesh = box
 
 	var mat = StandardMaterial3D.new()
-	mat.albedo_color = Color(0.0, 0.2, 0.8)  # Tech Blue
+	mat.albedo_color = Color(0.6, 0.0, 0.8)  # Tech Purple
 	mat.emission_enabled = true
-	mat.emission = Color(0.0, 0.5, 1.0)
+	mat.emission = Color(0.8, 0.2, 1.0)
 	mat.emission_energy_multiplier = 1.0
 	mesh.material_override = mat
 
 	mesh.position.y = 1.0  # Center of 2.0 height
 	add_child(mesh)
 
-	# Add Screen/Keyboard detail?
-	# Simple emissive material change on hack
 
-
-func attempt_hack(user_tech_score: int) -> bool:
+func hack(user) -> bool:
 	if is_hacked:
 		print("Terminal already hacked!")
 		return false
 
-	# Difficulty Check logic handled by Ability usually,
-	# but we can return success here if we want the logic on the object.
-	# Plan said 70% + TechScore. Let's do the random roll in the Ability
-	# and just have this receive the result, OR have this calculate it.
-	# "Hacking takes 1 Action Point and has a success chance (Base 70% + TechScore)"
-	# Let's verify logic in Ability, and just have this method be "resolve_hack(success)".
-	# But the method name in plan was attempt_hack.
-	# Let's sticking to plan: Ability calculates chance, calls this if success?
-	# Or Ability calls this to performing the attempt?
-	# Better: Ability calculates chance, rolls, then calls `on_hack_result(success)`.
-	return false
+	var tech = 0
+	if "tech_score" in user:
+		tech = user.tech_score
+	
+	var base_chance = 70
+	var final_chance = clamp(base_chance + tech, 0, 100)
+	
+	# Roll
+	var roll = randi() % 100 + 1
+	var success = roll <= final_chance
+	
+	print("Terminal: Hack Attempt by ", user.name, " (Tech: ", tech, "). Roll: ", roll, " vs ", final_chance)
+
+	on_hack_result(success)
+	return success
+
 
 
 func on_hack_result(success: bool):

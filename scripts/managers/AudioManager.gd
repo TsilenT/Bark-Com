@@ -186,6 +186,9 @@ func _play_random_track_from_playlist(
 
 
 func play_sfx(track_key: String, pitch_variance: float = 0.1, base_pitch: float = 1.0):
+	if GameManager.is_test_mode:
+		return
+
 	if not sfx_tracks.has(track_key):
 		print("AudioManager: SFX Key missing: ", track_key)
 		return

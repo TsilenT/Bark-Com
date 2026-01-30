@@ -640,8 +640,8 @@ func _refresh_action_bar(unit):
 					if "uses_charges" in ability and ability.uses_charges and ability.charges <= 0:
 						btn.text += "\n(Empty)"
 
-		# Context Action: Retrieve
-		_check_retrieve_action(unit)
+		# Context Action: Retrieve / Hack
+		_check_context_actions(unit)
 
 		# Inventory
 		if "inventory" in unit:
@@ -656,26 +656,55 @@ func _refresh_action_bar(unit):
 		_create_action_button("Wait", func(): _on_wait_clicked())
 
 
-func _check_retrieve_action(unit):
-	# Check for "Treat Bag" or "Lost Human" adjacent
+func _check_context_actions(unit):
+	# DEDUPLICATION: Check if unit has explicit Hack Ability
+	var has_hack_ability = false
+	if "abilities" in unit:
+		for ab in unit.abilities:
+			if not ab: continue
+			var dname = ab.get("display_name")
+			if dname == "Hack":
+				has_hack_ability = true
+				break
+
+	# Check for "Treat Bag", "Lost Human", or "Terminal" adjacent
 	var objs = get_tree().get_nodes_in_group("Objectives")
 	for obj in objs:
 		# Use Groups for robust checking
 		var is_rescue = obj.is_in_group("RescueTargets")
 		var is_treat = obj.is_in_group("TreatBags") or obj.name == "Treat Bag" or obj.name == "LootCrate"
 		
+		# HACK MISSION
+		var is_terminal = obj is Terminal or obj.is_in_group("Terminals") # Assuming Terminal class or group
+		
 		# Allow interacting with explicit "Interactables" (Doors/Switches) provided they are in Objectives
 		var is_interactive = obj.is_in_group("Interactive")
 
-		if is_instance_valid(obj) and (is_rescue or is_treat or is_interactive):
+		if is_instance_valid(obj) and (is_rescue or is_treat or is_interactive or is_terminal):
+			
+			# DEDUPLICATION SKIP
+			if is_terminal and has_hack_ability:
+				continue
+
+			var max_dist = 1.5
+			if is_terminal and "tech_score" in unit:
+				# Scaled Range: 1.5 + (Tech * 0.2)
+				max_dist = 1.5 + (float(unit.tech_score) * 0.2)
+
 			var dist = unit.grid_pos.distance_to(obj.grid_pos)
-			if dist <= 1.5:  # Adjacent or Diagonal
+			if dist <= max_dist:  # Check calculated range
 				# Use generic "Interact" label? Or specific?
 				var label = "Interact"
 				if is_rescue:
 					label = "Rescue"
 				elif is_treat:
 					label = "Retrieve"
+				elif is_terminal:
+					# Check if already hacked
+					if obj.has_method("is_hacked") and obj.is_hacked():
+						continue
+					label = "Hack"
+					
 				_create_action_button(
 					label + "\n(1 AP)", func(): emit_signal("action_requested", "Interact")
 				)

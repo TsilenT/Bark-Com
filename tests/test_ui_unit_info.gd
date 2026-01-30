@@ -1,6 +1,9 @@
 extends Node
 
 func _ready():
+	# Watchdog
+	add_child(load("res://tests/TestSafeGuard.gd").new())
+
 	# Wait one frame for AutoLoads
 	await get_tree().process_frame
 	_run_test()

@@ -12,6 +12,9 @@ func _run_tests():
 	if not gm:
 		print("❌ FAIL: GameManager not found (Autoload missing?)")
 		return
+
+	# Watchdog
+	add_child(load("res://tests/TestSafeGuard.gd").new())
 	
 	# SAFETY: Prevent overwriting real save
 	gm.TEST_MOCK_ENABLED = true
