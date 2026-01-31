@@ -45,7 +45,7 @@ func initialize(mission_type, _turn_manager: TurnManager, count_override: int = 
 			if target_count == 0: target_count = 1 # Fallback
 			print(" - Secure ", target_count, " Treat Bags!")
 		MissionType.DEFENSE:
-			turn_limit = 30  # Estimated 10 waves * 2 + buffer
+			turn_limit = 31  # Estimated 10 waves * 2 + buffer (31 to allow Turn 30 to be played)
 			print(" - SURVIVE until Turn ", turn_limit, "!")
 
 

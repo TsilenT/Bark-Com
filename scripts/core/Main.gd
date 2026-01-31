@@ -235,8 +235,11 @@ func _on_turn_changed(phase_name, _turn_num):
 	# SignalBus.on_turn_changed.emit(phase_name, _turn_num) # REMOVED: TurnManager emits this directly.
 	
 	if objective_manager:
-		SignalBus.on_objectives_updated.emit(objective_manager.get_objective_text())
 		var status = objective_manager.check_status(turn_manager.units, _turn_num)
+		
+		# Update UI with new status (e.g. "Hold: 0") BEFORE handling Win/Loss
+		SignalBus.on_objectives_updated.emit(objective_manager.get_objective_text())
+
 		if status == "WIN":
 			_on_mission_ended_handler(true)
 			return
