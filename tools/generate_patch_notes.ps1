@@ -1,5 +1,6 @@
 param (
-    [string]$Version
+    [string]$Version,
+    [string]$ManualRange
 )
 
 $ErrorActionPreference = "Stop"
@@ -60,7 +61,9 @@ if ($Version) {
 
 $SafeVersion = $DetectedVersion -replace '^v','' 
 
-if ($StartRef) {
+if ($ManualRange) {
+    $Range = $ManualRange
+} elseif ($StartRef) {
     $Range = "$StartRef..$EndRef"
 } else {
     $Range = $EndRef
@@ -81,32 +84,49 @@ $Cats_Tech = @()
 $Cats_Docs = @()
 $Cats_Other = @()
 
-foreach ($Commit in $RawCommits) {
-    $Matched = $false
+# Define Keywords for Splitting
+$Feat = "feat|new|add|implement"
+$Fix = "fix|bug|repair|resolve|hotfix"
+$Vis = "style|ui|visual|art|shader|polish"
+$Tech = "refactor|perf|optim|clean|test|ci|chore"
+$Doc = "doc|readme|comment"
 
-    if ($Commit -match "(?i)(^(feat|new|add|implement))|(\s(feat|new|add|implement):)") {
-        $Cats_Features += "- $Commit"
-        $Matched = $true
-    }
-    if ($Commit -match "(?i)(^(fix|bug|repair|resolve|hotfix))|(\s(fix|bug|repair|resolve|hotfix):)") {
-        $Cats_Fixes += "- $Commit"
-        $Matched = $true
-    }
-    if ($Commit -match "(?i)(^(style|ui|visual|art|shader|polish))|(\s(style|ui|visual|art|shader|polish):)") {
-        $Cats_Visuals += "- $Commit"
-        $Matched = $true
-    }
-    if ($Commit -match "(?i)(^(refactor|perf|optim|clean|test|ci|chore))|(\s(refactor|perf|optim|clean|test|ci|chore):)") {
-        $Cats_Tech += "- $Commit"
-        $Matched = $true
-    }
-    if ($Commit -match "(?i)(^(doc|readme|comment))|(\s(doc|readme|comment):)") {
-        $Cats_Docs += "- $Commit"
-        $Matched = $true
-    }
-    
-    if (-not $Matched) {
-        $Cats_Other += "- $Commit"
+$AllKeywords = "$Feat|$Fix|$Vis|$Tech|$Doc"
+$SplitPattern = "(?i)\s($AllKeywords):"
+$ReplacePattern = "`n`$1:"
+
+foreach ($RawCommit in $RawCommits) {
+    # Split composite commits (e.g. "feat: A fix: B") into multiple lines
+    $Processed = $RawCommit -replace $SplitPattern, $ReplacePattern
+    $Segments = $Processed -split "`n"
+
+    foreach ($Commit in $Segments) {
+        $Matched = $false
+
+        if ($Commit -match "(?i)(^(feat|new|add|implement))|(\s(feat|new|add|implement):)") {
+            $Cats_Features += "- $Commit"
+            $Matched = $true
+        }
+        if ($Commit -match "(?i)(^(fix|bug|repair|resolve|hotfix))|(\s(fix|bug|repair|resolve|hotfix):)") {
+            $Cats_Fixes += "- $Commit"
+            $Matched = $true
+        }
+        if ($Commit -match "(?i)(^(style|ui|visual|art|shader|polish))|(\s(style|ui|visual|art|shader|polish):)") {
+            $Cats_Visuals += "- $Commit"
+            $Matched = $true
+        }
+        if ($Commit -match "(?i)(^(refactor|perf|optim|clean|test|ci|chore))|(\s(refactor|perf|optim|clean|test|ci|chore):)") {
+            $Cats_Tech += "- $Commit"
+            $Matched = $true
+        }
+        if ($Commit -match "(?i)(^(doc|readme|comment))|(\s(doc|readme|comment):)") {
+            $Cats_Docs += "- $Commit"
+            $Matched = $true
+        }
+        
+        if (-not $Matched) {
+            $Cats_Other += "- $Commit"
+        }
     }
 }
 
