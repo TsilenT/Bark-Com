@@ -1,7 +1,7 @@
 extends Node
 
 # Mocks
-class MockGridManager extends Node:
+class DestructionMockGridManager extends Node:
 	# Keep signal for consistency if accessed, though not used here
 	signal grid_generated
 	var grid_data = {} # Added missing grid_data
@@ -21,7 +21,7 @@ func _ready():
 	# We are in the tree now (Autoloads should be ready)
 	var root = self
 	
-	var gm = MockGridManager.new()
+	var gm = DestructionMockGridManager.new()
 	gm.name = "GridManager" # DestructibleCover often looks for GridManager? 
 	# Actually DestructibleCover is initialized with gm passed in.
 	add_child(gm)

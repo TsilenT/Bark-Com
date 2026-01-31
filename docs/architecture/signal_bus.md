@@ -45,6 +45,11 @@ if SignalBus:
     SignalBus.on_request_floating_text.emit(global_position, "OUCH!", Color.RED)
 ```
 
+**CRITICAL RULE**: Check if a signal exists for your intended action before implementing a direct function call.
+*   **Bad**: calling `_on_mission_ended_handler(false)` directly from a UI button.
+*   **Good**: emitting `SignalBus.on_mission_ended.emit(false, 0)`.
+Reason: Direct calls bypass other listeners (like UI panels needing to show/hide) and tightly couple components.
+
 ### 3. Separation of Concerns
 -   **Logic** (Unit.gd) emits `on_unit_died`.
 -   **Audio** (AudioManager.gd) listens and plays a death sound.

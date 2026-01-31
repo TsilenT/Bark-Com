@@ -7,6 +7,7 @@ const LOG_PREFIX = "ObjSpawner: "
 const OBJ_TYPE_EXTERMINATION = 0
 const OBJ_TYPE_RESCUE = 1
 const OBJ_TYPE_LOOT = 2
+const OBJ_TYPE_HACKER = 3
 const OBJ_TYPE_DEFENSE = 4
 
 ## Main Entry Point
@@ -34,6 +35,17 @@ func spawn_objectives(type: int, count: int, config: MissionConfig, grid_manager
 				var item = _get_random_consumable()
 				if item:
 					obj_node.loot_table.append(item)
+
+
+			OBJ_TYPE_HACKER: # Hacker Terminals
+				var t_script = load("res://scripts/entities/Terminal.gd")
+				if t_script:
+					obj_node = t_script.new()
+					obj_node.name = "Terminal_" + str(i)
+					
+					obj_node.add_to_group("Terminals")
+					obj_node.add_to_group("Objectives")
+					obj_node.add_to_group("Interactive") # For Context Actions
 
 			OBJ_TYPE_RESCUE: # Rescue Unit
 				var recruit_data = config.reward_recruit_data

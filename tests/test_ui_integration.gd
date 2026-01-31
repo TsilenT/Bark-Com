@@ -6,7 +6,7 @@ var GameUI_Script
 var SquadMemberFrame_Script
 var SignalBus_Script
 
-class MockGridManager:
+class UIMockGridManager:
 	func is_walkable(pos): return true
 
 class MockTurnManager:
@@ -51,7 +51,7 @@ func _ready():
 func test_signal_connection_and_processing():
 	var gui = GameUI_Script.new()
 	var mock_tm = MockTurnManager.new()
-	var mock_gm = MockGridManager.new()
+	var mock_gm = UIMockGridManager.new()
 	
 	# Initialize (Dependency Injection)
 	gui.initialize(mock_tm, mock_gm)

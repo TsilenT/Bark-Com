@@ -3,7 +3,7 @@ extends Node3D
 # verify_status_visuals_runner.gd
 # Runs in Full Engine Context (Autoloads Available)
 
-class MockGridManager extends Node:
+class StatusMockGridManager extends Node:
 	var grid_data = {}
 	
 	func get_tile_data(pos): 
@@ -24,7 +24,7 @@ func _ready():
 	var root = self
 	
 	# 1. Setup Mock GridManager
-	var gm = MockGridManager.new()
+	var gm = StatusMockGridManager.new()
 	gm.name = "GridManager"
 	gm.add_to_group("GridManager")
 	root.add_child(gm)

@@ -77,7 +77,7 @@ func check_status(units: Array, turn_count: int) -> String:
 				return "WIN"
 
 		MissionType.RETRIEVE:
-			if current_retrievals >= target_count:
+			if target_count > 0 and current_retrievals >= target_count:
 				return "WIN"
 			if turn_limit > 0 and current_turn > turn_limit:
 				print("Time expired! Keeping failed.")
@@ -99,7 +99,7 @@ func check_status(units: Array, turn_count: int) -> String:
 			return "CONTINUE"
 
 		MissionType.HACKER:
-			if current_hacks >= target_count:
+			if target_count > 0 and current_hacks >= target_count:
 				return "WIN"
 
 		MissionType.DEFENSE:

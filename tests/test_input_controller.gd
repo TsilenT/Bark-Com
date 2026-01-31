@@ -24,7 +24,7 @@ class MockMain extends Node:
 	func _clear_targeting_visuals(): pass
 	func _process_move_or_interact(pos): pass
 
-class MockGridManager:
+class InputMockGridManager:
 	var grid_data = {
 		Vector2(2,2): {"is_walkable": true},
 		Vector2(3,3): {"is_walkable": true},
@@ -114,7 +114,7 @@ func setup():
 	mock_main.add_child(mock_gv)
 	add_child(mock_main)
 	
-	mock_gm = MockGridManager.new()
+	mock_gm = InputMockGridManager.new()
 	mock_ui = MockUI.new()
 	mock_tm = MockTurnManager.new() 
 	add_child(mock_tm) 

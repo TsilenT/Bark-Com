@@ -4,7 +4,7 @@ extends Node3D
 # Tests basic MapTile generation and highlighting
 # Converted to Node3D + TestSafeGuard to prevent hangs.
 
-class MockGridManager extends Node:
+class MapTileMockGridManager extends Node:
 	signal grid_generated
 	var grid_data = {}
 	
@@ -22,7 +22,7 @@ func _ready():
 
 func _run_test():
 	# 1. Mock GridManager
-	var gm = MockGridManager.new()
+	var gm = MapTileMockGridManager.new()
 	gm.name = "GridManager"
 	gm.add_to_group("GridManager") 
 	add_child(gm)

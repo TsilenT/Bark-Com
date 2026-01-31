@@ -6,7 +6,7 @@ var CombatResolver_Script
 var Unit_Script
 var GridManager_Script
 
-class MockGridManager:
+class ItemMockGridManager:
 	extends "res://scripts/managers/GridManager.gd"
 	# Override if necessary, but base class satisfies type check
 	func get_grid_coord(pos: Vector3) -> Vector2: return Vector2(0, 0)
@@ -70,7 +70,7 @@ func _ready():
 	
 	target.current_hp = 1
 	var item = MockItem.new()
-	var gm = MockGridManager.new()
+	var gm = ItemMockGridManager.new()
 	add_child(gm)
 	
 	# Execute

@@ -17,7 +17,7 @@ class MockSignalBus:
 class MockTurnManager:
 	var is_handling_action = false
 
-class MockGridManager:
+class HoverMockGridManager:
 	pass
 
 class MockMain extends Node:

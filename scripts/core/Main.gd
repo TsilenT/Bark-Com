@@ -1422,8 +1422,13 @@ func _end_player_turn():
 
 
 
-func _on_action_requested(action):
+func _on_action_requested(action: String):
 	GameManager.log(LOG_PREFIX, "Action Requested -> ", action)
+	
+	if action == "Abort":
+		SignalBus.on_mission_ended.emit(false, 0)
+		return
+
 	if not player_controller: return
 
 	if action == "Move":
@@ -1892,6 +1897,16 @@ func _on_pause_toggle():
 		# Toggle Menu
 		if game_ui and game_ui.has_method("toggle_pause_menu"):
 			SignalBus.on_request_pause.emit()
+
+
+
+
+
+
+
+
+
+
 
 
 func _on_debug_action(action: String):

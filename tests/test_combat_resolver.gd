@@ -5,11 +5,12 @@ extends Node
 var CombatResolver
 
 # Mocks
-class MockGridManager extends "res://scripts/managers/GridManager.gd":
+class CombatMockGridManager extends "res://scripts/managers/GridManager.gd":
 	func get_grid_coord(pos): return Vector2(round(pos.x/2), round(pos.z/2))
 	func get_tile_data(pos): return {} # Default no elevation
 	func is_tile_cover(pos): return false
 	
+
 
 
 class MockUnit extends Node3D:
@@ -57,7 +58,7 @@ func assert_eq(actual, expected, context):
 		print("PASS [", context, "]")
 
 func test_base_hit_chance():
-	var gm = MockGridManager.new()
+	var gm = CombatMockGridManager.new()
 	var attacker = MockUnit.new()
 	var target = MockUnit.new()
 	target.faction = "Enemy"
@@ -71,7 +72,7 @@ func test_base_hit_chance():
 	TestUtils.free_node(target)
 
 func test_range_falloff():
-	var gm = MockGridManager.new()
+	var gm = CombatMockGridManager.new()
 	var attacker = MockUnit.new()
 	var target = MockUnit.new()
 	target.faction = "Enemy"
@@ -92,7 +93,7 @@ func test_range_falloff():
 	TestUtils.free_node(target)
 
 func test_min_hit_chance():
-	var gm = MockGridManager.new()
+	var gm = CombatMockGridManager.new()
 	var attacker = MockUnit.new()
 	var target = MockUnit.new()
 	target.faction = "Enemy"
@@ -110,7 +111,7 @@ func test_min_hit_chance():
 	TestUtils.free_node(target)
 
 func test_max_hit_chance():
-	var gm = MockGridManager.new()
+	var gm = CombatMockGridManager.new()
 	var attacker = MockUnit.new()
 	attacker.accuracy = 200 # God mode
 	var target = MockUnit.new()
@@ -124,7 +125,7 @@ func test_max_hit_chance():
 	TestUtils.free_node(target)
 	
 func test_null_target():
-	var gm = MockGridManager.new()
+	var gm = CombatMockGridManager.new()
 	var attacker = MockUnit.new()
 	
 	# Pass null as target
