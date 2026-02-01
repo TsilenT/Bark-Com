@@ -9,7 +9,8 @@ var vfx_library = {
 	"BloodSplatter": preload("res://assets/vfx/BloodSplatter.tscn"),
 	"HealSparkles": preload("res://assets/vfx/HealSparkles.tscn"),
 	"Explosion": load("res://scripts/vfx/ExplosionVFX.gd"),
-	"FireLoop": load("res://scripts/vfx/FireLoopVFX.gd")
+	"FireLoop": load("res://scripts/vfx/FireLoopVFX.gd"),
+	"AcidSpit": load("res://scripts/vfx/AcidProjectileVFX.gd")
 }
 
 
@@ -50,7 +51,12 @@ func spawn_vfx(
 
 	vfx.global_position = global_pos
 
-	if look_at_target != null and look_at_target is Vector3:
+	# Specialized Initialization
+	if vfx.has_method("initialize") and look_at_target != null:
+		vfx.initialize(look_at_target)
+		
+	# Standard Orientation Fallback
+	elif look_at_target != null and look_at_target is Vector3:
 		vfx.look_at(look_at_target, Vector3.UP)
 	elif rotation_vec != Vector3.ZERO:
 		vfx.rotation = rotation_vec

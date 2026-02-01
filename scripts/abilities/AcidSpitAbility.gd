@@ -14,9 +14,15 @@ func execute(user, target, target_tile: Vector2, gm: GridManager):
 	print(user.name, " uses Acid Spit on ", target_tile)
 	
 	# Visuals (Spit Projectile)
-	# Ideally we await this, but Execute is often fire-and-forget or handled by signal?
-	# We can spawn a separate helper for the animation or signal global VFX.
-	# For now, simplistic animation skip or signal.
+	var target_world = Vector3.ZERO
+	if gm:
+		target_world = gm.get_world_position(target_tile)
+		
+	# Emit Projectile Request
+	SignalBus.on_request_vfx.emit("AcidSpit", user.position + Vector3(0, 1.5, 0), Vector3.ZERO, user, target_world)
+	
+	# Wait for animation (fake)
+	# await user.get_tree().create_timer(0.5).timeout
 	
 	# Logic: Spawn Hazard
 	var center = target_tile

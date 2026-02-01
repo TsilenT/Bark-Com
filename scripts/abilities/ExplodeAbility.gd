@@ -25,6 +25,17 @@ func execute(user, target, target_tile: Vector2, gm: GridManager):
 		if v != user:
 			v.take_damage(8)
 			
+	# Damage Destructible Props (Walls, Barrels)
+	var props = user.get_tree().get_nodes_in_group("Destructible")
+	for p in props:
+		# check if valid and in radius
+		if is_instance_valid(p) and p.global_position.distance_to(user.global_position) <= world_radius:
+			# Avoid double dipping if it somehow counted as a Unit (e.g. Barrel in both groups)
+			if victims.has(p):
+				continue
+			if p.has_method("take_damage"):
+				p.take_damage(8)
+			
 	# Kill User
 	if user.has_method("die"):
 		user.die()

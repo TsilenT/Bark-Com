@@ -188,7 +188,7 @@ function Test-HashWatchdogStatic {
     
     # 1. Direct Usage (Stricter)
     # Check for instantiation (.new) or script loading (.gd)
-    if ($Content -match "TestSafeGuard\.new" -or $Content -match "TestSafeGuard\.gd") { return $true }
+    if ($Content -match "TestSafeGuard\.new" -or $Content -match "TestSafeGuard\.gd" -or $Content -match "TestSafeGuard\.tscn") { return $true }
     # Also check if it's a class_name TestSafeGuard (if we are scanning the file itself, though unlikely for a test file)
     if ($Content -match "class_name\s+TestSafeGuard") { return $true }
     

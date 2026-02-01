@@ -13,6 +13,15 @@ func _ready():
 			mesh.material_override = StandardMaterial3D.new()
 		mesh.material_override.albedo_color = Color.LIGHT_SKY_BLUE
 
+	# Fallback Weapon
+	if not primary_weapon:
+		var bolt = WeaponData.new()
+		bolt.display_name = "Ectoplasm Bolt"
+		bolt.damage = 1
+		bolt.weapon_range = 6
+		primary_weapon = bolt
+		attack_range = 6
+
 func get_reachable_tiles(gm: GridManager) -> Array:
 	var reachable = []
 	var queue = []

@@ -175,6 +175,9 @@ func get_move_path(start: Vector2, end: Vector2) -> Array[Vector2]:
 	var start_id = _get_point_id(start)
 	var end_id = _get_point_id(end)
 
+	if not astar:
+		return []
+
 	if not astar.has_point(start_id) or not astar.has_point(end_id):
 		return []
 
@@ -416,6 +419,9 @@ func get_random_valid_position() -> Vector2:
 ## Warning: High movement ranges (>15) can be expensive.
 func get_reachable_tiles(start_pos: Vector2, max_move: int) -> Array[Vector2]:
 	var reachable: Array[Vector2] = []
+	if not astar:
+		return reachable
+		
 	var queue = [{"pos": start_pos, "cost": 0}]
 	var visited = {start_pos: 0}  # Pos -> Cost
 	

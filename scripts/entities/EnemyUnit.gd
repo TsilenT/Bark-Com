@@ -104,7 +104,15 @@ func initialize_from_data(data: EnemyData):
 	# Apply Abilities
 	for script_res in data.abilities:
 		if script_res:
-			abilities.append(script_res.new())
+			# Prevent Duplicates
+			var is_duplicate = false
+			for existing in abilities:
+				if existing.get_script() == script_res:
+					is_duplicate = true
+					break
+			
+			if not is_duplicate:
+				abilities.append(script_res.new())
 
 	# 3. Load AI Behavior
 	_load_behavior(data.ai_behavior)
@@ -201,9 +209,6 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 		if gm:
 			gm.log(LOG_PREFIX, name, " starting turn. AP: ", current_ap)
 	
-	# Current AP is managed by Unit.gd (refreshed by TurnManager or on_turn_start)
-	# Safety: Ensure we have at least 1 AP to start? No, respect current_ap.
-	
 	var actions_taken = 0
 	const MAX_ACTIONS = 5 # Infinite loop guard
 	
@@ -220,34 +225,59 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 		if DEBUG_AI and gm:
 			gm.log(LOG_PREFIX, "- Target: ", target_unit.name, " AP: ", current_ap)
 
-		# 2. Decide: Move vs Attack vs Ability
-		# Simple FSM for v1:
-		# Check if we can hit target from here?
-		var can_hit = false
-		if _can_attack_target(grid_pos, target_unit, grid_manager):
-			can_hit = true
-			
-		# If we can hit, do we want to move used on Behavior scores?
-		# Optimization: If we can hit, just shoot for now (unless behavior defines aggressive repositioning?)
-		# Rusher might want to get Closer even if it can hit (Melee constraint is handled by _can_attack_target range check)
+		# 2. Evaluate Actions (Abilities vs Weapon)
+		var best_action = null
+		var best_score = -100.0
 		
-		if can_hit:
-			# Execute Attack
-			await _perform_attack(target_unit, grid_manager)
-			actions_taken += 1
-			# Attack usually ends turn or costs AP. Unit.gd handles AP spend?
-			# No, CombatResolver doesn't spend AP automatically on 'attacker'.
-			# We must spend AP manually here.
-			if current_ap > 0:
-				pass # Multi-attack?
-			else:
-				break
+		# A. Check Abilities
+		for abil in abilities:
+			# Check basic availability
+			if abil.current_cooldown <= 0 and abil.ap_cost <= current_ap:
+				# Score it
+				var score = abil.get_ai_score(self, target_unit, grid_manager)
+				# Only consider positive scores as valid "conscious" choices
+				if score > best_score and score > 0:
+					best_score = score
+					best_action = { "type": "ability", "ref": abil }
+
+		# B. Check Weapon Attack
+		if _can_attack_target(grid_pos, target_unit, grid_manager):
+			var weapon_score = 15.0 # Base preference
+			if primary_weapon:
+				weapon_score += (primary_weapon.damage * 2.0)
+			
+			# If weapon score beats ability score, switch
+			if weapon_score > best_score:
+				best_score = weapon_score
+				best_action = { "type": "attack" }
+		
+		# 3. Execute or Move
+		if best_action:
+			if gm: gm.log(LOG_PREFIX, "Chose action: ", best_action.type, " Score: ", best_score)
+			
+			if best_action.type == "ability":
+				var abil = best_action.ref
+				# Spend AP
+				spend_ap(abil.ap_cost)
+				# Execute (Target Tile is usually target's position)
+				abil.execute(self, target_unit, target_unit.grid_pos, grid_manager)
+				# Visual Wait
+				await get_tree().create_timer(1.0).timeout
+				actions_taken += 1
+				
+				# Some abilities kill the user (Exploder)
+				if not is_instance_valid(self) or is_queued_for_deletion():
+					break
+
+			elif best_action.type == "attack":
+				await _perform_attack(target_unit, grid_manager)
+				actions_taken += 1
 		else:
-			# Move
+			# No offensive action valid from here? MOVE.
 			var did_move = await _perform_move(grid_manager, _all_units)
 			if did_move:
 				actions_taken += 1
-				# Loop continues to see if we can attack now
+				# Loop continues to see if we can attack/ability now
 			else:
 				# Stuck or no valid moves
 				if DEBUG_AI and gm: gm.log(LOG_PREFIX, "- No valid moves or decided to wait.")

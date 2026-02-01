@@ -132,7 +132,7 @@ func generate_level(biome_override: int = -1) -> Dictionary:
 
 	# Layout: 2x2 Chunks for 10x10 map
 	var attempts = 0
-	var max_attempts = 10
+	var max_attempts = 50
 	var valid_map = false
 
 	if LevelGenerator.override_mode == "DOOR_TEST":
@@ -326,7 +326,7 @@ func _validate_connectivity(grid: Dictionary) -> bool:
 
 	var total_walkable = 0
 	for k in grid:
-		if grid[k].get("is_walkable"):
+		if grid[k].get("is_walkable") or grid[k].get("destructible", false):
 			total_walkable += 1
 
 	var reachable = 0
@@ -363,7 +363,9 @@ func _validate_connectivity(grid: Dictionary) -> bool:
 				continue
 
 			var next_data = grid[next_pos]
-			if not next_data.get("is_walkable"):
+			var is_accessible = next_data.get("is_walkable") or next_data.get("destructible", false)
+			
+			if not is_accessible:
 				continue
 
 			# Height Check (Replicating GM logic)

@@ -11,6 +11,9 @@ func _ready():
 	# Add Bomb Ability
 	abilities.append(load("res://scripts/abilities/ExplodeAbility.gd").new())
 	
+	# Disable normal attack (Force behavior to use Ability)
+	attack_range = 0
+	
 	# Visuals (Orange)
 	_setup_visuals()
 

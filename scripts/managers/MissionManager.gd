@@ -217,6 +217,14 @@ func _spawn_enemy(type_name: String):
 		return
 
 	var script_path = ENEMY_SCRIPTS.get(type_name)
+	
+	# Case-Insensitive Fallback
+	if not script_path:
+		for key in ENEMY_SCRIPTS:
+			if key.to_lower() == type_name.to_lower():
+				script_path = ENEMY_SCRIPTS[key]
+				type_name = key # Auto-correct canonical name
+				break
 	if not script_path or not ResourceLoader.exists(script_path):
 		GameManager.log(LOG_PREFIX, "Error: Unknown enemy script for ", type_name)
 		return
@@ -277,6 +285,146 @@ func _spawn_enemy(type_name: String):
 		enemy.initialize(spawn_pos)
 
 	GameManager.log(LOG_PREFIX, "Spawned ", type_name, " at ", spawn_pos)
+	return enemy
+
+
+func spawn_enemy_at(type_name: String, grid_pos: Vector2):
+	if not grid_manager:
+		GameManager.log(LOG_PREFIX, "Error: GridManager missing.")
+		return
+
+	var script_path = ENEMY_SCRIPTS.get(type_name)
+	
+	# Case-Insensitive Fallback
+	if not script_path:
+		for key in ENEMY_SCRIPTS:
+			if key.to_lower() == type_name.to_lower():
+				script_path = ENEMY_SCRIPTS[key]
+				type_name = key # Auto-correct canonical name
+				break
+	if not script_path or not ResourceLoader.exists(script_path):
+		GameManager.log(LOG_PREFIX, "Error: Unknown enemy script for ", type_name)
+		return
+
+	# Validation: Check bounds and walkability
+	if not grid_manager.grid_data.has(grid_pos):
+		GameManager.log(LOG_PREFIX, "Error: Spawn Failed. Coordinate ", grid_pos, " is VOID (not in grid).")
+		return null
+		
+	if not grid_manager.is_walkable(grid_pos):
+		GameManager.log(LOG_PREFIX, "Error: Spawn Failed. Coordinate ", grid_pos, " is BLOCKED (Wall/Obstacle).")
+		return null
+
+	# 1. Instantiate
+	var resource = load(script_path)
+	var enemy = null
+	if resource is PackedScene:
+		enemy = resource.instantiate()
+	else:
+		enemy = resource.new()
+
+	enemy.position = grid_manager.get_world_position(grid_pos)
+	enemy.grid_pos = grid_pos
+	
+	# Register in Grid
+	if grid_manager.grid_data.has(grid_pos):
+		grid_manager.grid_data[grid_pos]["unit"] = enemy
+		# Force walkable false? Units usually handle AStar updates themselves or GridManager does.
+
+	# Default Visibility
+	enemy.visible = true # FORCE VISIBLE for debug spawns
+
+	grid_manager.get_parent().add_child(enemy)
+	enemy.add_to_group("Units")
+	enemy.add_to_group("Enemies")
+	spawned_units.append(enemy)
+
+	# Register with TurnManager
+	var tm = grid_manager.get_node_or_null("../TurnManager")
+	if tm:
+		tm.register_unit(enemy)
+
+	# Factory Configuration
+	_configure_enemy(enemy, type_name)
+
+	# Initialize
+	if enemy.has_method("initialize"):
+		enemy.initialize(grid_pos)
+
+	# Sync with Main.spawned_units to ensure VisionManager sees it
+	var main_node = grid_manager.get_parent()
+	if main_node and "spawned_units" in main_node:
+		main_node.spawned_units.append(enemy)
+
+	GameManager.log(LOG_PREFIX, "Debug Spawned ", type_name, " at ", grid_pos)
+	
+	# Visual Confirmation
+	SignalBus.on_request_floating_text.emit(enemy, "SPAWNED!", Color.GREEN)
+
+	return enemy
+
+
+func spawn_enemy_near_player(type_name: String):
+	if not turn_manager:
+		GameManager.log(LOG_PREFIX, "TurnManager missing, cannot find player.")
+		return null
+		
+	var players = []
+	for u in turn_manager.units:
+		if is_instance_valid(u) and "faction" in u and u.faction == "Player" and u.current_hp > 0:
+			players.append(u)
+			
+	if players.is_empty():
+		GameManager.log(LOG_PREFIX, "No active players found. Fallback to Random.")
+		return _spawn_enemy(type_name) # Fallback
+		
+	var target = players.pick_random()
+	var start_pos = target.grid_pos
+	
+	# ROBUST SEARCH: Scan all tiles, sort by distance, pick closest valid.
+	var valid_candidates = []
+	var min_dist = 2.0
+	
+	GameManager.log(LOG_PREFIX, "DEBUG: Searching for spawn near ", start_pos, " Map Size: ", grid_manager.grid_data.size())
+	
+	# 1. Gather Candidates
+	for coord in grid_manager.grid_data:
+		# Check basic validity
+		var tile = grid_manager.get_tile_data(coord)
+		
+		# DEBUG: Only log first few failures
+		# if not tile.get("is_walkable", false): continue 
+		if not grid_manager.is_walkable(coord): continue
+		
+		if tile.get("unit"): 
+			GameManager.log(LOG_PREFIX, "DEBUG: Reject Occupied ", coord)
+			continue # Occupied by Unit
+		
+		var d = start_pos.distance_to(coord)
+		if d < min_dist: 
+			GameManager.log(LOG_PREFIX, "DEBUG: Reject Too Close ", coord, " Dist: ", d)
+			continue
+		
+		valid_candidates.append({"pos": coord, "dist": d})
+		
+	GameManager.log(LOG_PREFIX, "DEBUG: Found ", valid_candidates.size(), " valid candidates.")
+	
+	# 2. Sort by Distance (Ascending)
+	valid_candidates.sort_custom(func(a, b): return a.dist < b.dist)
+	
+	# 3. Pick Best (Top 5 slightly randomized to avoid stacking identical spots if spamming)
+	if not valid_candidates.is_empty():
+		var top_n = min(valid_candidates.size(), 5)
+		var choice = valid_candidates.slice(0, top_n).pick_random()
+		var best_pos = choice.pos
+		
+		# Log result for debug
+		GameManager.log(LOG_PREFIX, "Found spawn spot at ", best_pos, " (Dist: ", choice.dist, ")")
+		return spawn_enemy_at(type_name, best_pos)
+		
+	else:
+		GameManager.log(LOG_PREFIX, "CRITICAL: No valid spawn spots found near player! Fallback to Random.")
+		return _spawn_enemy(type_name) # Fallback to standard random spawn logic (MissionManager function)
 
 
 func _configure_enemy(enemy, type_name: String):

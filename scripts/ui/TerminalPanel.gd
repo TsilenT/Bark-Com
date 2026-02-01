@@ -134,7 +134,7 @@ func _process_command(cmd_str: String):
 			if GameManager.current_state == GameManager.GameState.BASE:
 				println(" [BASE] recruit, kibble, mission, start <id>")
 			elif GameManager.current_state == GameManager.GameState.MISSION:
-				println(" [MISSION] suicide (Kill selected unit), extract (Abort)")
+				println(" [MISSION] spawn <Type> [x] [y], suicide, extract")
 			
 		"recruit":
 			if _require_context(GameManager.GameState.BASE):
@@ -284,6 +284,65 @@ func _process_command(cmd_str: String):
 							println("Spawned " + t, Color.GRAY)
 				else:
 					println("Error: MissionManager not found active.", Color.RED)
+		"spawn":
+			if _require_context(GameManager.GameState.MISSION):
+				if args.size() < 1:
+					println("Usage: spawn <EnemyType> [x] [y]", Color.RED)
+					return
+					
+				var type = args[0]
+				var mm = get_tree().root.find_child("MissionManager", true, false)
+				if not mm:
+					println("Error: MissionManager not found.", Color.RED)
+					return
+					
+				# Capitalize first letter strictly? Or lookup safely.
+				# Just pass raw and let MissionManager handle or fail.
+				
+				if args.size() >= 3:
+					# Spawn at Coords
+					var x = int(args[1])
+					var y = int(args[2])
+					var pos = Vector2(x, y)
+					
+					# We need to manually invoke spawn logic with pos
+					# MissionManager._spawn_enemy does random pos.
+					# But wait, MissionManager has _spawn_enemy(type).
+					# I should check if I can modify MissionManager or do manual spawn here.
+					# MissionManager._spawn_enemy logic is: instantiate, find pos, setup.
+					# I can verify if MM has a "spawn_at" method? No.
+					# I will implement `spawn_enemy_at` in MissionManager or hack it.
+					# Hack: Call mm._spawn_enemy, then move it? No, initialization runs on spawn.
+					
+					# Better: Use UnitSpawner directly?
+					# UnitSpawner is used by MM.
+					# Let's try calling UnitSpawner directly.
+					# var spawner = load("res://scripts/builders/UnitSpawner.gd").new()
+					# But MM handles tracking `spawned_units`.
+					
+					if mm.has_method("spawn_enemy_at"):
+						var result = mm.spawn_enemy_at(type, pos)
+						if result:
+							println("Spawned " + type + " at " + str(pos), Color.GREEN)
+						else:
+							println("Error: Spawn failed (Invalid Type or Position?).", Color.RED)
+					else:
+						println("Error: MissionManager missing spawn_enemy_at (Update Pending).", Color.RED)
+						
+				else:
+					# Spawn NEAR PLAYER (Default for Debug)
+					if mm.has_method("spawn_enemy_near_player"):
+						var result = mm.spawn_enemy_near_player(type)
+						if result:
+							println("Spawned " + type + " near player.", Color.GREEN)
+						else:
+							println("Error: valid spot not found near player. (Result=NULL, Type='" + type + "')", Color.RED)
+							println("Check console logs for 'MissionManager' errors.", Color.ORANGE)
+					elif mm.has_method("_spawn_enemy"):
+						mm._spawn_enemy(type) # Fallback to random
+						println("Spawned " + type + " at random location.", Color.GREEN)
+					else:
+						println("Error: Cannot spawn.", Color.RED)
 		_:
 			println("Unknown command: " + cmd, Color.RED)
 
