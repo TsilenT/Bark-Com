@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://verify_status_glossary_runner"]
+
+[ext_resource type="Script" path="res://tests/verify_status_glossary.gd" id="1_test"]
+[ext_resource type="Script" path="res://tests/TestSafeGuard.gd" id="2_guard"]
+
+[node name="StatusGlossaryTest" type="Node"]
+script = ExtResource("1_test")
+
+[node name="TestSafeGuard" type="Node" parent="."]
+script = ExtResource("2_guard")

@@ -9,6 +9,7 @@ func enter(msg: Dictionary = {}):
 
 	match type:
 		"FREEZE":
+			_apply_panic_effect(unit, "FrozenEffect")
 			unit.current_ap = 0
 			SignalBus.on_unit_stats_changed.emit(unit)
 			# Freeze just sits there.
@@ -16,10 +17,45 @@ func enter(msg: Dictionary = {}):
 			state_machine.transition_to("Idle")
 
 		"RUN":
+			_apply_panic_effect(unit, "PanicRunEffect")
 			_panic_run(unit)
 
 		"BERSERK":
+			_apply_panic_effect(unit, "BerserkEffect")
 			_panic_berserk(unit)
+
+var _applied_effect = null
+
+func _apply_panic_effect(unit, effect_name):
+	# Remove previous if exists (safeguard)
+	if _applied_effect and is_instance_valid(_applied_effect):
+		if unit.has_method("remove_status"):
+			unit.remove_status(_applied_effect)
+		elif "active_effects" in unit:
+			unit.active_effects.erase(_applied_effect)
+			_applied_effect.on_remove(unit)
+	
+	# Dynamic load to avoid strict circular dependency if any
+	var path = "res://scripts/resources/statuses/sanity/%s.gd" % effect_name
+	var script = load(path)
+	if script:
+		var eff = script.new()
+		_applied_effect = eff
+		
+		if unit.has_method("apply_status"):
+			unit.apply_status(eff)
+		elif "active_effects" in unit:
+			unit.active_effects.append(eff)
+			eff.on_apply(unit)
+
+func exit():
+	# Do NOT clean up effect here. 
+	# Effects like Fleeing need to persist during Move state.
+	# Effects like Frozen/Berserk should last until Turn End (Duration).
+	# Exclusivity is handled by _apply_panic_effect removing the previous one.
+	pass
+
+
 
 
 func _panic_run(unit):

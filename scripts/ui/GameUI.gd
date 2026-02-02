@@ -1697,31 +1697,29 @@ func _create_glossary_window():
 	list_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	
 	# Populate
-	_populate_glossary_list(list_vbox, "res://scripts/resources/statuses")
-	_populate_glossary_list(list_vbox, "res://scripts/resources/effects")
+	_populate_glossary_list(list_vbox, "statuses")
+	_populate_glossary_list(list_vbox, "effects")
 	
 	if list_vbox.get_child_count() == 0:
 		var empty = Label.new()
 		empty.text = "No status effects found."
 		list_vbox.add_child(empty)
 
-func _populate_glossary_list(container, path):
-	var dir = DirAccess.open(path)
-	if dir:
-		dir.list_dir_begin()
-		var file_name = dir.get_next()
-		while file_name != "":
-			if not dir.current_is_dir() and file_name.ends_with(".gd"):
-				var full_path = path + "/" + file_name
-				var script_res = load(full_path)
-				if script_res:
-					# Instantiate to check properties
-					# Assuming resource/script has default values
-					var inst = script_res.new()
-					if "display_name" in inst:
-						_add_glossary_row(container, inst)
-					# inst is usually RefCounted, auto-freed if not held
-			file_name = dir.get_next()
+func _populate_glossary_list(container, category_type: String):
+	# Use StatusCatalog to ensure Web exports work (DirAccess fails in packed builds)
+	var list = []
+	if category_type == "statuses":
+		list = StatusCatalog.get_all_statuses()
+	elif category_type == "effects":
+		list = StatusCatalog.get_all_effects()
+
+	for inst in list:
+		if "display_name" in inst:
+			_add_glossary_row(container, inst)
+		# instances are RefCounted, so they will be freed if not held, 
+		# but added as child to UI (via texture/text extraction) or just data read?
+		# _add_glossary_row extracts data. The instance can die.
+
 
 func _add_glossary_row(container, effect_inst):
 	var row = HBoxContainer.new()

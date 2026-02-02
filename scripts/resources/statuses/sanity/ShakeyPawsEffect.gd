@@ -5,7 +5,10 @@ const LOG_PREFIX = "ShakeyPawsEffect: "
 func _init():
 	display_name = "Shakey Paws"
 	duration = 2
-
+	type = EffectType.DEBUFF
+	description = "Uncontrollable trembling reduces Aim by 20."
+	# Fallback icon (Shakey Paws missing)
+	icon = preload("res://assets/icons/status/disoriented.svg")
 
 func on_apply(unit: Node):
 	GameManager.log(LOG_PREFIX, unit.name, " has Shakey Paws! Aim reduced by 20.")
@@ -19,7 +22,7 @@ func on_apply(unit: Node):
 			unit.modifiers["aim"] = -20
 
 	SignalBus.on_request_floating_text.emit(
-		unit, "SHAKEY PAWS", Color.PURPLE
+		unit, "SHAKEY PAWS!", Color.LIGHT_CORAL
 	)
 
 

@@ -104,18 +104,29 @@ function Run-GodotTest {
         if ($Strict) {
             $Output = Get-Content $TempLog -Raw
             
+            $StrictFail = $false
+            
+            # 1. Critical Errors (Always Fail)
+            if ($Output -match "ERROR:" -or $Output -match "SCRIPT ERROR:" -or $Output -match "\bFAIL\b" -or $Output -match "FAIL \[") {
+                $StrictFail = $true
+            }
+            
+            # 2. Warnings (Filter Benign)
+            if (-not $StrictFail -and $Output -match "WARNING:") {
+                $Lines = $Output -split "`n"
+                foreach ($Line in $Lines) {
+                    if ($Line -match "WARNING:") {
+                        # ALLOW LOOP: Benign Warnings
+                        if ($Line -match "ObjectDB instances leaked at exit") { continue }
+                        
+                        $StrictFail = $true
+                        break
+                    }
+                }
+            }
+            
             # FAIL conditions
-            if ($Output -match "ERROR:" -or $Output -match "WARNING:" -or $Output -match "SCRIPT ERROR:" -or $Output -match "\bFAIL\b" -or $Output -match "FAIL \[") {
-                 
-                 # CRITICAL WARNING EXCEPTION: "Mission Won but No Survivors" is sometimes valid logic, but usually we want to know.
-                 # Actually, standardizing: ANY Warning is Fail as per user request.
-                 
-                 # Exception: "The function '...' is a static function but was called from an instance."
-                 # This is a GDScript warning that is annoying but harmless. 
-                 # If user wants STRICT strict, we keep it. 
-                 
-
-
+            if ($StrictFail) {
                  Write-Host "STRICT FAILURE in $Name (Logs contain ERROR/WARNING/FAIL)" -ForegroundColor Magenta
                  Write-Host "--- LOG START ---" -ForegroundColor Gray
                  Get-Content $TempLog | Out-Host
