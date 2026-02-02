@@ -1,12 +1,23 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/visuals/MapTile.gd" id="1_jyplq"]
 [ext_resource type="Shader" path="res://assets/shaders/MapTileShader.gdshader" id="2_fuofu"]
 
+[sub_resource type="Gradient" id="Gradient_white"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_white"]
+gradient = SubResource("Gradient_white")
+width = 4
+height = 4
+fill_from = Vector2(0, 0)
+fill_to = Vector2(0, 0)
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_kk4cp"]
 render_priority = 0
 shader = ExtResource("2_fuofu")
-shader_parameter/roughness = null
+shader_parameter/roughness = 0.8
+shader_parameter/texture_albedo = SubResource("GradientTexture2D_white")
 
 [sub_resource type="BoxMesh" id="BoxMesh_gd6fl"]
 size = Vector3(2, 0.2, 2)
