@@ -57,7 +57,11 @@ func _get_drag_data(_at_position):
 	preview.expand_mode = EXPAND_IGNORE_SIZE
 	preview.custom_minimum_size = Vector2(48, 48)
 	preview.modulate = Color(1, 1, 1, 0.8)
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	
-	set_drag_preview(preview)
+	if is_inside_tree():
+		set_drag_preview(preview)
+	else:
+		preview.free()
 	
 	return data

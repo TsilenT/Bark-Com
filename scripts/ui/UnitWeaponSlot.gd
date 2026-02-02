@@ -26,8 +26,6 @@ func setup(unit):
 	style_box.corner_radius_top_right = 4
 	add_theme_stylebox_override("panel", style_box)
 	
-	set_process(false)
-	
 	custom_minimum_size = Vector2(180, 70) # Wider and taller for easier drop
 	
 	# Clear previous
@@ -111,7 +109,6 @@ func _drop_data(_at_position, data):
 func _set_highlight(hovering: bool):
 	if hovering == is_highlighted: return
 	is_highlighted = hovering
-	set_process(hovering)
 	_update_visual_state(hovering)
 
 func _update_visual_state(hovering: bool):

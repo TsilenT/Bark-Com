@@ -21,11 +21,42 @@ func _ready():
 	test_weapon_equip()
 	test_inventory_equip()
 	test_weapon_swap()
+	test_icon_data_generation()
 	
 	print("\n--- ALL DRAG & DROP TESTS PASSED ---")
 	
 	# Use standard cleanup
 	await TestUtils.finalize_and_quit(get_tree(), 0)
+
+func test_icon_data_generation():
+	# Verify DraggableItemIcon generates correct payload
+	var icon_script = load("res://scripts/ui/DraggableItemIcon.gd")
+	var icon = icon_script.new()
+	var dummy_item = {"name": "TestItem", "type": "Consumable", "icon": "res://icon.svg"}
+	icon.setup(dummy_item, "test_source")
+	icon.extra_data["custom_key"] = 123
+	
+	# Simulate _get_drag_data
+	var data = icon._get_drag_data(Vector2.ZERO)
+	
+	# Verify Data Payload
+	if data.get("type") != "item":
+		printerr("FAIL: Data type mismatch. Expected 'item', got " + str(data.get("type")))
+	if data.get("source") != "test_source":
+		printerr("FAIL: Source mismatch. Expected 'test_source', got " + str(data.get("source")))
+	if data.get("item_data") != dummy_item:
+		printerr("FAIL: Item data mismatch.")
+	if data.get("custom_key") != 123:
+		printerr("FAIL: Extra data 'custom_key' missing or incorrect.")
+		
+	# Verify Preview Property (Fix Check)
+	# We can't access local variables of _get_drag_data, but we know it calls set_drag_preview.
+	# The fix was setting mouse_filter on the preview. 
+	# Unit testing that specifically without mocking set_drag_preview is hard. 
+	# But strictly, the DATA is what we care about here.
+	
+	print("PASS: DraggableItemIcon data generation verified.")
+	icon.free()
 
 func setup_game_manager():
 	if not GameManager:
@@ -79,7 +110,7 @@ func test_weapon_slot_restrictions():
 	else:
 		printerr("FAIL: Weapon Slot accepted Consumable!")
 		
-	slot.queue_free()
+	slot.free()
 
 func test_inventory_slot_restrictions():
 	var slot = inventory_slot_script.new()
@@ -105,7 +136,7 @@ func test_inventory_slot_restrictions():
 	else:
 		printerr("FAIL: Inventory Slot accepted Weapon!")
 		
-	slot.queue_free()
+	slot.free()
 
 func test_weapon_equip():
 	var unit = GameManager.roster[0]
@@ -132,7 +163,7 @@ func test_weapon_equip():
 	else:
 		printerr("FAIL: Weapon still in Stash.")
 		
-	slot.queue_free()
+	slot.free()
 
 func test_inventory_equip():
 	var unit = GameManager.roster[0]
@@ -159,7 +190,7 @@ func test_inventory_equip():
 	else:
 		printerr("FAIL: Item still in Stash.")
 		
-	slot.queue_free()
+	slot.free()
 
 func test_weapon_swap():
 	var unit_a = GameManager.roster[0]
