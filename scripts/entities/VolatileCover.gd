@@ -157,7 +157,10 @@ func detonate():
 		if is_instance_valid(unit) and not unit.is_dead:
 			var dist = center.distance_to(unit.grid_pos)
 			if dist <= explosion_range:
-				if unit.has_method("take_damage"):
+				if unit.has_method("take_damage_from"):
+					print(" - Explosion hits unit ", unit.name)
+					unit.take_damage_from(explosion_damage, self, GameManager.DMG_TYPE_EXPLOSION)
+				elif unit.has_method("take_damage"):
 					print(" - Explosion hits unit ", unit.name)
 					unit.take_damage(explosion_damage)
 

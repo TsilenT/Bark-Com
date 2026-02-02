@@ -13,6 +13,7 @@
 | **Mission Initialization** | `scripts/builders/MissionInitializer.gd` |
 | **Objective Spawning** | `scripts/builders/ObjectiveSpawner.gd` |
 | **Bond System** | `docs/architecture/bond_system.md` |
+| **Memorial System** | `docs/architecture/memorial_system.md` |
 
 ## Units & Entities
 | Concept | File Location |

@@ -104,7 +104,34 @@ func _on_unit_died(unit):
 				"level": unit.level if "level" in unit else 1,
 				"unlocked_talents": unit.unlocked_talents if "unlocked_talents" in unit else []
 			}
-			GameManager.register_fallen_hero(data, "Killed in Action")
+			
+			var cod = "Killed in Action"
+			if "last_damage_source_name" in unit and unit.last_damage_source_name != "":
+				var killer = unit.last_damage_source_name
+				var type = unit.last_damage_type if "last_damage_type" in unit else GameManager.DMG_TYPE_GENERIC
+				
+				# Default Verb
+				var verb = "Killed by"
+				if GameManager.COD_MAP.has(type):
+					verb = GameManager.COD_MAP[type]
+				
+				# Special Grammer handling
+				if type == GameManager.DMG_TYPE_POISON:
+					# "Succumbed to Poison" usually doesn't need "by [Killer]" strictly, but XCOM does "Poisoned by Thin Man"
+					# Our map says "Succumbed to Poison".
+					if killer == "Unknown Source":
+						cod = verb # Just "Succumbed to Poison"
+					else:
+						# If we want to credit the poisoner: "Poisoned by [Name]"?
+						# For now, let's stick to the map's string as the prefix.
+						if "Succumbed" in verb:
+							cod = verb # Ignore killer for pure status death if map implies self-contained
+						else:
+							cod = verb + " " + killer
+				else:
+					cod = verb + " " + killer
+			
+			GameManager.register_fallen_hero(data, cod)
 
 	# 2. Enemy/Wave Logic
 	if unit in spawned_units:
@@ -134,6 +161,9 @@ func _on_turn_changed(_phase, turn_num):
 
 
 func _check_mission_status(turn_num: int = -1):
+	if not grid_manager:
+		return
+
 	var om = grid_manager.get_node_or_null("../ObjectiveManager")
 	var tm = grid_manager.get_node_or_null("../TurnManager")
 	

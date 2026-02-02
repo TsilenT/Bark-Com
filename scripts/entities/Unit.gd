@@ -138,6 +138,11 @@ var overwatch_shots_dodged_this_turn: int = 0
 signal movement_finished
 
 
+# --- COD TRACKING ---
+var last_damage_source_name: String = ""
+var last_damage_type: String = ""
+
+
 # --- LIFECYCLE ---
 func _ready():
 	add_to_group("Units")
@@ -537,8 +542,24 @@ func move_along_path(path_points: Array, grid_points: Array = []):
 
 # --- COMBAT & DAMAGE ---
 func take_damage(amount: int):
+	# Forward to new signature with defaults
+	take_damage_from(amount, null, "Generic")
+
+func take_damage_from(amount: int, source = null, dmg_type: String = "Generic"):
 	if is_dead:
 		return
+	
+	# COD Tracking
+	last_damage_type = dmg_type
+	if source:
+		if source is Node and "unit_name" in source and source.unit_name != "":
+			last_damage_source_name = source.unit_name
+		elif source is Node:
+			last_damage_source_name = source.name
+		else:
+			last_damage_source_name = str(source)
+	else:
+		last_damage_source_name = "Unknown Source"
 		
 	var final_amount = float(amount)
 	

@@ -445,8 +445,25 @@ static func execute_attack(
 		# 5. On-Hit Effects (Perks)
 		# (Go For Ankles is now an active ability, so no auto-passive here)
 
-				
-		target.take_damage(int(final_damage))
+		var dmg_type = GameManager.DMG_TYPE_GENERIC
+		if attacker.primary_weapon:
+			var w_name = attacker.primary_weapon.display_name
+			if w_name in ["Claws", "Bite"]:
+				dmg_type = GameManager.DMG_TYPE_MELEE
+			elif w_name in ["Grenade", "Rocket Launcher"]:
+				dmg_type = GameManager.DMG_TYPE_EXPLOSION
+			elif w_name in ["Syringe Gun"]:
+				dmg_type = GameManager.DMG_TYPE_GENERIC # Should not kill usually?
+			else:
+				# Default Guns
+				dmg_type = GameManager.DMG_TYPE_BALLISTIC
+		else:
+			dmg_type = GameManager.DMG_TYPE_MELEE
+
+		if target.has_method("take_damage_from"):
+			target.take_damage_from(int(final_damage), attacker, dmg_type)
+		else:
+			target.take_damage(int(final_damage))
 
 		# VFX: Impact
 		if (

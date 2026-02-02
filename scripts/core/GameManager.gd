@@ -14,6 +14,30 @@ var debug_scenario: String = ""
 var TEST_MOCK_ENABLED: bool = false # explicitly public for testing scripts
 var is_test_mode: bool = false # Used to suppress visuals/audio in integration tests
 
+# --- DAMAGE TYPES ---
+const DMG_TYPE_GENERIC = "Generic"
+const DMG_TYPE_BALLISTIC = "Ballistic" # Guns
+const DMG_TYPE_EXPLOSION = "Explosion" # Grenades, Rockets, Barrels
+const DMG_TYPE_MELEE = "Melee"         # Claws, Bites
+const DMG_TYPE_ACID = "Acid"           # Acid Spitter
+const DMG_TYPE_POISON = "Poison"       # Status
+const DMG_TYPE_BLEED = "Bleed"         # Status
+const DMG_TYPE_PSYCHIC = "Psychic"     # Future proofing
+const DMG_TYPE_FIRE = "Fire"           # Burning
+
+# COD MAP: Maps Damage Type -> Narrative Verb
+const COD_MAP = {
+	DMG_TYPE_GENERIC: "Killed by",
+	DMG_TYPE_BALLISTIC: "Shot by",
+	DMG_TYPE_EXPLOSION: "Blown up by",
+	DMG_TYPE_MELEE: "Mauled by",
+	DMG_TYPE_ACID: "Melted by",
+	DMG_TYPE_POISON: "Succumbed to Poison", # Special case, ignores killer? Or "Poisoned by"?
+	DMG_TYPE_BLEED: "Bled out from",
+	DMG_TYPE_PSYCHIC: "Mind-flayed by",
+	DMG_TYPE_FIRE: "Incinerated by"
+}
+
 const FLOATING_TEXT_OFFSET = Vector3(0, 2.0, 0)
 
 # Instance
