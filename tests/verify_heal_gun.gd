@@ -4,6 +4,7 @@ var main_node
 var healer_unit
 var patient_unit
 var grid_manager
+var std_attack
 
 func _ready():
 	print("--- TEST START: Syringe Gun Targeting Verify ---")
@@ -91,7 +92,7 @@ func test_syringe_targets_friendly():
 	# Case B: Verify Main.gd Input Logic (The Bug)
 	
 	# NEW: Verify StandardAttack.gd Logic (The Fix)
-	var std_attack = load("res://scripts/abilities/StandardAttack.gd").new()
+	std_attack = load("res://scripts/abilities/StandardAttack.gd").new()
 	var valid_tiles = std_attack.get_valid_tiles(grid_manager, healer_unit)
 	if valid_tiles.has(patient_unit.grid_pos):
 		pass_test("StandardAttack valid_tiles INCLUDES patient (Fix Correct)")
@@ -134,19 +135,23 @@ func _cleanup():
 			main_node.turn_manager.units.clear()
 			
 	# 3. Explicit Node Destruction (Immediate free)
+	# Free Std Attack (Reference)
+	if std_attack and std_attack is Object and not std_attack.is_queued_for_deletion():
+		std_attack = null # Resources are RefCounted, nullify to free
+
 	if healer_unit and is_instance_valid(healer_unit):
 		healer_unit.free()
 	if patient_unit and is_instance_valid(patient_unit):
 		patient_unit.free()
 		
 	if grid_manager and is_instance_valid(grid_manager):
+		if grid_manager.astar: grid_manager.astar.clear(); grid_manager.astar = null
 		grid_manager.free()
 		
 	if main_node and is_instance_valid(main_node):
 		# TurnManager is valid here?
 		if main_node.turn_manager and is_instance_valid(main_node.turn_manager):
 			main_node.turn_manager.free()
-			
 		main_node.free()
 
 func pass_test(msg):

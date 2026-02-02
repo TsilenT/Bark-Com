@@ -10,11 +10,24 @@ func _ready():
 	_thread = Thread.new()
 	_thread.start(_watchdog_loop)
 	print("TestSafeGuard: Watchdog started (Threaded). Timeout: ", timeout, "s")
+	
+	# Auto-Attach LeakDetector
+	var ld_script = load("res://tests/LeakDetector.gd")
+	if ld_script:
+		var ld = ld_script.new()
+		ld.name = "LeakDetector"
+		add_child(ld)
 
 func _exit_tree():
 	_quit_requested = true
 	if _thread.is_started():
 		_thread.wait_to_finish()
+		
+	# Check leaks on exit (if LeakDetector child exists)
+	# Tolerance 2: TestSafeGuard itself + LeakDetector child are often counted as orphans during _exit_tree
+	var ld = get_node_or_null("LeakDetector")
+	if ld:
+		ld.check_leaks(2)
 
 func _watchdog_loop():
 	var start_time = Time.get_ticks_msec()

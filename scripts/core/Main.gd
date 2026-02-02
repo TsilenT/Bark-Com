@@ -195,7 +195,17 @@ func _setup_controllers(gm, gv):
 
 func _on_unit_step_completed(_unit):
 	if vision_manager:
-		vision_manager.update_vision(spawned_units)
+		# Agnes: Aggregate all units (Player + Enemies) for comprehensive visibility update
+		var all_units = []
+		all_units.append_array(spawned_units)
+		
+		# Add Mission Enemies if MissionManager exists
+		if mission_manager and mission_manager.spawned_units.size() > 0:
+			for u in mission_manager.spawned_units:
+				if not u in all_units:
+					all_units.append(u)
+					
+		vision_manager.update_vision(all_units)
 	# fog_manager update delayed to Turn Start for Sanity Decay visuals
 
 

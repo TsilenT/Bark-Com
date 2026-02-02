@@ -228,13 +228,20 @@ func start_enemy_turn():
 
 					GameManager.log(LOG_PREFIX, "[", get_instance_id(), "]: Awaiting action for ", unit.name, " (", unit.get_instance_id(), ")")
 
-
+				# RACE CONDITION FIX: Connect signal BEFORE finding action
+				var waiter = _wait_for_unit_action_start(unit, 10.0)
+				
 				unit.decide_action(units, unit_gm)
 				
-				if unit.has_signal("action_complete"):
-					# Wait for signal OR timeout (safety)
-					GameManager.log(LOG_PREFIX, "Awaiting action_complete for ", unit.name)
-					var result = await _wait_for_unit_action(unit, 10.0)
+				# Now await the waiter result
+				if waiter:
+					var result
+					if waiter.result:
+						result = waiter.result
+						# GameManager.log(LOG_PREFIX, "Action completed synchronously.")
+					else:
+						result = await waiter.completed
+					
 					if result == "timeout":
 						GameManager.log(LOG_PREFIX, "WARNING: Action timed out for ", unit.name, "! Forcing continuation.")
 					else:
@@ -538,30 +545,31 @@ func _build_survivor_data(u) -> Dictionary:
 	return data
 
 
-func _wait_for_unit_action(unit, timeout: float) -> String:
-	var state = {"status": "waiting"}
-	var timer = get_tree().create_timer(timeout)
+func _wait_for_unit_action_start(unit, timeout: float) -> Object:
+	if not unit.has_signal("action_complete"):
+		return null
+		
+	var waiter = SignalWaiter.new()
+	add_child(waiter)
+	waiter.setup(unit, "action_complete", timeout)
+	return waiter
+
+# Inner class for waiting
+class SignalWaiter extends Node:
+	signal completed(status)
+	var result = null # Store result for synchronous checks
 	
-	var on_complete = func():
-		state.status = "done"
-	
-	var on_timeout = func():
-		if state.status == "waiting":
-			state.status = "timeout"
-			
-	unit.action_complete.connect(on_complete, CONNECT_ONE_SHOT)
-	timer.timeout.connect(on_timeout, CONNECT_ONE_SHOT)
-	
-	while state.status == "waiting":
-		await get_tree().process_frame
-		# If unit died or invalid, abort
-		if not is_instance_valid(unit):
-			return "invalid"
-			
-	# Cleanup (Signal is oneshot, but good practice to ensure disconnect if timeout happened first? 
-	# If timeout happened, connection remains until signal fires later. That's fine for OneShot.)
-	if state.status == "timeout":
-		if unit.is_connected("action_complete", on_complete):
-			unit.action_complete.disconnect(on_complete)
-			
-	return state.status
+	func setup(target, sig_name, timeout):
+		target.connect(sig_name, _on_signal, CONNECT_ONE_SHOT)
+		var timer = get_tree().create_timer(timeout)
+		timer.timeout.connect(_on_timeout, CONNECT_ONE_SHOT)
+		
+	func _on_signal():
+		result = "done"
+		completed.emit("done")
+		queue_free()
+		
+	func _on_timeout():
+		result = "timeout"
+		completed.emit("timeout")
+		queue_free()

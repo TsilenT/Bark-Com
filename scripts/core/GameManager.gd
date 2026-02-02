@@ -889,20 +889,33 @@ func register_fallen_hero(unit_data: Dictionary, cause: String):
 	print("GameManager: Registered Fallen Hero - ", entry["name"])
 
 
+# Fixed implementation with Logging
 func get_available_classes() -> Array:
 	var classes = []
-	var dir = DirAccess.open("res://assets/data/classes/")
+	var path = "res://assets/data/classes/"
+	var dir = DirAccess.open(path)
+	
 	if dir:
 		dir.list_dir_begin()
 		var file_name = dir.get_next()
 		while file_name != "":
-			if not dir.current_is_dir() and file_name.ends_with("Data.tres"):
-				var cls = file_name.replace("Data.tres", "")
-				classes.append(cls)
+			if not dir.current_is_dir():
+				# Handle Export Remaps (.remap)
+				var clean_name = file_name.replace(".remap", "")
+				
+				if clean_name.ends_with("Data.tres"):
+					var cls = clean_name.replace("Data.tres", "")
+					if not classes.has(cls):
+						classes.append(cls)
+			
 			file_name = dir.get_next()
+	else:
+		print("GameManager: ERROR - Failed to open classes directory: ", path)
 
 	if classes.is_empty():
-		return ["Recruit", "Scout", "Heavy", "Sniper"]  # Fallback
+		print("GameManager: WARNING - No classes found in ", path, ". Using fallback.")
+		return ["Recruit", "Scout", "Heavy", "Sniper", "Grenadier", "Paramedic"]
+		
 	return classes
 
 

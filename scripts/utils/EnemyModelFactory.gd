@@ -3,6 +3,11 @@ extends Node
 
 # Material Cache (Simple Colors)
 static var mat_cache = {}
+static var animator_script = null
+
+static func clear_cache():
+	mat_cache.clear()
+	animator_script = null
 
 static func create_model(unit) -> Node3D:
 	var root = Node3D.new()
@@ -83,8 +88,9 @@ static func _add_mesh(parent: Node, mesh: Mesh, pos: Vector3, mat: Material) -> 
 	return mi
 
 static func _add_anim(target: Node, type: int, speed: float, amp: float, axis: Vector3 = Vector3.UP):
-	var AnimatorScript = load("res://scripts/utils/ProceduralAnimator.gd")
-	var anim = AnimatorScript.new()
+	if not animator_script:
+		animator_script = load("res://scripts/utils/ProceduralAnimator.gd")
+	var anim = animator_script.new()
 	anim.setup(type, speed, amp, axis)
 	target.add_child(anim)
 

@@ -42,7 +42,7 @@ if ($Targets.Count -gt 0) {
 else {
     Write-Host "Searching for All Tests..." -ForegroundColor Cyan
     $TestScenes = Get-ChildItem -Path "tests" -Filter "*.tscn" -Recurse | Where-Object { $_.Name -notlike "Mock*" -and $_.Name -notlike "*Utils*" }
-    $TestScripts = Get-ChildItem -Path "tests" -Filter "*.gd" -Recurse | Where-Object { $_.Name -notlike "Mock*" -and $_.Name -notlike "*Utils*" -and $_.Name -notlike "TestSafeGuard.gd" }
+    $TestScripts = Get-ChildItem -Path "tests" -Filter "*.gd" -Recurse | Where-Object { $_.Name -notlike "Mock*" -and $_.Name -notlike "*Utils*" -and $_.Name -notlike "TestSafeGuard.gd" -and $_.Name -notlike "LeakDetector.gd" }
 }
 
 $GlobalExitCode = 0
@@ -114,10 +114,7 @@ function Run-GodotTest {
                  # This is a GDScript warning that is annoying but harmless. 
                  # If user wants STRICT strict, we keep it. 
                  
-                 # Filter exception for Mission Won but No Survivors (Legacy warning)
-                 if ($Output -match "CRITICAL WARNING - Mission Won but No Survivors" -and !($Output -match "SCRIPT ERROR") -and !($Output -match "FAIL")) {
-                    return 0
-                 }
+
 
                  Write-Host "STRICT FAILURE in $Name (Logs contain ERROR/WARNING/FAIL)" -ForegroundColor Magenta
                  Write-Host "--- LOG START ---" -ForegroundColor Gray
@@ -222,13 +219,9 @@ if ($Strict) {
                 $FailedChecks += $scene.Name
             }
         } else {
-            # Scene has no script? Might be purely visual or logic-less?
-            # Warn but maybe allow? Or Fail?
-            # Most test runners have a script.
             Write-Host "WARNING: Could not resolve script for $($scene.Name)" -ForegroundColor DarkGray
         }
     }
-
     
     # Check Scripts
     foreach ($script in $TestScripts) {
@@ -238,10 +231,14 @@ if ($Strict) {
     }
     
     if ($FailedChecks.Count -gt 0) {
-        Write-Host "STRICT FAILURE: The following tests are missing 'TestSafeGuard' (Watchdog):" -ForegroundColor Red
+        Write-Host "STRICT FAILURE: The following tests are missing 'TestSafeGuard' (Watchdog/LeakDetector):" -ForegroundColor Red
         foreach ($f in $FailedChecks) {
             Write-Host "  - $f" -ForegroundColor Red
         }
+        $ValidationFailed = $true
+    }
+    
+    if ($ValidationFailed) {
         Write-Host "Validation Failed. Aborting Run." -ForegroundColor Red
         exit 1
     }

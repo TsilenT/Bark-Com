@@ -199,7 +199,7 @@ func _end_action():
 # AI Logic
 func decide_action(_all_units: Array, grid_manager: GridManager):
 	# ASYNC GUARD
-	await get_tree().process_frame
+	# await get_tree().process_frame
 	
 	var gm = get_node_or_null("/root/GameManager")
 	if gm:
@@ -219,7 +219,8 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 		# If no target, Idle
 		if not target_unit:
 			state = State.IDLE
-			if DEBUG_AI and gm: gm.log(LOG_PREFIX, "- No valid targets. Ending turn.")
+			if DEBUG_AI and gm: gm.log(LOG_PREFIX, "- No valid targets. Spending AP to end turn.")
+			spend_ap(current_ap) 
 			break
 			
 		if DEBUG_AI and gm:
@@ -251,9 +252,14 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 				best_score = weapon_score
 				best_action = { "type": "attack" }
 		
+
+
 		# 3. Execute or Move
 		if best_action:
 			if gm: gm.log(LOG_PREFIX, "Chose action: ", best_action.type, " Score: ", best_score)
+			
+			# REVEAL ON ACTION (Muzzle Flash)
+			reveal_position()
 			
 			if best_action.type == "ability":
 				var abil = best_action.ref
@@ -287,8 +293,54 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 	_end_action()
 
 
+# --- FOG OF WAR LOGIC ---
+var detection_range: int = 12 # Default Vision
+var hearing_range: int = 5    # Wall-hack range (Footsteps)
+
+func can_detect(target_u, gm: GridManager) -> bool:
+	if not is_instance_valid(target_u):
+		return false
+		
+	var dist = grid_pos.distance_to(target_u.grid_pos)
+	
+	# 1. Hearing Check (Proximity ignores walls)
+	if dist <= hearing_range:
+		return true
+		
+	# 2. Vision Check (Raycast)
+	if dist <= detection_range:
+		# Check Line of Sight
+		# We use the unit's own check_los helper if available, or raycast manually
+		if has_method("check_los"):
+			return check_los(grid_pos, target_u, gm)
+		else:
+			# Fallback Raycast (Similar to VisionManager)
+			var space = get_world_3d().direct_space_state
+			var from = position + Vector3(0, 1.5, 0)
+			var to = target_u.position + Vector3(0, 1.0, 0) # Target Chest/Head
+			var query = PhysicsRayQueryParameters3D.create(from, to)
+			query.exclude = [self]
+			var result = space.intersect_ray(query)
+			if result:
+				# If we hit the target or something very close
+				if result.collider == target_u:
+					return true
+				if result.position.distance_to(to) < 1.5:
+					return true
+	
+	return false
+
+func reveal_position():
+	# Muzzle Flash Mechanic: Force visibility if attacking
+	if not visible:
+		visible = true
+		set_visual_mode("NORMAL")
+		GameManager.log(LOG_PREFIX, name, " REVEALED by Action!")
+		SignalBus.on_request_floating_text.emit(self, "REVEALED!", Color.RED)
+
+
 func _acquire_target(units: Array, gm: GridManager):
-	# Simplistic Target Acquisition: Closest Player or Highest Threat
+	# Smart Target Acquisition: Only target what we can detect!
 	target_unit = null
 	var best_score = -9999.0
 	var candidates = []
@@ -299,8 +351,13 @@ func _acquire_target(units: Array, gm: GridManager):
 			if u.name == "Treat Bag" or u.name == "Lost Human":
 				continue
 				
+			# FOG OF WAR CHECK
+			if not can_detect(u, gm):
+				# Cannot see/hear this player. Ignore.
+				continue
+
 			var score = 0.0
-			# Distance
+			# Distance prioritization (Closer is usually better/threat)
 			var dist = grid_pos.distance_to(u.grid_pos)
 			score -= dist
 			
@@ -316,6 +373,10 @@ func _acquire_target(units: Array, gm: GridManager):
 				
 	if candidates.size() > 0:
 		target_unit = candidates.pick_random()
+	else:
+		# No targets detected.
+		# Ideally: Stay IDLE or Patrol.
+		pass
 
 
 func _perform_move(gm: GridManager, all_units: Array) -> bool:

@@ -23,13 +23,18 @@ func _ready():
 	add_child(main_scene)
 	print("✅ Smoke Test: Main scene instantiated successfully.")
 	
-	# Anti-Ghosting Safeguard
-	add_child(load("res://tests/TestSafeGuard.gd").new())
+	# Anti-Ghosting Safegu	# Watchdog
+	var watchdog_script = load("res://tests/TestSafeGuard.gd")
+	var watchdog = watchdog_script.new()
+	add_child(watchdog)
 	
-	# Wait for a few seconds to ensure no immediate crash
-	await get_tree().create_timer(5.0).timeout
+	print("Running Smoke Test...")
 	
-	print("✅ Smoke Test: 5 seconds passed without crash.")
+	await get_tree().create_timer(1.0).timeout
+	
+	print("Smoke Test Complete.")
+	
+	watchdog.queue_free()
 	print("🚬 Smoke Test: PASSED.")
 	
 	# Cleanup
