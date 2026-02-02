@@ -604,6 +604,7 @@ func complete_mission(
 			
 			if is_fallen:
 				print("GameManager: Purging DEAD unit from roster: ", member["name"])
+				clear_unit_bonds(member["name"])
 				roster.remove_at(i)
 			else:
 				print("GameManager: Unit missing but NOT in Memorial? ", member["name"])
@@ -1049,6 +1050,22 @@ func modify_bond(n1: String, n2: String, amount: int):
 
 	if DEBUG_GAME:
 		print("GameManager: Bond ", key, " +", amount, " = ", new_val)
+
+
+func clear_unit_bonds(unit_name: String):
+	print("GameManager: Clearing bonds for ", unit_name)
+	var keys_to_remove = []
+	for key in relationships.keys():
+		# Logic: Bond Key is "Name1_Name2" (Sorted alphabetically potentially, but handled by get_bond_key)
+		# We need to find keys containing unit_name as one of the parties.
+		# Robust Check: exact match segments
+		if key.begins_with(unit_name + "_") or key.ends_with("_" + unit_name):
+			keys_to_remove.append(key)
+			
+	for k in keys_to_remove:
+		relationships.erase(k)
+		print(" - Removed bond: ", k)
+
 
 
 func get_bond_score(n1: String, n2: String) -> int:

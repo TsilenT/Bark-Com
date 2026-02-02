@@ -12,6 +12,7 @@
 | **Input Handling** | `scripts/core/InputManager.gd` (Autoload) |
 | **Mission Initialization** | `scripts/builders/MissionInitializer.gd` |
 | **Objective Spawning** | `scripts/builders/ObjectiveSpawner.gd` |
+| **Bond System** | `docs/architecture/bond_system.md` |
 
 ## Units & Entities
 | Concept | File Location |

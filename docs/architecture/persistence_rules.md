@@ -40,3 +40,8 @@ The `GameManager` contains a `TEST_MOCK_ENABLED` flag.
 - **Enabled**: Redirects all save/load operations to the Test Path. Logs a warning.
 - **Disabled**: Uses Production Path.
 *Critically, this prevents development tests from wiping your personal campaign progress.*
+
+## 3. Relationship (Bond) Storage
+- **Location**: `GameManager.relationships` (Dictionary: "Name1_Name2" -> int).
+- **Clearing**: Bonds involving a unit are **deleted** when the unit is removed from the roster (Death). See [Bond System](bond_system.md) for details.
+
