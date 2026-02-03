@@ -35,10 +35,10 @@ jobs:
           echo "Changed files:"
           echo "$CHANGED"
           
-          # Check if any file is a game file (.gd, .tscn, .tres, project.godot)
-          if echo "$CHANGED" | grep -qE "\.(gd|tscn|tres|import|json|cfg)$|project\.godot|tests/"; then
+          # Check if any file is a game file (.gd, .tscn, .tres, project.godot) or build script
+          if echo "$CHANGED" | grep -qE "\.(gd|tscn|tres|import|json|cfg|ps1|yml|yaml)$|project\.godot|tests/"; then
             echo "run_tests=true" >> $GITHUB_OUTPUT
-            echo "Game logic modified -> Running Tests"
+            echo "Game logic/Build modified -> Running Tests"
           else
             echo "run_tests=false" >> $GITHUB_OUTPUT
             echo "Only non-game files modified -> Skipping Tests"
