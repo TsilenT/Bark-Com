@@ -1,3 +1,3 @@
 class_name Version
 
-const BUILD_VERSION = "v0.6.8.3"
+const BUILD_VERSION = "v0.6.8.6"
