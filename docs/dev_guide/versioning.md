@@ -25,6 +25,9 @@ if ClassDB.class_exists("Version"):
 ```
 *Note: Since `Version.gd` is a generated file, always assume it might be missing in a fresh dev environment until the script is run.*
 
+> [!TIP]
+> **Exporting**: Always use `ResourceLoader.exists("res://scripts/core/Version.gd")` to check for this file. `FileAccess` will fail in exported builds due to script remapping.
+
 ## CI/CD Integration
 The versioning process is automated in the GitHub Actions pipeline (`.github/workflows/ci_cd_pipeline.yml`).
 -   The `build` job runs `generate_version.ps1` before exporting the project.

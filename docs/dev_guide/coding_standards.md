@@ -51,3 +51,21 @@ We use a **Code-First** approach for Units.
 - `assets/`: Raw assets (models, textures, data resources).
 - `tests/`: Regression and Unit tests.
 - `docs/`: Architecture and Dev Guide documentation.
+
+## 4. File Access & Exports
+> [!WARNING]
+> **Use `ResourceLoader.exists()` instead of `FileAccess.file_exists()` for scripts.**
+
+When exporting, `.gd` files are often remapped to binary formats (`.gdc` or internal remaps). 
+-   `FileAccess` looks for the literal file path and will **FAIL** in exported builds.
+-   `ResourceLoader` handles this remapping correctly.
+
+**Bad:**
+```gdscript
+if FileAccess.file_exists("res://scripts/core/Version.gd"): ...
+```
+
+**Good:**
+```gdscript
+if ResourceLoader.exists("res://scripts/core/Version.gd"): ...
+```
