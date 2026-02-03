@@ -35,9 +35,9 @@ if ($Targets.Count -gt 0) {
         }
     }
     
-    # Deduplicate
-    $TestScenes = $TestScenes | Select-Object -Unique
-    $TestScripts = $TestScripts | Select-Object -Unique
+    # Deduplicate and Filter Exclusions (Mocks/Utils should not run as tests)
+    $TestScenes = $TestScenes | Select-Object -Unique | Where-Object { $_.Name -notlike "Mock*" -and $_.Name -notlike "*Utils*" }
+    $TestScripts = $TestScripts | Select-Object -Unique | Where-Object { $_.Name -notlike "Mock*" -and $_.Name -notlike "*Utils*" }
 }
 else {
     Write-Host "Searching for All Tests..." -ForegroundColor Cyan

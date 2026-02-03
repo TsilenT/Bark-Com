@@ -314,6 +314,9 @@ func on_turn_start(all_units = [], grid_manager = null):
 	
 	_check_cooldowns_start()
 	
+	# Update Existing Panic Logic (Tick Counters / Recover)
+	_process_panic_turn_start()
+	
 	# Apply Panic
 	apply_panic_effect(all_units, grid_manager)
 	
@@ -814,7 +817,12 @@ func _process_panic_turn_start():
 			print(name, " is no longer Berserk.")
 			current_panic_state = PanicState.NONE
 			panic_turn_count = 0
+			remove_effect_by_name("Berserk") # Explicit cleanup
 			SignalBus.on_request_floating_text.emit(self, "CALMED", Color.WHITE)
+			
+			# Restore sanity to prevent immediate relapse loop
+			if current_sanity < 20: 
+				heal_sanity(20) # Buffer against "Seen Enemy" (5 dmg)
 
 	# 2. General Panic Recovery (Chance after 3 turns?)
 	elif panic_turn_count >= 3:
@@ -822,7 +830,15 @@ func _process_panic_turn_start():
 			print(name, " snapped out of panic.")
 			current_panic_state = PanicState.NONE
 			panic_turn_count = 0
+			# Clear all potential panic effects
+			remove_effect_by_name("Fleeing")
+			remove_effect_by_name("Frozen")
+			remove_effect_by_name("Berserk")
 			SignalBus.on_request_floating_text.emit(self, "RECOVERED", Color.WHITE)
+			
+			# Restore sanity to prevent immediate relapse loop
+			if current_sanity < 20:
+				heal_sanity(20)
 
 
 func _roll_panic_type():

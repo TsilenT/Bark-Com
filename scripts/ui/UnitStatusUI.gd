@@ -4,7 +4,7 @@ extends Node3D
 # Displays overhead icons (Sprite3D) for active statuses.
 
 var unit
-var sprites: Array[Sprite3D] = []
+var sprites: Array[Node3D] = []
 
 # Panic Icons
 const PANIC_ICONS = {
@@ -69,11 +69,10 @@ func _refresh_full():
 			if "icon" in eff and eff.icon:
 				icons_to_show.append(eff.icon)
 	
-	# 2. Panic State
-	if "current_panic_state" in unit and unit.current_panic_state != 0:
-		if PANIC_ICONS.has(unit.current_panic_state):
-			icons_to_show.append(PANIC_ICONS[unit.current_panic_state])
-
+	# 2. Panic State (REMOVED)
+	# Panic logic now strictly uses StatusEffects (BerserkEffect, etc) which have their own icons.
+	# Checking both caused duplicate icons.
+	
 	# 3. Cover Status (Holograms)
 	var show_cover = true
 	# User Request: Hide cover for non-relevant objectives (Treat Bags) but keep for Allies/Enemies/Rescue Targets
@@ -115,6 +114,27 @@ func _create_icons(icons: Array):
 	
 	for i in range(count):
 		var tex = icons[i]
+		
+		# 1. Background (Visibility Fix)
+		var bg = MeshInstance3D.new()
+		var quad = QuadMesh.new()
+		quad.size = Vector2(0.4, 0.4) # Slightly larger than icon
+		bg.mesh = quad
+		
+		var mat = StandardMaterial3D.new()
+		mat.albedo_color = Color(0, 0, 0, 0.7) # Semi-transparent black
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA # Fix for Opaque Box
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		mat.render_priority = 9 # Behind icon
+		bg.material_override = mat
+		
+		bg.position = Vector3(start_x + (i * spacing), 2.5, -0.01)
+		add_child(bg)
+		sprites.append(bg) # Add to list for cleanup
+		
+		# 2. Icon
 		var sprite = Sprite3D.new()
 		sprite.texture = tex
 		sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED

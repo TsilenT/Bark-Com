@@ -4,7 +4,7 @@ const LOG_PREFIX = "PanicRunEffect: "
 
 func _init():
 	display_name = "Fleeing"
-	duration = 1
+	duration = 2 # Duration 2 ensures visibility persists through turn start decrement
 	type = EffectType.DEBUFF # Implicitly debuff akin to Panic
 	description = "Unit is terrified and will run from enemies."
 	icon = preload("res://assets/icons/status/panic_run.svg") 

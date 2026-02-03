@@ -27,26 +27,44 @@ func enter(msg: Dictionary = {}):
 var _applied_effect = null
 
 func _apply_panic_effect(unit, effect_name):
+	var path = "res://scripts/resources/statuses/sanity/%s.gd" % effect_name
+	var script = load(path)
+	
+	var template = script.new()
+
+	# Reuse existing if same type (Prevents remove/add flicker)
+	if _applied_effect and is_instance_valid(_applied_effect) and _applied_effect.get_script() == script:
+		# Reset duration from template defaults
+		_applied_effect.duration = template.duration
+		
+		# Just refresh
+		if unit.has_method("apply_effect"):
+			unit.apply_effect(_applied_effect)
+		elif "active_effects" in unit:
+			# Manual refresh if needed (rare fallback)
+			pass # unit.apply_effect handles logic usually, or we just updated duration ref.
+		return
+
 	# Remove previous if exists (safeguard)
 	if _applied_effect and is_instance_valid(_applied_effect):
-		if unit.has_method("remove_status"):
-			unit.remove_status(_applied_effect)
+		# Standard Unit API
+		if unit.has_method("remove_effect"):
+			unit.remove_effect(_applied_effect)
 		elif "active_effects" in unit:
+			# Fallback for non-Unit entities
 			unit.active_effects.erase(_applied_effect)
 			_applied_effect.on_remove(unit)
 	
-	# Dynamic load to avoid strict circular dependency if any
-	var path = "res://scripts/resources/statuses/sanity/%s.gd" % effect_name
-	var script = load(path)
-	if script:
-		var eff = script.new()
-		_applied_effect = eff
-		
-		if unit.has_method("apply_status"):
-			unit.apply_status(eff)
-		elif "active_effects" in unit:
-			unit.active_effects.append(eff)
-			eff.on_apply(unit)
+	# Create New
+	var eff = script.new()
+	_applied_effect = eff
+	
+	# Standard Unit API
+	if unit.has_method("apply_effect"):
+		unit.apply_effect(eff)
+	elif "active_effects" in unit:
+		unit.active_effects.append(eff)
+		eff.on_apply(unit)
 
 func exit():
 	# Do NOT clean up effect here. 
