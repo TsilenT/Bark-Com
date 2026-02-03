@@ -165,7 +165,7 @@ jobs:
           # To be safe, we can manually overwrite it with the variable if we passed it, or just run the script.
           # If main is the same commit as tag, the script works. 
           # PRO-TIP: We generated it earlier. We can just run it again.
-          ./generate_version.ps1
+          pwsh ./generate_version.ps1
           
           git add patch_notes/
           git add scripts/core/Version.gd
