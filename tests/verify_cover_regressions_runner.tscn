@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://verify_cover_regressions_runner"]
+
+[ext_resource type="Script" path="res://tests/verify_cover_regressions.gd" id="1_regress"]
+
+[node name="VerifyCoverRegressionsRunner" type="Node"]
+script = ExtResource("1_regress")

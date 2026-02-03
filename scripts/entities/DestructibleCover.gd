@@ -4,7 +4,8 @@ class_name DestructibleCover
 @export var max_hp: int = 5
 var current_hp: int = 5
 @export var prop_scene: PackedScene # Optional now, we use proc gen
-@export var explosion_scene: PackedScene = preload("res://scenes/vfx/CoverExplosion.tscn")
+@export var explosion_scene: PackedScene # Lazy loaded
+const EXPLOSION_PATH = "res://scenes/vfx/CoverExplosion.tscn"
 
 enum Variant {
 	CRATE,
@@ -18,10 +19,16 @@ enum Variant {
 var mesh: Node3D
 var variant_type: Variant = Variant.CRATE
 
+# Static Caches for Optimization
+static var _material_cache: Dictionary = {}
+static var _mesh_cache: Dictionary = {}
+
 # Map Enum to PackedScene (Drag and drop in Editor or load from resources)
-@export var variant_scenes: Dictionary = {
-	# Variant.CRATE: preload(...),
-}
+@export var variant_scenes: Dictionary = {}
+
+static func flush_cache():
+	_material_cache.clear()
+	_mesh_cache.clear()
 
 func _ready():
 	_setup_collision()
@@ -160,7 +167,17 @@ func _find_mesh_recursive(node: Node) -> MeshInstance3D:
 
 func _create_procedural_variant(type: Variant):
 	mesh = MeshInstance3D.new()
-	var mat = StandardMaterial3D.new()
+	
+	# Try Cache for Mesh
+	if _mesh_cache.has(type):
+		mesh.mesh = _mesh_cache[type]
+	
+	# Try Cache for Material
+	var mat = null
+	if _material_cache.has(type):
+		mat = _material_cache[type]
+	else:
+		mat = StandardMaterial3D.new() # Will populate below
 	
 	# Ensure we have a StaticBody (reuse or create)
 	var sb = null
@@ -189,86 +206,104 @@ func _create_procedural_variant(type: Variant):
 		sb.add_child(shape_node)
 
 	
-	match type:
-		Variant.CRATE:
-			max_hp = 5
-			var m = BoxMesh.new()
-			m.size = Vector3(1, 1, 1)
-			mat.albedo_color = Color(0.6, 0.4, 0.2) # Wood
-			mesh.mesh = m
-			mesh.position.y = 0.5
-			shape_node.shape.size = Vector3(1, 1, 1)
-			shape_node.position.y = 0.5
-			
-		Variant.HYDRANT:
-			max_hp = 12
-			var m = CylinderMesh.new()
-			m.top_radius = 0.3
-			m.bottom_radius = 0.4
-			m.height = 1.2
-			mat.albedo_color = Color(1.0, 0.8, 0.0) # Safety Yellow
-			mesh.mesh = m
-			mesh.position.y = 0.6
-			shape_node.shape = BoxShape3D.new() # Reset if it was Cylinder? No, just use Box approx for now.
-			shape_node.shape.size = Vector3(0.8, 1.2, 0.8) 
-			shape_node.position.y = 0.6
-			
-		Variant.TRASH_CAN:
-			max_hp = 6
-			var m = CylinderMesh.new()
-			m.top_radius = 0.4
-			m.bottom_radius = 0.35
-			m.height = 1.0
-			mat.albedo_color = Color(0.5, 0.5, 0.55) # Metal Grey
-			mesh.mesh = m
-			mesh.position.y = 0.5
-			shape_node.shape.size = Vector3(0.8, 1.0, 0.8)
-			shape_node.position.y = 0.5
-			
-		Variant.PLANTER:
-			max_hp = 3
-			var m = CylinderMesh.new()
-			m.top_radius = 0.5
-			m.bottom_radius = 0.3
-			m.height = 0.6
-			mat.albedo_color = Color(0.8, 0.5, 0.3) # Terracotta
-			mesh.mesh = m
-			mesh.position.y = 0.3
-			shape_node.shape.size = Vector3(1.0, 0.6, 1.0)
-			shape_node.position.y = 0.3
-			
-		Variant.SERVER_RACK:
-			max_hp = 8
-			var m = BoxMesh.new()
-			m.size = Vector3(0.8, 1.8, 0.8)
-			mat.albedo_color = Color(0.1, 0.1, 0.2) # Dark Blue/Black
-			mat.emission_enabled = true
-			mat.emission = Color(0.2, 0.8, 1.0) # Blink lights?
-			mat.emission_energy_multiplier = 0.5
-			mesh.mesh = m
-			mesh.position.y = 0.9
-			shape_node.shape.size = Vector3(0.8, 1.8, 0.8)
-			shape_node.position.y = 0.9
- 
-		Variant.WALL:
-			max_hp = 20
-			var m = BoxMesh.new()
-			m.size = Vector3(2.0, 2.5, 2.0) # Full block for simplification
-			mat.albedo_color = Color(0.5, 0.45, 0.4) # Stone/Brick
-			mesh.mesh = m
-			mesh.position.y = 1.25
-			shape_node.shape.size = Vector3(2.0, 2.5, 2.0)
-			shape_node.position.y = 1.25
+	# Populate based on type (Only if not cached)
+	if not _mesh_cache.has(type):
+		match type:
+			Variant.CRATE:
+				max_hp = 5
+				var m = BoxMesh.new()
+				m.size = Vector3(1, 1, 1)
+				mat.albedo_color = Color(0.6, 0.4, 0.2) # Wood
+				mesh.mesh = m
+				mesh.position.y = 0.5
+				shape_node.shape.size = Vector3(1, 1, 1)
+				shape_node.position.y = 0.5
+				
+			Variant.HYDRANT:
+				max_hp = 12
+				var m = CylinderMesh.new()
+				m.top_radius = 0.3
+				m.bottom_radius = 0.4
+				m.height = 1.2
+				mat.albedo_color = Color(1.0, 0.8, 0.0) # Safety Yellow
+				mesh.mesh = m
+				mesh.position.y = 0.6
+				shape_node.shape = BoxShape3D.new() # Reset if it was Cylinder? No, just use Box approx for now.
+				shape_node.shape.size = Vector3(0.8, 1.2, 0.8) 
+				shape_node.position.y = 0.6
+				
+			Variant.TRASH_CAN:
+				max_hp = 6
+				var m = CylinderMesh.new()
+				m.top_radius = 0.4
+				m.bottom_radius = 0.35
+				m.height = 1.0
+				mat.albedo_color = Color(0.5, 0.5, 0.55) # Metal Grey
+				mesh.mesh = m
+				mesh.position.y = 0.5
+				shape_node.shape.size = Vector3(0.8, 1.0, 0.8)
+				shape_node.position.y = 0.5
+				
+			Variant.PLANTER:
+				max_hp = 3
+				var m = CylinderMesh.new()
+				m.top_radius = 0.5
+				m.bottom_radius = 0.3
+				m.height = 0.6
+				mat.albedo_color = Color(0.8, 0.5, 0.3) # Terracotta
+				mesh.mesh = m
+				mesh.position.y = 0.3
+				shape_node.shape.size = Vector3(1.0, 0.6, 1.0)
+				shape_node.position.y = 0.3
+				
+			Variant.SERVER_RACK:
+				max_hp = 8
+				var m = BoxMesh.new()
+				m.size = Vector3(0.8, 1.8, 0.8)
+				mat.albedo_color = Color(0.1, 0.1, 0.2) # Dark Blue/Black
+				mat.emission_enabled = true
+				mat.emission = Color(0.2, 0.8, 1.0) # Blink lights?
+				mat.emission_energy_multiplier = 0.5
+				mesh.mesh = m
+				mesh.position.y = 0.9
+				shape_node.shape.size = Vector3(0.8, 1.8, 0.8)
+				shape_node.position.y = 0.9
+	 
+			Variant.WALL:
+				max_hp = 20
+				var m = BoxMesh.new()
+				m.size = Vector3(2.0, 2.5, 2.0) # Full block for simplification
+				mat.albedo_color = Color(0.5, 0.45, 0.4) # Stone/Brick
+				mesh.mesh = m
+				mesh.position.y = 1.25
+				shape_node.shape.size = Vector3(2.0, 2.5, 2.0)
+				shape_node.position.y = 1.25
 
+		# Cache It!
+		_mesh_cache[type] = mesh.mesh
+		_material_cache[type] = mat
+
+	# Apply cached material
 	mesh.material_override = mat
 	add_child(mesh)
 	current_hp = max_hp
 
 # --- INTERACTION FEEDBACK ---
 var highlight_tween: Tween
+var _is_material_instanced: bool = false # Optimization Flag
+
+func _ensure_material_unique():
+	if _is_material_instanced:
+		return
+		
+	if mesh and mesh.material_override:
+		mesh.material_override = mesh.material_override.duplicate()
+		_is_material_instanced = true
 
 func _mouse_enter():
 	if mesh and mesh.material_override:
+		_ensure_material_unique() # COW: Copy on Write
+		
 		mesh.material_override.emission_enabled = true
 		mesh.material_override.emission = Color(1.0, 0.8, 0.0) # Gold
 		
@@ -293,6 +328,9 @@ func _mouse_exit():
 			mesh.material_override.emission_enabled = false
 			mesh.material_override.emission_energy_multiplier = 0.0
 
+		# Optimization: If we wanted to save memory, we could revert to cached material here if state matches base.
+		# But keeping the unique material is safer to avoid flickering or complexity.
+
 
 func take_damage(amount: int):
 	current_hp -= amount
@@ -304,6 +342,8 @@ func take_damage(amount: int):
 
 	# Visual Feedback: Flash or Darken
 	if mesh and mesh.material_override:
+		_ensure_material_unique() # COW
+
 		# Flash Emission
 		var tw = create_tween()
 		mesh.material_override.emission_enabled = true
@@ -338,6 +378,12 @@ func destroy():
 		mesh.visible = false
 	
 	# Spawn particles
+	if not explosion_scene:
+		if ResourceLoader.exists(EXPLOSION_PATH):
+			explosion_scene = load(EXPLOSION_PATH)
+		else:
+			push_warning("DestructibleCover: Explosion VFX not found at " + EXPLOSION_PATH)
+
 	if explosion_scene:
 		var vfx = explosion_scene.instantiate()
 		get_parent().add_child(vfx) # Add to world/parent to persist after self free

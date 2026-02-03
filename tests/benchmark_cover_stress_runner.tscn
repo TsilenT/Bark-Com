@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://benchmark_cover_stress_runner"]
+
+[ext_resource type="Script" path="res://tests/benchmark_cover_stress.gd" id="1_bench"]
+
+[node name="BenchmarkCoverStressRunner" type="Node"]
+script = ExtResource("1_bench")
