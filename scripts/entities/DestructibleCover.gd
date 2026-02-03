@@ -7,6 +7,10 @@ var current_hp: int = 5
 @export var explosion_scene: PackedScene # Lazy loaded
 const EXPLOSION_PATH = "res://scenes/vfx/CoverExplosion.tscn"
 
+# Optimization: Allow suppressing the small debris explosion if a bigger one is happening
+var suppress_destruction_vfx: bool = false
+
+
 enum Variant {
 	CRATE,
 	HYDRANT,
@@ -398,16 +402,17 @@ func destroy():
 		mesh.visible = false
 	
 	# Spawn particles
-	if not explosion_scene:
-		if ResourceLoader.exists(EXPLOSION_PATH):
-			explosion_scene = load(EXPLOSION_PATH)
-		else:
-			push_warning("DestructibleCover: Explosion VFX not found at " + EXPLOSION_PATH)
+	if not suppress_destruction_vfx:
+		if not explosion_scene:
+			if ResourceLoader.exists(EXPLOSION_PATH):
+				explosion_scene = load(EXPLOSION_PATH)
+			else:
+				push_warning("DestructibleCover: Explosion VFX not found at " + EXPLOSION_PATH)
 
-	if explosion_scene:
-		var vfx = explosion_scene.instantiate()
-		get_parent().add_child(vfx) # Add to world/parent to persist after self free
-		vfx.global_position = global_position + Vector3(0, 0.5, 0)
+		if explosion_scene:
+			var vfx = explosion_scene.instantiate()
+			get_parent().add_child(vfx) # Add to world/parent to persist after self free
+			vfx.global_position = global_position + Vector3(0, 0.5, 0)
 		
 	# queue_free after delay?
 	# Particles handle themselves. We can remove ourselves immediately.

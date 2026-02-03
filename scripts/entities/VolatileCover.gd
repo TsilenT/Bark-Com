@@ -143,6 +143,9 @@ func detonate():
 
 	print(name, " DETONATES!")
 
+	# Prevent double-dipping particles (We handle the BIG one, parent handles the small one)
+	suppress_destruction_vfx = true
+
 	# 1. Spawn VFX
 	SignalBus.on_request_vfx.emit("Explosion", position, Vector3.ZERO, null, null)
 	SignalBus.on_request_floating_text.emit(self, "BOOM!", Color.RED)
