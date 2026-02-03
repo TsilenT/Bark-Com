@@ -168,22 +168,123 @@ func _find_mesh_recursive(node: Node) -> MeshInstance3D:
 func _create_procedural_variant(type: Variant):
 	mesh = MeshInstance3D.new()
 	
-	# Try Cache for Mesh
+	# 1. Configuration Data (Defaults)
+	var m_mesh: Mesh = null
+	var m_mat: Material = null
+	var c_size: Vector3 = Vector3(1, 1, 1)
+	var c_offset_y: float = 0.5
+	var v_offset_y: float = 0.5
+	var new_hp: int = 5
+	
+	# 2. Check Cache First
 	if _mesh_cache.has(type):
-		mesh.mesh = _mesh_cache[type]
+		m_mesh = _mesh_cache[type]
+		m_mat = _material_cache[type]
+
+	# 3. Define Variant Data (Must run to set offsets, even if cached)
+	match type:
+		Variant.CRATE:
+			new_hp = 5
+			v_offset_y = 0.5
+			c_size = Vector3(1, 1, 1)
+			c_offset_y = 0.5
+			if not m_mesh:
+				var m = BoxMesh.new()
+				m.size = c_size
+				m_mesh = m
+				m_mat = StandardMaterial3D.new()
+				m_mat.albedo_color = Color(0.6, 0.4, 0.2) # Wood
+
+		Variant.HYDRANT:
+			new_hp = 12
+			v_offset_y = 0.6
+			c_size = Vector3(0.8, 1.2, 0.8) # Approx Box
+			c_offset_y = 0.6
+			if not m_mesh:
+				var m = CylinderMesh.new()
+				m.top_radius = 0.3
+				m.bottom_radius = 0.4
+				m.height = 1.2
+				m_mesh = m
+				m_mat = StandardMaterial3D.new()
+				m_mat.albedo_color = Color(1.0, 0.8, 0.0) # Safety Yellow
+
+		Variant.TRASH_CAN:
+			new_hp = 6
+			v_offset_y = 0.5
+			c_size = Vector3(0.8, 1.0, 0.8)
+			c_offset_y = 0.5
+			if not m_mesh:
+				var m = CylinderMesh.new()
+				m.top_radius = 0.4
+				m.bottom_radius = 0.35
+				m.height = 1.0
+				m_mesh = m
+				m_mat = StandardMaterial3D.new()
+				m_mat.albedo_color = Color(0.5, 0.5, 0.55) 
+
+		Variant.PLANTER:
+			new_hp = 3
+			v_offset_y = 0.3
+			c_size = Vector3(1.0, 0.6, 1.0)
+			c_offset_y = 0.3
+			if not m_mesh:
+				var m = CylinderMesh.new()
+				m.top_radius = 0.5
+				m.bottom_radius = 0.3
+				m.height = 0.6
+				m_mesh = m
+				m_mat = StandardMaterial3D.new()
+				m_mat.albedo_color = Color(0.8, 0.5, 0.3)
+
+		Variant.SERVER_RACK:
+			new_hp = 8
+			v_offset_y = 0.9
+			c_size = Vector3(0.8, 1.8, 0.8)
+			c_offset_y = 0.9
+			if not m_mesh:
+				var m = BoxMesh.new()
+				m.size = c_size
+				m_mesh = m
+				m_mat = StandardMaterial3D.new()
+				m_mat.albedo_color = Color(0.1, 0.1, 0.2)
+				m_mat.emission_enabled = true
+				m_mat.emission = Color(0.2, 0.8, 1.0)
+				m_mat.emission_energy_multiplier = 0.5
+
+		Variant.WALL:
+			new_hp = 20
+			v_offset_y = 1.25
+			c_size = Vector3(2.0, 2.5, 2.0)
+			c_offset_y = 1.25
+			if not m_mesh:
+				var m = BoxMesh.new()
+				m.size = c_size
+				m_mesh = m
+				m_mat = StandardMaterial3D.new()
+				m_mat.albedo_color = Color(0.5, 0.45, 0.4)
+
+	# 4. Cache if new
+	if not _mesh_cache.has(type):
+		_mesh_cache[type] = m_mesh
+		_material_cache[type] = m_mat
+
+	# 5. Apply Resources
+	mesh.mesh = m_mesh
+	mesh.material_override = m_mat
 	
-	# Try Cache for Material
-	var mat = null
-	if _material_cache.has(type):
-		mat = _material_cache[type]
-	else:
-		mat = StandardMaterial3D.new() # Will populate below
+	# 6. Apply Instance Configuration (Offsets/Sizes) -> ALWAYS RUNS
+	mesh.position.y = v_offset_y
+	add_child(mesh)
 	
-	# Ensure we have a StaticBody (reuse or create)
+	max_hp = new_hp
+	current_hp = max_hp
+
+	# 7. Apply Collision
+	# Ensure StaticBody structure
 	var sb = null
 	var shape_node = null
 	
-	# Reuse existing SB if available
 	for child in get_children():
 		if child is StaticBody3D and not child.is_queued_for_deletion():
 			sb = child
@@ -194,8 +295,6 @@ func _create_procedural_variant(type: Variant):
 			break
 			
 	if not sb:
-		# Create fresh if missing (e.g. previous was scene-based and we cleared it?)
-		# Or if _setup_collision was skipped.
 		sb = StaticBody3D.new()
 		add_child(sb)
 		_setup_collision_hooks(sb)
@@ -204,89 +303,11 @@ func _create_procedural_variant(type: Variant):
 		shape_node = CollisionShape3D.new()
 		shape_node.shape = BoxShape3D.new()
 		sb.add_child(shape_node)
+		
+	# Apply Collision Config
+	shape_node.shape.size = c_size
+	shape_node.position.y = c_offset_y
 
-	
-	# Populate based on type (Only if not cached)
-	if not _mesh_cache.has(type):
-		match type:
-			Variant.CRATE:
-				max_hp = 5
-				var m = BoxMesh.new()
-				m.size = Vector3(1, 1, 1)
-				mat.albedo_color = Color(0.6, 0.4, 0.2) # Wood
-				mesh.mesh = m
-				mesh.position.y = 0.5
-				shape_node.shape.size = Vector3(1, 1, 1)
-				shape_node.position.y = 0.5
-				
-			Variant.HYDRANT:
-				max_hp = 12
-				var m = CylinderMesh.new()
-				m.top_radius = 0.3
-				m.bottom_radius = 0.4
-				m.height = 1.2
-				mat.albedo_color = Color(1.0, 0.8, 0.0) # Safety Yellow
-				mesh.mesh = m
-				mesh.position.y = 0.6
-				shape_node.shape = BoxShape3D.new() # Reset if it was Cylinder? No, just use Box approx for now.
-				shape_node.shape.size = Vector3(0.8, 1.2, 0.8) 
-				shape_node.position.y = 0.6
-				
-			Variant.TRASH_CAN:
-				max_hp = 6
-				var m = CylinderMesh.new()
-				m.top_radius = 0.4
-				m.bottom_radius = 0.35
-				m.height = 1.0
-				mat.albedo_color = Color(0.5, 0.5, 0.55) # Metal Grey
-				mesh.mesh = m
-				mesh.position.y = 0.5
-				shape_node.shape.size = Vector3(0.8, 1.0, 0.8)
-				shape_node.position.y = 0.5
-				
-			Variant.PLANTER:
-				max_hp = 3
-				var m = CylinderMesh.new()
-				m.top_radius = 0.5
-				m.bottom_radius = 0.3
-				m.height = 0.6
-				mat.albedo_color = Color(0.8, 0.5, 0.3) # Terracotta
-				mesh.mesh = m
-				mesh.position.y = 0.3
-				shape_node.shape.size = Vector3(1.0, 0.6, 1.0)
-				shape_node.position.y = 0.3
-				
-			Variant.SERVER_RACK:
-				max_hp = 8
-				var m = BoxMesh.new()
-				m.size = Vector3(0.8, 1.8, 0.8)
-				mat.albedo_color = Color(0.1, 0.1, 0.2) # Dark Blue/Black
-				mat.emission_enabled = true
-				mat.emission = Color(0.2, 0.8, 1.0) # Blink lights?
-				mat.emission_energy_multiplier = 0.5
-				mesh.mesh = m
-				mesh.position.y = 0.9
-				shape_node.shape.size = Vector3(0.8, 1.8, 0.8)
-				shape_node.position.y = 0.9
-	 
-			Variant.WALL:
-				max_hp = 20
-				var m = BoxMesh.new()
-				m.size = Vector3(2.0, 2.5, 2.0) # Full block for simplification
-				mat.albedo_color = Color(0.5, 0.45, 0.4) # Stone/Brick
-				mesh.mesh = m
-				mesh.position.y = 1.25
-				shape_node.shape.size = Vector3(2.0, 2.5, 2.0)
-				shape_node.position.y = 1.25
-
-		# Cache It!
-		_mesh_cache[type] = mesh.mesh
-		_material_cache[type] = mat
-
-	# Apply cached material
-	mesh.material_override = mat
-	add_child(mesh)
-	current_hp = max_hp
 
 # --- INTERACTION FEEDBACK ---
 var highlight_tween: Tween
@@ -364,7 +385,6 @@ func take_damage(amount: int):
 
 func destroy():
 	print("Crate destroyed!")
-	# Update Grid: WALKABLE + NO COVER
 	# Update Grid: WALKABLE + NO COVER
 	grid_manager.update_tile_state(grid_pos, true, 0.0, GridManager.TileType.GROUND)
 

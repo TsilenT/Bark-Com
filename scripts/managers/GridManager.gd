@@ -396,6 +396,15 @@ func refresh_pathfinding(units: Array, ignore_unit = null, active_faction: Strin
 						astar.set_point_disabled(u_id, true)
 
 
+func get_all_valid_spawn_tiles() -> Array:
+	var candidates = []
+	for coord in grid_data:
+		var d = grid_data[coord]
+		if d.get("is_walkable", false) and not d.get("unit"):
+			if not is_tile_blocked(coord):
+				candidates.append(coord)
+	candidates.shuffle()
+	return candidates
 
 func get_random_valid_position() -> Vector2:
 	var keys = grid_data.keys()

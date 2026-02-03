@@ -200,13 +200,36 @@ func start_next_wave():
 
 func _spawn_wave(wave_def: WaveDefinition):
 	var spawner = load("res://scripts/builders/UnitSpawner.gd").new()
+	var generator = load("res://scripts/builders/MissionGenerator.gd").new()
+	
+	# OPTIMIZATION: Pre-fetch valid spawn tiles to avoid O(N^2) shuffling in GridManager
+	# This drastically improves load times for high level missions (Level 20+)
+	var spawn_candidates = grid_manager.get_all_valid_spawn_tiles() # Shuffled
+	var spawn_index = 0
+
+	# Helper to get next spot from the pre-shuffled list
+	var _get_next_spot = func():
+		while spawn_index < spawn_candidates.size():
+			var pos = spawn_candidates[spawn_index]
+			spawn_index += 1
+			# Double check it's still free (in case we just spawned there)
+			# Though our single-threaded logic ensures we don't double book if we trust the list order.
+			# But GridManager checks validity deeply.
+			if not grid_manager.grid_data[pos].get("unit"):
+				return pos
+		return Vector2(-1, -1)
 
 	# 1. Guaranteed Spawns
 	for type in wave_def.guaranteed_spawns:
 		var count = wave_def.guaranteed_spawns[type]
 		for _i in range(count):
-			var unit = spawner.spawn_enemy(type, grid_manager, turn_manager)
-			if unit: spawned_units.append(unit)
+			var pos = _get_next_spot.call()
+			if pos == Vector2(-1, -1):
+				GameManager.log(LOG_PREFIX, "Wave Spawn Warning: No more spawn spots for guaranteed unit!")
+				break
+				
+			var unit = spawn_enemy_at(type, pos) # Uses SELF method
+			# if unit: spawned_units.append(unit) # Handled by spawn_enemy_at internally
 
 
 	# 0. Check for Nemesis Invasions (NemesisManager)
@@ -217,15 +240,28 @@ func _spawn_wave(wave_def: WaveDefinition):
 			var invaders = nm.get_invasion_candidates(wave_def.budget_points)
 			for invader_data in invaders:
 				if wave_def.budget_points >= 4: # Min budget check to ensure slot
-					var unit = spawner.spawn_nemesis(invader_data, grid_manager, turn_manager)
-					if unit: spawned_units.append(unit)
-					wave_def.budget_points -= 5 # Explicit cost for Nemesis
-					GameManager.log(LOG_PREFIX, "WARNING: Nemesis Invasion! ", invader_data.display_name)
+					var pos = _get_next_spot.call()
+					if pos != Vector2(-1, -1):
+						# We don't have spawn_nemesis_at on self.
+						# We might need to use spawner logic if it exists.
+						# Or just spawn generic enemy and initialize data.
+						var unit = spawner.spawn_nemesis(invader_data, grid_manager, turn_manager) # Fallback to random if no explicit 'at'
+						# Ideally we force pos. unit.position = ... unit.grid_pos = ...
+						if unit: 
+							unit.position = grid_manager.get_world_position(pos)
+							unit.grid_pos = pos
+							# Update grid
+							if grid_manager.grid_data.has(pos):
+								grid_manager.grid_data[pos]["unit"] = unit
+							spawned_units.append(unit)
+							
+						wave_def.budget_points -= 5 # Explicit cost for Nemesis
+						GameManager.log(LOG_PREFIX, "WARNING: Nemesis Invasion! ", invader_data.display_name)
 	
 	# 2. Budget Spawns
-	var generator = load("res://scripts/builders/MissionGenerator.gd").new()
 	var budget = wave_def.budget_points
 	var attempts = 0
+	
 	while budget > 0 and attempts < 100:
 		var type = generator.pick_random_archetype(wave_def)
 		if type == "":
@@ -234,9 +270,14 @@ func _spawn_wave(wave_def: WaveDefinition):
 		var cost = generator.get_cost(type)
 
 		if cost <= budget:
-			var unit = spawner.spawn_enemy(type, grid_manager, turn_manager)
+			var pos = _get_next_spot.call()
+			if pos == Vector2(-1, -1):
+				GameManager.log(LOG_PREFIX, "Wave Spawn Warning: Board is Full! Stopping spawn.")
+				break
+
+			var unit = spawn_enemy_at(type, pos) # Self method
 			if unit: 
-				spawned_units.append(unit)
+				# spawned_units.append(unit) # Handled by spawn_enemy_at
 				budget -= cost
 		else:
 			attempts += 1  # Try to find cheaper unit or exit
@@ -303,9 +344,12 @@ func _spawn_enemy(type_name: String):
 	spawned_units.append(enemy)
 
 	# Register with TurnManager (Critical for Targeting/Turn Logic)
-	var tm = grid_manager.get_node_or_null("../TurnManager")
-	if tm:
-		tm.register_unit(enemy)
+	# Register with TurnManager (Critical for Targeting/Turn Logic)
+	if not turn_manager and grid_manager:
+		turn_manager = grid_manager.get_node_or_null("../TurnManager")
+		
+	if turn_manager:
+		turn_manager.register_unit(enemy)
 
 	# Factory Configuration (Applied AFTER add_child so _ready (visuals) exist)
 	_configure_enemy(enemy, type_name)
@@ -370,9 +414,12 @@ func spawn_enemy_at(type_name: String, grid_pos: Vector2):
 	spawned_units.append(enemy)
 
 	# Register with TurnManager
-	var tm = grid_manager.get_node_or_null("../TurnManager")
-	if tm:
-		tm.register_unit(enemy)
+	# Register with TurnManager
+	if not turn_manager and grid_manager:
+		turn_manager = grid_manager.get_node_or_null("../TurnManager")
+
+	if turn_manager:
+		turn_manager.register_unit(enemy)
 
 	# Factory Configuration
 	_configure_enemy(enemy, type_name)
@@ -386,7 +433,7 @@ func spawn_enemy_at(type_name: String, grid_pos: Vector2):
 	if main_node and "spawned_units" in main_node:
 		main_node.spawned_units.append(enemy)
 
-	GameManager.log(LOG_PREFIX, "Debug Spawned ", type_name, " at ", grid_pos)
+	GameManager.log(LOG_PREFIX, "Spawned ", type_name, " at ", grid_pos)
 	
 	# Visual Confirmation
 	SignalBus.on_request_floating_text.emit(enemy, "SPAWNED!", Color.GREEN)
