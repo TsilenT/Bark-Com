@@ -76,7 +76,8 @@ func _setup_version_label():
 	var v_text = "v0.0.0"
 	
 	# Dynamic load to avoid strict type errors if file missing
-	if FileAccess.file_exists("res://scripts/core/Version.gd"):
+	# Use ResourceLoader.exists to handle exported remapping (e.g. .gd -> .gdc/remap)
+	if ResourceLoader.exists("res://scripts/core/Version.gd"):
 		var v_script = load("res://scripts/core/Version.gd")
 		if v_script and "BUILD_VERSION" in v_script:
 			v_text = v_script.BUILD_VERSION

@@ -7,9 +7,9 @@ func _ready():
 	var guard = load("res://tests/TestSafeGuard.gd").new()
 	add_child(guard)
 	
-	# 1. Check File Existence
-	if not FileAccess.file_exists("res://scripts/core/Version.gd"):
-		print("FAILURE: res://scripts/core/Version.gd does not exist!")
+	# 1. Check File Existence (Logic consistent with BaseScene)
+	if not ResourceLoader.exists("res://scripts/core/Version.gd"):
+		print("FAILURE: res://scripts/core/Version.gd does not exist (ResourceLoader check)!")
 		get_tree().quit(1)
 		return
 
