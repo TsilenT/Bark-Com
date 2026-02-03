@@ -22,6 +22,7 @@ func _process(_delta):
 	# Check if mission ended (node freed)
 	if not ui_container.visible and not is_instance_valid(active_mission_node):
 		_log("Mission Ended. Welcome back.")
+		game_manager.current_state = game_manager.GameState.BASE
 		_show_hub() # Reset to Home (Hub)
 		_update_header() # Refresh Kibble/Stuffs
 		ui_container.visible = true
