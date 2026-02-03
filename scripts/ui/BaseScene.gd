@@ -41,6 +41,7 @@ func _ready():
 	_initialize_managers()
 	_setup_base_settings()
 	_setup_ui()
+	_setup_version_label()
 	_connect_signals()
 	_load_initial_state()
 
@@ -68,6 +69,30 @@ func _connect_signals():
 	SignalBus.on_skin_changed.connect(_on_skin_changed_refresh)
 	SignalBus.on_inventory_changed.connect(_refresh_stash_sidebar)
 	SignalBus.on_roster_updated.connect(_show_roster)
+
+
+func _setup_version_label():
+	var ver_label = Label.new()
+	var v_text = "v0.0.0"
+	
+	# Dynamic load to avoid strict type errors if file missing
+	if FileAccess.file_exists("res://scripts/core/Version.gd"):
+		var v_script = load("res://scripts/core/Version.gd")
+		if v_script and "BUILD_VERSION" in v_script:
+			v_text = v_script.BUILD_VERSION
+	
+	ver_label.text = v_text
+	ver_label.add_theme_font_size_override("font_size", 20)
+	ver_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.3)) # Faint
+	ver_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	ver_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	ver_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	ver_label.offset_right = -10 # Padding from Right
+	ver_label.offset_bottom = -10 # Padding from Bottom
+	ver_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	
+	if ui_container:
+		ui_container.add_child(ver_label)
 
 
 func _exit_tree():

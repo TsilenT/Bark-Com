@@ -118,6 +118,10 @@ jobs:
           apt-get update
           apt-get install -y powershell
 
+      - name: Generate Version File
+        shell: pwsh
+        run: ./generate_version.ps1
+
       - name: Generate Patch Notes
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
@@ -153,10 +157,11 @@ jobs:
           fi
           
           git add patch_notes/
+          git add scripts/core/Version.gd
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "docs: generate patch notes [skip ci]"
+            git commit -m "docs: generate patch notes and version file [skip ci]"
             git push origin main
           fi
 
