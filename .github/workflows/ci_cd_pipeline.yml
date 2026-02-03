@@ -120,7 +120,9 @@ jobs:
 
       - name: Generate Version File
         shell: pwsh
-        run: ./generate_version.ps1
+        run: |
+            ./generate_version.ps1
+            Get-Content scripts/core/Version.gd
 
       - name: Generate Patch Notes
         if: startsWith(github.ref, 'refs/tags/v')
@@ -182,6 +184,9 @@ jobs:
         with:
           name: patch-notes
           path: patch_notes/*.md
+
+      - name: Import Project (Update Cache with Version.gd)
+        run: godot --headless --editor --quit
 
       - name: Setup Export Dir
         run: mkdir -p build/windows build/web
