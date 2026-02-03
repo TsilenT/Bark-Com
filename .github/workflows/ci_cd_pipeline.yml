@@ -137,7 +137,10 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
-          # Check for changes to stash
+          # Temporarily revert Version.gd to avoid stash conflict if it exists on main
+          git checkout scripts/core/Version.gd || true
+          
+          # Stash only patch notes (untracked)
           STASHED=0
           if [ -n "$(git status --porcelain)" ]; then
             echo "Stashing changes..."
@@ -145,16 +148,24 @@ jobs:
             STASHED=1
           fi
           
-          # Switch to main branch to ensure we push to the correct target
+          # Switch to main and pull
           git fetch origin main
           git checkout main
           git pull origin main --rebase
           
-          # Restore changes
+          # Restore Patch Notes
           if [ "$STASHED" -eq 1 ]; then
             echo "Popping stash..."
             git stash pop
           fi
+          
+          # Re-Generate Version File to ensure it matches the tag (and overwrites whatever is in main)
+          # We need to use the version from the TAG that triggered the workflow, not 'main'
+          # But we are on 'main' now. The tag might be pointing to the same commit.
+          # To be safe, we can manually overwrite it with the variable if we passed it, or just run the script.
+          # If main is the same commit as tag, the script works. 
+          # PRO-TIP: We generated it earlier. We can just run it again.
+          ./generate_version.ps1
           
           git add patch_notes/
           git add scripts/core/Version.gd

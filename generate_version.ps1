@@ -1,7 +1,7 @@
 # generate_version.ps1
 # Generates scripts/core/Version.gd with the current git description
 
-$GitVersion = git describe --tags --always --dirty
+$GitVersion = git describe --tags --always --dirty --match "v*"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Warning: git describe failed. Using fallback."
     $GitVersion = "v0.0.0-dev"
