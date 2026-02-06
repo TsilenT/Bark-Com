@@ -23,6 +23,12 @@ func initialize(pos: Vector2, gm: Node, biome: String = "", variant_override: in
 
 
 
+
+# VISUALS FIX: DestructibleCover calls set_variant() which makes a crate.
+# Override to prevent double visuals.
+func set_variant(_type: Variant):
+	pass 
+
 func _ready():
 	# super._ready() calls _setup_visuals() via virtual method call,
 	# preventing double mesh creation.

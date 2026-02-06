@@ -20,11 +20,16 @@ func _test_hacker_spawn():
 	var spawner_script = load("res://scripts/builders/ObjectiveSpawner.gd")
 	var spawner = spawner_script.new()
 	
+	# Container for easy cleanup (Spawner adds to gm.get_parent())
+	var container = Node3D.new()
+	add_child(container)
+	
 	# Mock Managers
 	# We need a GridManager mock that returns valid positions
 	var gm = load("res://tests/mocks/MockGridManager.gd").new()
 	gm.width = 10
 	gm.height = 10
+	container.add_child(gm) # Spawner will add Terminals to 'container'
 	
 	# Mock Config
 	var config = load("res://scripts/resources/MissionConfig.gd").new()
@@ -39,11 +44,8 @@ func _test_hacker_spawn():
 	else:
 		print("  [FAIL] Expected 2, got ", count)
 		
-	# Check Scene via GM parent (Mock GM needs to simulate parent or we inspect it)
-	# But wait, spawn_objectives calls _add_to_scene which calls gm.get_parent().add_child OR gm.add_child
-	# Our MockGM needs to handle this.
-	
-	for child in gm.get_children():
+	# Check Scene
+	for child in container.get_children():
 		print("  Found child: ", child.name)
 		if child.name.begins_with("Terminal"):
 			print("  [PASS] Found Terminal Node: ", child.name)
@@ -55,4 +57,4 @@ func _test_hacker_spawn():
 			if child.is_in_group("Objectives"):
 				print("    [PASS] Group 'Objectives' OK")
 			
-	gm.free()
+	container.queue_free()

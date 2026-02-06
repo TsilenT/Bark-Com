@@ -346,6 +346,13 @@ func is_tile_cover(coord: Vector2) -> bool:
 # Cache for dynamic unit positions (updated in refresh_pathfinding)
 var _unit_occupancy = {}
 
+func is_obstacle_at(coord: Vector2) -> bool:
+	if not grid_data.has(coord):
+		return false
+	var type = grid_data[coord].get("type", TileType.GROUND)
+	# Obstacle or Full Cover Wall?
+	return type == TileType.OBSTACLE or (type == TileType.COVER_FULL and grid_data[coord].get("variant","") == "Wall")
+
 ## Updates AStar states based on dynamic unit positions.
 ## Called at the start of every turn and after every move.
 ##

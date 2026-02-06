@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3 uid="uid://test_vis_load_runner"]
+[gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://tests/test_visualizer_load.gd" id="1_script"]
+[ext_resource type="Script" path="res://tests/verify_model_visualizer_load.gd" id="1_test"]
 
-[node name="TestVisualizerLoadRunner" type="Node3D"]
-script = ExtResource("1_script")
+[node name="VerifyModelVisualizerLoad" type="Node"]
+script = ExtResource("1_test")

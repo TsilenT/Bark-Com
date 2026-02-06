@@ -4,6 +4,24 @@ extends Node
 # Verifies that highlighting or damaging one cover does NOT affect others 
 # when using shared cached materials.
 
+func _spawn_crate(parent, pos):
+	var c = load("res://scripts/entities/DestructibleCover.gd").new()
+	parent.add_child(c)
+	c.set_variant(DestructibleCover.Variant.CRATE)
+	c.position = Vector3(pos.x, 0, pos.y)
+	return c
+
+func _get_mat(cover) -> Material:
+	if not cover.mesh: return null
+	if cover.mesh is MeshInstance3D:
+		return cover.mesh.material_override
+	else:
+		# Composite Prop Root (Node3D)
+		for child in cover.mesh.get_children():
+			if child is MeshInstance3D:
+				return child.material_override
+	return null
+
 func _ready():
 	print("--- VERIFYING: DestructibleCover Material Isolation ---")
 	
@@ -21,8 +39,8 @@ func _ready():
 	crate1._ready()
 	crate2._ready()
 	
-	var mat1 = crate1.mesh.material_override
-	var mat2 = crate2.mesh.material_override
+	var mat1 = _get_mat(crate1)
+	var mat2 = _get_mat(crate2)
 	
 	# PRE-CHECK: They should be the SAME resource instance thanks to cache
 	if mat1 == mat2:
@@ -35,8 +53,8 @@ func _ready():
 	crate1._mouse_enter()
 	
 	# Check isolation
-	var mat1_new = crate1.mesh.material_override
-	var mat2_new = crate2.mesh.material_override
+	var mat1_new = _get_mat(crate1)
+	var mat2_new = _get_mat(crate2)
 	
 	# Crate 1 should have a NEW material (Duplicate)
 	if mat1_new != mat1:
@@ -66,7 +84,7 @@ func _ready():
 	crate2.take_damage(1) # Should COW Crate 2 now
 	
 	# Crate 2 should now have its OWN, unique material (different from Crate 1's unique one)
-	if crate2.mesh.material_override != mat2 and crate2.mesh.material_override != crate1.mesh.material_override:
+	if _get_mat(crate2) != mat2 and _get_mat(crate2) != _get_mat(crate1):
 		print("PASS: Crate 2 created its own unique material on damage.")
 	else:
 		print("FAIL: Crate 2 material state unexpected check.")
@@ -79,10 +97,3 @@ func _ready():
 	
 	print("--- VERIFICATION COMPLETE ---")
 	get_tree().quit()
-
-func _spawn_crate(parent, pos):
-	var c = load("res://scripts/entities/DestructibleCover.gd").new()
-	parent.add_child(c)
-	c.set_variant(DestructibleCover.Variant.CRATE)
-	c.position = Vector3(pos.x, 0, pos.y)
-	return c

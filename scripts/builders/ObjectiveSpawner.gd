@@ -83,10 +83,8 @@ func spawn_objectives(type: int, count: int, config: MissionConfig, grid_manager
 		
 		# 3. Finalize Spawn
 		if obj_node:
-			# Wall clearing logic for Hydrant moved here/handled by position finder result?
-			# Actually, if type == DEFENSE, we might need to clear the wall at 'pos'.
-			if type == OBJ_TYPE_DEFENSE:
-				_clear_walls_at(pos, grid_manager)
+			# SAFETY: Ensure target tile is physically clear (removes overlapping Crates/Walls)
+			_ensure_tile_clear(pos, grid_manager)
 
 			_add_to_scene(obj_node, pos, grid_manager)
 			
@@ -100,7 +98,7 @@ func spawn_objectives(type: int, count: int, config: MissionConfig, grid_manager
 	return successful_spawns
 
 func spawn_loot(grid_manager: GridManager) -> void:
-    # Single random loot spawn (10% chance logic usually in Manager, but method here)
+	# Single random loot spawn (10% chance logic usually in Manager, but method here)
 	var pos = _find_valid_objective_pos(OBJ_TYPE_LOOT, grid_manager)
 	if pos != Vector2(-1, -1):
 		var crate = load("res://scripts/entities/LootCrate.gd").new()
@@ -173,21 +171,34 @@ func _find_spiral_pos(center: Vector2, range_limit: int, gm: GridManager) -> Vec
 				
 	return center # Fallback
 
-func _clear_walls_at(pos: Vector2, gm: GridManager):
+
+func _ensure_tile_clear(pos: Vector2, gm: GridManager):
 	# Raycast or Grid Data check to remove walls
 	var world_pos = gm.get_world_position(pos)
-	var space = gm.get_world_3d().direct_space_state
+	var space = gm.get_viewport().world_3d.direct_space_state
 	var query = PhysicsRayQueryParameters3D.create(world_pos + Vector3(0, 10, 0), world_pos - Vector3(0, 10, 0))
 	var result = space.intersect_ray(query)
 	
 	if result and result.collider:
 		if result.collider.is_class("StaticBody3D") or result.collider.is_in_group("Destructible"):
-			result.collider.queue_free()
+			GameManager.log(LOG_PREFIX, "Clearing obstacle at ", pos, " to make room for Objective.")
+			
+			# FIX: DestructibleCover is a Node3D root. StaticBody is a child. 
+			# We must free the ROOT, otherwise the MeshInstance remains visible!
+			if result.collider.has_meta("owner_node"):
+				var owner_node = result.collider.get_meta("owner_node")
+				if is_instance_valid(owner_node):
+					owner_node.queue_free()
+				else:
+					result.collider.queue_free()
+			else:
+				result.collider.queue_free()
 			# Update Grid Data to remove "Wall" type?
 			# LevelGenerator uses Type 1 for Wall.
 			if gm.grid_data.has(pos):
 				gm.grid_data[pos]["type"] = 0 # FLOOR
 				gm.grid_data[pos]["walkable"] = true
+				gm.grid_data[pos]["unit"] = null # Clear unit ref logic
 
 
 func _attach_rescue_beacon(unit: Node):

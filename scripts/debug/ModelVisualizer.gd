@@ -11,11 +11,14 @@ var ui_mode_select: OptionButton
 var ui_class_select: OptionButton
 var ui_anim_select: OptionButton
 var ui_enemy_select: OptionButton
+var ui_cover_select: OptionButton
 var container_corgi: Control
 var container_enemy: Control
+var container_cover: Control
 
 const MODE_CORGI = 0
 const MODE_ENEMY = 1
+const MODE_COVER = 2
 
 const CORGI_CLASSES = ["Recruit", "Scout", "Heavy", "Paramedic", "Sniper", "Grenadier"]
 const ENEMY_TYPES = {
@@ -61,6 +64,11 @@ func _setup_scene():
 	environment.ambient_light_color = Color(0.3, 0.3, 0.3)
 	env.environment = environment
 	add_child(env)
+	
+	# Needed for PropBuilder wall check simulation (avoid crash)
+	var gm = GridManager.new()
+	gm.name = "GridManager"
+	add_child(gm)
 
 func _setup_ui():
 	var canvas = CanvasLayer.new()
@@ -87,6 +95,7 @@ func _setup_ui():
 	ui_mode_select = OptionButton.new()
 	ui_mode_select.add_item("Corgi (Player)", MODE_CORGI)
 	ui_mode_select.add_item("Enemy (AI)", MODE_ENEMY)
+	ui_mode_select.add_item("Cover (Prop)", MODE_COVER)
 	ui_mode_select.item_selected.connect(_on_mode_changed)
 	hb_mode.add_child(ui_mode_select)
 	
@@ -119,6 +128,20 @@ func _setup_ui():
 	ui_enemy_select.item_selected.connect(_on_enemy_type_changed)
 	container_enemy.add_child(ui_enemy_select)
 
+	# --- COVER CONTROLS ---
+	container_cover = VBoxContainer.new()
+	vbox.add_child(container_cover)
+
+	container_cover.add_child(_create_label("Cover Variant:"))
+	ui_cover_select = OptionButton.new()
+	var DC = load("res://scripts/entities/DestructibleCover.gd")
+	var vars = DC.Variant.keys()
+	for v in vars:
+		ui_cover_select.add_item(v)
+	ui_cover_select.item_selected.connect(_on_cover_changed)
+	container_cover.add_child(ui_cover_select)
+
+
 	vbox.add_child(HSeparator.new())
 	
 	var chk_rot = CheckButton.new()
@@ -137,11 +160,14 @@ func _on_mode_changed(idx):
 	var mode = ui_mode_select.get_selected_id()
 	container_corgi.visible = (mode == MODE_CORGI)
 	container_enemy.visible = (mode == MODE_ENEMY)
+	container_cover.visible = (mode == MODE_COVER)
 	
 	if mode == MODE_CORGI:
 		_on_corgi_class_changed(ui_class_select.selected)
-	else:
+	elif mode == MODE_ENEMY:
 		_on_enemy_type_changed(ui_enemy_select.selected)
+	elif mode == MODE_COVER:
+		_on_cover_changed(ui_cover_select.selected)
 
 func _on_corgi_class_changed(idx):
 	if idx < 0: return
@@ -153,6 +179,11 @@ func _on_enemy_type_changed(idx):
 	var type_name = ui_enemy_select.get_item_text(idx)
 	var type_id = ENEMY_TYPES[type_name]
 	_spawn_enemy(type_id)
+
+func _on_cover_changed(idx):
+	if idx < 0: return
+	# Index matches enum value since keys() is ordered
+	_spawn_cover(idx)
 
 func _spawn_corgi(cls_name: String):
 	_clear_model()
@@ -184,6 +215,19 @@ func _spawn_enemy(type_id: int):
 	
 	# Cleanup mocks
 	unit.free() 
+
+func _spawn_cover(variant_id: int):
+	_clear_model()
+	
+	var DC = load("res://scripts/entities/DestructibleCover.gd")
+	var cover = DC.new()
+	pivot.add_child(cover)
+	
+	# Initialize with dummy data
+	# Variant ID is passed directly
+	# GM needed? We added a dummy GM to scene in _setup_scene
+	var gm = get_node_or_null("GridManager")
+	cover.initialize(Vector2(0,0), gm, "", variant_id)
 
 func _clear_model():
 	for c in pivot.get_children():
@@ -221,5 +265,4 @@ func _create_label(t: String) -> Label:
 	var l = Label.new()
 	l.text = t
 	return l
-
 # Replace usages in _setup_ui with _create_label(text)
