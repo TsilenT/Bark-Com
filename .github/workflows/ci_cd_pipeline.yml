@@ -232,37 +232,19 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     
     steps:
-      - name: Download Windows Build
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-build
-          
-      - name: Download Web Build
-        uses: actions/download-artifact@v4
-        with:
-          name: web-build
+      - name: Setup Butler
+        run: |
+          curl -L -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip butler.zip
+          chmod +x butler
+          ./butler -V
 
-      - name: Deploy Windows
-        uses: manleydev/butler-publish-itchio-action@master
-        timeout-minutes: 60
+      - name: Deploy to itch.io
         env:
-          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
-          CHANNEL: windows
-          ITCH_GAME: bark-com
-          ITCH_USER: eldritch-dream
-          PACKAGE: windows_build.zip
-          VERSION: ${{ github.ref_name }}
-
-      - name: Deploy Web
-        uses: manleydev/butler-publish-itchio-action@master
-        timeout-minutes: 60
-        env:
-          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
-          CHANNEL: web
-          ITCH_GAME: bark-com
-          ITCH_USER: eldritch-dream
-          PACKAGE: web_build.zip
-          VERSION: ${{ github.ref_name }}
+          BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
+        run: |
+          ./butler push windows_build.zip eldritch-dream/bark-com:windows --userversion ${{ github.ref_name }}
+          ./butler push web_build.zip eldritch-dream/bark-com:web --userversion ${{ github.ref_name }}
 
   release_github:
     name: 🏷️ Create GitHub Release
