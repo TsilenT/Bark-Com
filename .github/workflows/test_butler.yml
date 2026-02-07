@@ -23,7 +23,7 @@ jobs:
           BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
         run: |
           echo "🔐 Verifying Credentials..."
-          ./butler status
+          ./butler status eldritch-dream/bark-com
 
       - name: Dry Run Deploy (Simulation)
         env:
