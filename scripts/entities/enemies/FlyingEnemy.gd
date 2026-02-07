@@ -13,8 +13,8 @@ func _ready():
 			mesh.material_override = StandardMaterial3D.new()
 		mesh.material_override.albedo_color = Color.LIGHT_SKY_BLUE
 
-	# Fallback Weapon
-	if not primary_weapon:
+	# Fallback Weapon (Ensure Range 6, Overwrite Unit.gd default "Bark")
+	if not primary_weapon or (primary_weapon.display_name == "Bark"):
 		var bolt = WeaponData.new()
 		bolt.display_name = "Ectoplasm Bolt"
 		bolt.damage = 1
@@ -52,3 +52,30 @@ func get_reachable_tiles(gm: GridManager) -> Array:
 				queue.append({"pos": next_pos, "dist": c_dist + 1})
 
 	return reachable
+
+
+
+
+func check_los(tile: Vector2, target, gm: GridManager) -> bool:
+	const FLIGHT_HEIGHT = 4.0 # 2 Tiles High
+	
+	# Ray from elevated position
+	var my_eye = gm.get_world_position(tile) + Vector3(0, FLIGHT_HEIGHT, 0)
+	var target_center = target.position + Vector3(0, 1.0, 0)
+	
+	var space = get_viewport().world_3d.direct_space_state
+	var query = PhysicsRayQueryParameters3D.create(my_eye, target_center)
+	query.exclude = [self.get_rid()] 
+	
+	var result = space.intersect_ray(query)
+	
+	if result:
+		if result.collider == target:
+			return true
+		# Helper: Check if hit object is very close to target (sometimes origin differs)
+		if result.collider.get_parent() == target:
+			return true
+			
+		return false # Blocked
+		
+	return true # Clear line if nothing hit

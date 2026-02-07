@@ -100,9 +100,9 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			data.action_points = 2
 			
 			var w = WeaponScript.new()
-			w.display_name = "Claws"
-			w.damage = 4
-			w.weapon_range = 1
+			w.display_name = "Ectoplasm Bolt"
+			w.damage = 1
+			w.weapon_range = 6
 			data.primary_weapon = w
 
 		"Tank":
