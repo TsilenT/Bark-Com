@@ -15,10 +15,13 @@ var ui_cover_select: OptionButton
 var container_corgi: Control
 var container_enemy: Control
 var container_cover: Control
+var container_obstacle: Control # New UI Container
+var ui_biome_select: OptionButton
 
 const MODE_CORGI = 0
 const MODE_ENEMY = 1
 const MODE_COVER = 2
+const MODE_OBSTACLE = 3 # New Mode
 
 const CORGI_CLASSES = ["Recruit", "Scout", "Heavy", "Paramedic", "Sniper", "Grenadier"]
 const ENEMY_TYPES = {
@@ -96,6 +99,7 @@ func _setup_ui():
 	ui_mode_select.add_item("Corgi (Player)", MODE_CORGI)
 	ui_mode_select.add_item("Enemy (AI)", MODE_ENEMY)
 	ui_mode_select.add_item("Cover (Prop)", MODE_COVER)
+	ui_mode_select.add_item("Obstacle (MapTile)", MODE_OBSTACLE)
 	ui_mode_select.item_selected.connect(_on_mode_changed)
 	hb_mode.add_child(ui_mode_select)
 	
@@ -141,6 +145,19 @@ func _setup_ui():
 	ui_cover_select.item_selected.connect(_on_cover_changed)
 	container_cover.add_child(ui_cover_select)
 
+	# --- OBSTACLE CONTROLS ---
+	container_obstacle = VBoxContainer.new()
+	vbox.add_child(container_obstacle)
+	
+	container_obstacle.add_child(_create_label("Biome:"))
+	ui_biome_select = OptionButton.new()
+	# Biomes: INDOORS=0, GARDEN=1, STREET=2, SNOW=3, DESERT=4
+	var biomes = {0: "Indoors", 1: "Garden", 2: "Street", 3: "Snow", 4: "Desert"}
+	for id in biomes:
+		ui_biome_select.add_item(biomes[id], id)
+	ui_biome_select.item_selected.connect(_on_biome_changed)
+	container_obstacle.add_child(ui_biome_select)
+
 
 	vbox.add_child(HSeparator.new())
 	
@@ -161,6 +178,7 @@ func _on_mode_changed(idx):
 	container_corgi.visible = (mode == MODE_CORGI)
 	container_enemy.visible = (mode == MODE_ENEMY)
 	container_cover.visible = (mode == MODE_COVER)
+	container_obstacle.visible = (mode == MODE_OBSTACLE)
 	
 	if mode == MODE_CORGI:
 		_on_corgi_class_changed(ui_class_select.selected)
@@ -168,6 +186,8 @@ func _on_mode_changed(idx):
 		_on_enemy_type_changed(ui_enemy_select.selected)
 	elif mode == MODE_COVER:
 		_on_cover_changed(ui_cover_select.selected)
+	elif mode == MODE_OBSTACLE:
+		_on_biome_changed(ui_biome_select.selected)
 
 func _on_corgi_class_changed(idx):
 	if idx < 0: return
@@ -215,6 +235,32 @@ func _spawn_enemy(type_id: int):
 	
 	# Cleanup mocks
 	unit.free() 
+
+func _on_biome_changed(idx):
+	if idx < 0: return
+	# Get Biome ID from metadata or assume ordered add?
+	# We used add_item(label, id). so use get_item_id
+	var biome_id = ui_biome_select.get_item_id(idx)
+	_spawn_obstacle(biome_id)
+
+func _spawn_obstacle(biome_id: int):
+	_clear_model()
+	
+	var map_tile_scene = load("res://scenes/map/MapTile.tscn")
+	var tile = map_tile_scene.instantiate()
+	pivot.add_child(tile)
+	
+	# initialize(pos, biome, type, elevation, is_walkable, gm)
+	# GM is present in scene tree from _setup_scene
+	var gm = get_node_or_null("GridManager")
+	# Type 1 = OBSTACLE
+	tile.initialize(Vector2(0,0), biome_id, 1, 0, false, gm)
+	
+	# Force Visibility (MapTile defaults to hidden awaiting Fog of War)
+	if tile.has_method("set_vision_state"):
+		tile.set_vision_state(true, false)
+	else:
+		tile.visible = true
 
 func _spawn_cover(variant_id: int):
 	_clear_model()

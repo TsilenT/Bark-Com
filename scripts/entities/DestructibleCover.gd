@@ -16,7 +16,7 @@ enum Variant {
 	HYDRANT,
 	TRASH_CAN,
 	PLANTER,
-	SERVER_RACK,
+	FILING_CABINET,
 	WALL,
 	DUMPSTER,
 	BENCH,
@@ -86,7 +86,7 @@ static func get_variant_from_string(name: String) -> int:
 		"Hydrant": return Variant.HYDRANT
 		"Trash Can": return Variant.TRASH_CAN
 		"Planter": return Variant.PLANTER
-		"Server Rack": return Variant.SERVER_RACK
+		"Filing Cabinet": return Variant.FILING_CABINET
 		"Wall": return Variant.WALL
 		"Dumpster": return Variant.DUMPSTER
 		"Bench": return Variant.BENCH
@@ -103,32 +103,61 @@ static func get_variant_from_string(name: String) -> int:
 		"Cactus": return Variant.CACTUS
 	return -1
 	
-func initialize(pos: Vector2, gm: Node, biome: String = "", variant_override: int = -1):
+func initialize(pos: Vector2, gm: Node, biome_data = null, variant_override = -1):
 	super.initialize(pos, gm)
 	
-	if variant_override != -1:
-		set_variant(variant_override)
+	# Handle Defaults manually to match parent signature (Variant/Null)
+	var final_biome = 2 # Default Street
+	if biome_data != null:
+		if biome_data is int:
+			final_biome = biome_data
+		elif biome_data is String:
+			# Fallback Mapping
+			match biome_data:
+				"Office", "Indoors": final_biome = LevelGenerator.Biome.OFFICE
+				"Garden": final_biome = LevelGenerator.Biome.GARDEN
+				"Snow": final_biome = LevelGenerator.Biome.SNOW
+				"Desert": final_biome = LevelGenerator.Biome.DESERT
+				_: final_biome = LevelGenerator.Biome.STREET
+	
+	var final_variant = -1
+	if variant_override != null and variant_override != -1:
+		final_variant = int(variant_override)
+
+	var biome_int = final_biome # Alias for logic below
+
+	if final_variant != -1:
+		# Biome Override for Generic Walls
+		if final_variant == Variant.WALL:
+			match biome_int:
+				LevelGenerator.Biome.GARDEN: set_variant(Variant.HEDGE_BLOCK)
+				LevelGenerator.Biome.DESERT: set_variant(Variant.RUIN_PILLAR)
+				LevelGenerator.Biome.SNOW: set_variant(Variant.ICE_CRYSTAL)
+				LevelGenerator.Biome.OFFICE: set_variant(Variant.FILING_CABINET) 
+				_: set_variant(Variant.WALL)
+		else:
+			set_variant(final_variant)
 	else:
 		# Auto-Variant based on Biome
-		match biome:
-			"Street":
+		match biome_int:
+			LevelGenerator.Biome.STREET:
 				var roll = randf()
-				if roll < 0.4: set_variant(Variant.HYDRANT) # 40%
-				elif roll < 0.7: set_variant(Variant.DUMPSTER) # 30%
-				elif roll < 0.9: set_variant(Variant.BENCH) # 20%
-				else: set_variant(Variant.TRASH_CAN) # 10%
-			"Garden":
+				if roll < 0.4: set_variant(Variant.HYDRANT) 
+				elif roll < 0.7: set_variant(Variant.DUMPSTER) 
+				elif roll < 0.9: set_variant(Variant.BENCH) 
+				else: set_variant(Variant.TRASH_CAN) 
+			LevelGenerator.Biome.GARDEN:
 				var roll = randf()
 				if roll < 0.4: set_variant(Variant.HEDGE_BLOCK)
 				elif roll < 0.7: set_variant(Variant.STONE_PLANTER)
 				else: set_variant(Variant.FOUNTAIN_BASE)
-			"Indoors":
+			LevelGenerator.Biome.OFFICE:
 				var roll = randf()
 				if roll < 0.4: set_variant(Variant.OFFICE_DESK)
-				elif roll < 0.7: set_variant(Variant.SERVER_RACK)
+				elif roll < 0.7: set_variant(Variant.FILING_CABINET)
 				elif roll < 0.9: set_variant(Variant.COFFEE_MACHINE)
 				else: set_variant(Variant.CRATE)
-			"Snow":
+			LevelGenerator.Biome.SNOW:
 				var roll = randf()
 				if roll < 0.5: set_variant(Variant.SNOWMAN)
 				elif roll < 0.8: set_variant(Variant.ICE_CRYSTAL)
@@ -144,7 +173,7 @@ func initialize(pos: Vector2, gm: Node, biome: String = "", variant_override: in
 
 	# Update Grid Logic based on Variant
 	var cover_type = GridManager.TileType.COVER_HALF
-	if variant_type in [Variant.HYDRANT, Variant.SERVER_RACK, Variant.WALL, Variant.COFFEE_MACHINE, Variant.RUIN_PILLAR, Variant.HEDGE_BLOCK, Variant.ICE_CRYSTAL, Variant.CACTUS]:
+	if variant_type in [Variant.HYDRANT, Variant.FILING_CABINET, Variant.WALL, Variant.COFFEE_MACHINE, Variant.RUIN_PILLAR, Variant.HEDGE_BLOCK, Variant.ICE_CRYSTAL, Variant.CACTUS]:
 		cover_type = GridManager.TileType.COVER_FULL
 		
 	gm.update_tile_state(pos, false, 2.0 if cover_type == GridManager.TileType.COVER_FULL else 1.0, cover_type)
@@ -304,6 +333,18 @@ func _create_procedural_variant(type: Variant):
 			# Legs
 			prop_builder.add_box(Vector3(-0.8, 0.225, 0), Vector3(0.1, 0.45, 0.5), Color(0.2, 0.2, 0.2), Vector3.ZERO, 0.5, 0.8)
 			prop_builder.add_box(Vector3(0.8, 0.225, 0), Vector3(0.1, 0.45, 0.5), Color(0.2, 0.2, 0.2), Vector3.ZERO, 0.5, 0.8)
+			
+		Variant.WALL: # Concrete Street Wall
+			new_hp = 20
+			c_size = Vector3(1.8, 2.0, 0.5)
+			c_offset_y = 1.0
+			_snap_rotation(false) 
+			# Concrete Slab
+			prop_builder.add_box(Vector3(0, 1.0, 0), Vector3(1.8, 2.0, 0.5), Color(0.4, 0.4, 0.45))
+			# Rebar / Details
+			prop_builder.add_box(Vector3(0, 2.0, 0), Vector3(1.6, 0.1, 0.3), Color(0.35, 0.35, 0.4))
+			# Graffiti
+			prop_builder.add_box(Vector3(0.3, 1.2, 0.26), Vector3(0.5, 0.5, 0.05), Color(0.8, 0.2, 0.2), Vector3(0, 0, 15))
 
 		# --- DESERT ---
 		Variant.RUIN_PILLAR:
@@ -486,23 +527,27 @@ func _create_procedural_variant(type: Variant):
 			prop_builder.add_box(Vector3(-0.35, 1.1, 0), Vector3(0.15, 0.15, 0.15), Color(1.0, 1.0, 1.0))
 			prop_builder.add_box(Vector3(-0.52, 1.1, -0.1), Vector3(0.12, 0.12, 0.12), Color(0.9, 0.8, 0.5))
 
-		Variant.SERVER_RACK:
-			new_hp = 8
-			c_size = Vector3(0.8, 2.0, 0.8)
-			c_offset_y = 1.0
-			# Black Cabinet Frame
-			prop_builder.add_box(Vector3(0, 1.0, 0), Vector3(0.6, 2.0, 0.6), Color(0.1, 0.1, 0.15))
-			# Server Blades (Stacked) - Stick OUT slightly
-			for i in range(6):
-				var y = 0.4 + (i * 0.3)
-				var col = Color(0.25, 0.25, 0.3)
-				# Frame is W0.6, D0.6. Blades should be W0.7 to stick out? Or D0.7?
-				# Usually stick out front. Z+ is front.
-				# Blade: W0.5, H0.25, D0.65?
-				prop_builder.add_box(Vector3(0, y, 0.05), Vector3(0.5, 0.25, 0.7), col)
-				# Lights per blade (On front face)
-				prop_builder.add_box(Vector3(-0.15, y, 0.41), Vector3(0.05, 0.05, 0.02), Color(0.2, 0.9, 0.2) if i % 2 == 0 else Color(0.9, 0.6, 0.2))
-				prop_builder.add_box(Vector3(0.15, y, 0.41), Vector3(0.2, 0.05, 0.02), Color(0.1, 0.3, 0.8))
+		Variant.FILING_CABINET:
+			new_hp = 10
+			c_size = Vector3(0.8, 1.5, 0.8)
+			c_offset_y = 0.75
+			_snap_rotation(true) # Back against wall
+			
+			# Main Metal Body (Beige/Grey)
+			prop_builder.add_box(Vector3(0, 0.75, 0), Vector3(0.7, 1.5, 0.7), Color(0.75, 0.75, 0.7))
+			
+			# Drawers (3 stacked) - Front is -Z
+			# Drawer 1
+			prop_builder.add_box(Vector3(0, 0.35, -0.36), Vector3(0.6, 0.4, 0.05), Color(0.7, 0.7, 0.65))
+			prop_builder.add_box(Vector3(0, 0.35, -0.39), Vector3(0.1, 0.02, 0.02), Color(0.5, 0.5, 0.5)) # Handle
+			
+			# Drawer 2
+			prop_builder.add_box(Vector3(0, 0.8, -0.36), Vector3(0.6, 0.4, 0.05), Color(0.7, 0.7, 0.65))
+			prop_builder.add_box(Vector3(0, 0.8, -0.39), Vector3(0.1, 0.02, 0.02), Color(0.5, 0.5, 0.5)) # Handle
+
+			# Drawer 3
+			prop_builder.add_box(Vector3(0, 1.25, -0.36), Vector3(0.6, 0.4, 0.05), Color(0.7, 0.7, 0.65))
+			prop_builder.add_box(Vector3(0, 1.25, -0.39), Vector3(0.1, 0.02, 0.02), Color(0.5, 0.5, 0.5)) # Handle
 			
 		_:
 			# Fallback Crate

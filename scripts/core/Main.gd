@@ -569,7 +569,7 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 				
 				# Variant Selection (Pass requested variant if specific, else use Biome autogen)
 				var biome_int = tile.get("biome", 1) 
-				var biome_str = LevelGenerator.get_biome_string(biome_int)
+				# var biome_str = LevelGenerator.get_biome_string(biome_int) # EXPLICITLY REMOVED for Unification
 					
 				# Resolve Variant Override (if explicitly set in Map Data)
 				var variant_override = -1
@@ -577,8 +577,8 @@ func spawn_test_scenario(grid_manager: GridManager, mission: Resource = null):  
 				if raw_variant_str:
 					variant_override = DestructibleCover.get_variant_from_string(raw_variant_str)
 				
-				# Initialize (Variant override takes precedence over Biome)
-				cover.initialize(coord, grid_manager, biome_str, variant_override)
+				# Initialize (Pass Int Biome directly)
+				cover.initialize(coord, grid_manager, biome_int, variant_override)
 
 				count += 1
 		

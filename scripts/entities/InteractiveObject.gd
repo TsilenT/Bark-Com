@@ -5,10 +5,11 @@ var grid_pos: Vector2
 var grid_manager: Node
 
 
-func initialize(pos: Vector2, gm: Node):
+func initialize(pos: Vector2, gm: Node, _arg3 = null, _arg4 = null):
 	grid_pos = pos
 	grid_manager = gm
-	position = gm.get_world_position(pos)
+	if gm.has_method("get_world_position"):
+		position = gm.get_world_position(pos)
 
 
 func interact(_unit):

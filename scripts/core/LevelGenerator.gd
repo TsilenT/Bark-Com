@@ -101,7 +101,7 @@ const CHUNK_OVERLOOK = ["..^..", "L.+.L", ".+++.", ".+++.", "....."]
 const CHUNK_DOOR_MAZE = ["W|W|W", "|...|", "W.|.W", "|...|", "W|W|W"]
 
 # Map Biome Types to Colors in Visualizer later?
-enum Biome { INDOORS, GARDEN, STREET, SNOW, DESERT }
+enum Biome { OFFICE, GARDEN, STREET, SNOW, DESERT }
 
 # Generation Override for Verification Scenarios
 static var override_mode: String = ""
@@ -109,7 +109,7 @@ static var override_mode: String = ""
 
 static func get_biome_string(biome: int) -> String:
 	match biome:
-		Biome.INDOORS: return "Indoors"
+		Biome.OFFICE: return "Office"
 		Biome.GARDEN: return "Garden"
 		Biome.STREET: return "Street"
 		Biome.SNOW: return "Snow"
@@ -143,7 +143,7 @@ func generate_level(biome_override: int = -1) -> Dictionary:
 				var template = CHUNK_DOOR_MAZE
 				# Alternating Rotation
 				if (cx + cy) % 2 == 0: template = _rotate_template(template, 1)
-				_stitch_chunk(final_grid, template, cx * CHUNK_SIZE, cy * CHUNK_SIZE, Biome.INDOORS)
+				_stitch_chunk(final_grid, template, cx * CHUNK_SIZE, cy * CHUNK_SIZE, Biome.OFFICE)
 		return final_grid
 
 	while attempts < max_attempts and not valid_map:
@@ -160,7 +160,7 @@ func generate_level(biome_override: int = -1) -> Dictionary:
 				match type_roll:
 					0:
 						template = CHUNK_KITCHEN
-						biome = Biome.INDOORS
+						biome = Biome.OFFICE
 					1:
 						template = CHUNK_GARDEN
 						biome = Biome.GARDEN

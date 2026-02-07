@@ -49,7 +49,20 @@ func _setup_visuals(biome: int, type: int, elevation: int, gm: Node):
 	var custom_color = null
 	
 	if type == GridManager.TileType.RAMP and gm:
-		custom_color = Color(0.6, 0.5, 0.3)
+		# Biome Colors for Ramps
+		match biome:
+			LevelGenerator.Biome.GARDEN: custom_color = Color(0.3, 0.45, 0.25) # Garden
+			LevelGenerator.Biome.OFFICE: custom_color = Color(0.6, 0.5, 0.3) # Office (Wood/Carpet?)
+			LevelGenerator.Biome.DESERT: custom_color = Color(0.75, 0.65, 0.5) # Desert
+			LevelGenerator.Biome.SNOW: custom_color = Color(0.7, 0.85, 0.95) # Snow
+			_: custom_color = Color(0.2, 0.25, 0.3) # Street (Asphalt/Dark Metal)
+
+		# Persist this color for fog updates!
+		if not has_meta("biome_color_override"):
+			set_meta("biome_color_override", custom_color)
+		else:
+			# Update it just in case setup called again
+			set_meta("biome_color_override", custom_color)
 		
 		# Create Ramp Mesh
 		var ramp = PrismMesh.new()
@@ -129,11 +142,98 @@ func _setup_visuals(biome: int, type: int, elevation: int, gm: Node):
 		add_child(ladder_node)
 				
 	elif type == GridManager.TileType.OBSTACLE and gm:
-		custom_color = Color(0.2, 0.2, 0.2)
-		var wall = BoxMesh.new()
-		wall.size = Vector3(2.0, 2.0, 2.0)
-		mesh_instance.mesh = wall
-		mesh_instance.position.y = 1.0
+		# --- HIGH FIDELITY BIOME OBSTACLES ---
+		# Uses PropBuilder to generate composite meshes
+		
+		var pb = load("res://scripts/builders/PropBuilder.gd").new()
+		pb.start()
+		
+		# Default Grey
+		custom_color = Color(0.2, 0.2, 0.2) 
+
+		match biome:
+			1: # GARDEN (Overgrown Stone Wall)
+				custom_color = Color(0.35, 0.3, 0.25)
+				# Main Wall
+				pb.add_box(Vector3(0, 1.0, 0), Vector3(2.0, 2.0, 2.0), custom_color)
+				# Vines / Leaves
+				for i in range(8):
+					var p = Vector3(randf_range(-1.0, 1.0), randf_range(0.5, 1.8), 1.05 * (1 if randf() > 0.5 else -1))
+					if i % 2 == 0: # Side flip
+						p = Vector3(1.05 * (1 if randf() > 0.5 else -1), p.y, randf_range(-1.0, 1.0))
+					
+					pb.add_box(p, Vector3(0.4, 0.4, 0.2), Color(0.1, 0.4, 0.1), Vector3(randf()*45, randf()*45, 0))
+
+			0: # INDOORS (Server Mainframe)
+				custom_color = Color(0.1, 0.1, 0.12)
+				# Main Tower
+				pb.add_box(Vector3(0, 1.0, 0), Vector3(1.8, 2.0, 1.8), custom_color)
+				# Vents (Top)
+				pb.add_box(Vector3(0, 1.9, 0), Vector3(1.4, 0.05, 1.4), Color(0.05, 0.05, 0.05))
+				# Glowing Light Strips (Vertical)
+				pb.add_box(Vector3(-0.8, 1.0, 0.91), Vector3(0.1, 1.8, 0.05), Color(0.0, 0.5, 1.0))
+				pb.add_box(Vector3(0.8, 1.0, 0.91), Vector3(0.1, 1.8, 0.05), Color(0.0, 0.5, 1.0))
+				# Data Banks (Rows of lights)
+				for i in range(4):
+					var y = 0.5 + i * 0.4
+					pb.add_box(Vector3(0, y, 0.91), Vector3(1.0, 0.2, 0.02), Color(0.1, 0.2, 0.3))
+					# Active LEDs
+					pb.add_box(Vector3(-0.35 + randf()*0.7, y, 0.92), Vector3(0.05, 0.05, 0.05), Color(0.2, 1.0, 0.2))
+
+			4: # DESERT (Sandstone Ruin Wall - Modular)
+				custom_color = Color(0.7, 0.6, 0.5)
+				# Blocky construction to tile well
+				# Base Block
+				pb.add_box(Vector3(0, 0.5, 0), Vector3(2.0, 1.0, 2.0), custom_color)
+				# Top Block (Slightly offset for ruin look)
+				pb.add_box(Vector3(0.1, 1.5, 0), Vector3(1.8, 1.0, 1.8), custom_color)
+				# Erosion/Detail bits
+				pb.add_box(Vector3(0.9, 0.2, 0.9), Vector3(0.4, 0.4, 0.4), custom_color, Vector3(15, 45, 0))
+				pb.add_box(Vector3(-0.9, 1.8, -0.9), Vector3(0.3, 0.3, 0.3), custom_color, Vector3(10, 10, 10))
+				
+			3: # SNOW (Glacial Ice Ridge - Modular)
+				custom_color = Color(0.6, 0.8, 1.0, 0.9) # Translucent Blue
+				# Main Ice Block (Irregular Prism-like)
+				# To make it wall-like, we use a wide prism or box
+				pb.add_box(Vector3(0, 0.8, 0), Vector3(2.0, 1.6, 1.8), custom_color)
+				# Snow Cap (White)
+				pb.add_box(Vector3(0, 1.7, 0), Vector3(2.0, 0.3, 1.8), Color(0.95, 0.95, 1.0))
+				# Spikes/Irregularity
+				pb.add_prism(Vector3(0.5, 2.0, 0.5), Vector3(0.5, 0.8, 0.5), Color(0.95, 0.95, 1.0), Vector3(0, 15, 5))
+				pb.add_prism(Vector3(-0.6, 1.8, -0.4), Vector3(0.6, 0.6, 0.6), Color(0.95, 0.95, 1.0), Vector3(10, -20, 0))
+
+			_: # STREET (Reinforced Concrete Barrier)
+				custom_color = Color(0.3, 0.3, 0.3)
+				# Main Concrete Slab
+				pb.add_box(Vector3(0, 1.0, 0), Vector3(2.0, 2.0, 1.8), custom_color)
+				# Chamfered Top? Or just simple
+				# Warning Stripes (Corners)
+				var yellow = Color(0.9, 0.8, 0.1)
+				pb.add_box(Vector3(0.95, 1.0, 0.91), Vector3(0.15, 2.0, 0.05), yellow) # Front R
+				pb.add_box(Vector3(-0.95, 1.0, 0.91), Vector3(0.15, 2.0, 0.05), yellow) # Front L
+				pb.add_box(Vector3(0.95, 1.0, -0.91), Vector3(0.15, 2.0, 0.05), yellow) # Back R
+				pb.add_box(Vector3(-0.95, 1.0, -0.91), Vector3(0.15, 2.0, 0.05), yellow) # Back L
+				# Rebar sticking out top
+				for i in range(3):
+					pb.add_cylinder(Vector3(-0.5 + i*0.5, 2.1, 0), 0.05, 0.4, Color(0.4, 0.2, 0.1), Vector3(randf()*10, 0, randf()*10))
+				
+		# Finalize
+		var model = pb.commit(self)
+		
+		# Cleanup the placeholder mesh instance
+		mesh_instance.visible = false
+		# mesh_instance.queue_free() # FIX: Caused crash in _update_visual_state. Keep it alive but hidden.
+		
+		# Set model position (PropBuilder assumes local 0,0,0 usually, but we added at world 0,0,0 relative to tile?)
+		# Tile children are relative to Tile.
+		# PropBuilder adds to target_parent (self).
+		# MapTile is centered at (x*2, elev, y*2).
+		# PropBuilder `add_box` pos is local offset.
+		# So `Vector3(0, 1.0, 0)` means 1m up from Tile origin. Correct.
+		
+		# Ensure visibility
+		visible = false # Hidden until FOW reveals it
+
 		
 	elif (type == GridManager.TileType.COVER_FULL or type == GridManager.TileType.COVER_HALF) and gm:
 		var is_destructible = false
@@ -192,7 +292,12 @@ func _update_visual_state(is_visible: bool, is_fogged: bool):
 	# This avoids overwriting custom materials with Biome Cache.
 	
 	if mesh_instance.mesh is PrismMesh: 
-		_apply_custom_fog(is_fogged, Color(0.6, 0.5, 0.3))
+		# FIX: Uses persisted biome color instead of hardcoded brown
+		var ramp_col = Color(0.6, 0.5, 0.3)
+		if has_meta("biome_color_override"):
+			ramp_col = get_meta("biome_color_override")
+			
+		_apply_custom_fog(is_fogged, ramp_col)
 		return
 	elif mesh_instance.mesh is BoxMesh and (mesh_instance.mesh.size.y >= 2.0 and mesh_instance.mesh.size.x >= 1.9): # Wall check
 		_apply_custom_fog(is_fogged, Color(0.2, 0.2, 0.2))

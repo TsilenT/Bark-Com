@@ -42,12 +42,11 @@ static func _create_material(biome: int, elevation: int, is_fogged: bool) -> Sta
 	return mat
 
 static func _get_biome_color(biome: int) -> Color:
-	# Matches LevelGenerator Biome Enums:
-	# INDOORS=0, GARDEN=1, STREET=2, SNOW=3, DESERT=4
+	# Matches LevelGenerator Biome Enums
 	match biome:
-		0: return Color(0.8, 0.75, 0.6) # INDOORS
-		1: return Color(0.2, 0.6, 0.2) # GARDEN
-		2: return Color(0.2, 0.2, 0.25) # STREET
-		3: return Color(0.9, 0.95, 1.0) # SNOW
-		4: return Color(0.9, 0.8, 0.5) # DESERT
+		LevelGenerator.Biome.OFFICE: return Color(0.8, 0.75, 0.6) # OFFICE
+		LevelGenerator.Biome.GARDEN: return Color(0.2, 0.6, 0.2) # GARDEN
+		LevelGenerator.Biome.STREET: return Color(0.2, 0.2, 0.25) # STREET
+		LevelGenerator.Biome.SNOW: return Color(0.9, 0.95, 1.0) # SNOW
+		LevelGenerator.Biome.DESERT: return Color(0.9, 0.8, 0.5) # DESERT
 		_: return Color(0.8, 0.75, 0.7) # Fallback
