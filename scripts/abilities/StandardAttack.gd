@@ -32,8 +32,8 @@ func get_valid_tiles(grid_manager, user) -> Array[Vector2]:
 						if u.is_in_group("Objectives") or u.is_in_group("TreatBags"):
 							continue
 
-				if u.get("grid_pos") and u.grid_pos.distance_to(user.grid_pos) <= r:
-					valid.append(u.grid_pos)
+					if "grid_pos" in u and u.grid_pos.distance_to(user.grid_pos) <= r:
+						valid.append(u.grid_pos)
 	
 	# 2. Destructibles (Barrels, Cover, Doors)
 	var destructibles = tree.get_nodes_in_group("Destructible")
