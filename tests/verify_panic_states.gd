@@ -15,7 +15,8 @@ func _ready():
 	print("TEST START: verify_panic_states")
 	
 	# Watchdog (Required for Strict Analysis)
-	add_child(load("res://tests/TestSafeGuard.gd").new())
+	var guard = load("res://tests/TestSafeGuard.gd").new()
+	add_child(guard)
 	
 	# SETUP
 	var CorgiUnitScript = load("res://scripts/entities/CorgiUnit.gd")
@@ -366,6 +367,10 @@ func _ready():
 		
 		# Flush deletion queue
 		for i in range(10):
+			await get_tree().process_frame
+			
+		if is_instance_valid(guard):
+			guard.queue_free()
 			await get_tree().process_frame
 			
 		get_tree().quit(0)

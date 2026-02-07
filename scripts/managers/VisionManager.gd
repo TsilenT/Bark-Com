@@ -107,13 +107,20 @@ func update_vision(all_units: Array):
 			# STRICT VISION: Only show if currently in visible_tiles OR explored
 			# FIX: Also toggle collision so hidden props don't block clicks
 			var collider = p if p is CollisionObject3D else null
+			var is_vis = false
 			
 			if visible_tiles.has(prop.grid_pos) or explored_tiles.has(prop.grid_pos):
-				prop.visible = true
-				if collider: collider.collision_layer = 1
-			else:
-				prop.visible = false
-				if collider: collider.collision_layer = 2 # Move to Layer 2 (Hidden)
+				is_vis = true
+				
+			# Apply Visibility
+			prop.visible = is_vis
+			
+			if collider: 
+				collider.collision_layer = 1 if is_vis else 2 # Layer 2 = Hidden
+				
+			# Notify Logic (For Beams, etc)
+			if prop.has_method("on_vision_update"):
+				prop.on_vision_update(is_vis, explored_tiles.has(prop.grid_pos))
 
 
 

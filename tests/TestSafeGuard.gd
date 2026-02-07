@@ -11,6 +11,12 @@ func _ready():
 	_thread.start(_watchdog_loop)
 	print("TestSafeGuard: Watchdog started (Threaded). Timeout: ", timeout, "s")
 	
+	# Auto-Inject Test Mode (Suppress Audio/Visuals)
+	# Use dynamic access to avoid compile-time dependency on GameManager Autoload
+	var gm = get_node_or_null("/root/GameManager")
+	if gm:
+		gm.is_test_mode = true
+	
 	# Auto-Attach LeakDetector
 	var ld_script = load("res://tests/LeakDetector.gd")
 	if ld_script:
@@ -22,6 +28,10 @@ func _exit_tree():
 	_quit_requested = true
 	if _thread.is_started():
 		_thread.wait_to_finish()
+		
+	var gm = get_node_or_null("/root/GameManager")
+	if gm:
+		gm.is_test_mode = false
 		
 	# Check leaks on exit (if LeakDetector child exists)
 	# Tolerance 2: TestSafeGuard itself + LeakDetector child are often counted as orphans during _exit_tree
