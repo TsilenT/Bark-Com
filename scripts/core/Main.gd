@@ -1286,8 +1286,15 @@ var pending_item_slot = -1
 func _on_movement_complete():
 	var vm = get_node("VisionManager")
 	var tm = get_node("TurnManager")
+	var gm = get_node("GridManager")
+	
 	if vm and tm:
 		vm.update_vision(tm.units)
+
+	# FIX: Refresh Pathfinding Occupancy immediately after move finishes
+	# This ensures the tile we just left is marked as free for backtracking.
+	if gm and tm:
+		gm.refresh_pathfinding(tm.units)
 
 	# REFRESH UI (Buttons dependent on position need update)
 	if game_ui and selected_unit:

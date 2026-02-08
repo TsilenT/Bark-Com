@@ -109,6 +109,10 @@ func set_input_state(new_state: int):
 	if new_state == InputState.MOVING and selected_unit:
 		var gv = _get_grid_visualizer()
 		if gv and grid_manager:
+			# FIX: Ensure pathfinding is fresh so "ignore_unit" logic works for current tile
+			if turn_manager and "units" in turn_manager:
+				grid_manager.refresh_pathfinding(turn_manager.units, selected_unit)
+
 			# Only show reachable tiles if unit has AP to move
 			if _can_unit_move():
 				var reachable = grid_manager.get_reachable_tiles(selected_unit.grid_pos, selected_unit.mobility)
