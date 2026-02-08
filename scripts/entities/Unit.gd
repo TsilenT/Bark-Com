@@ -344,6 +344,11 @@ func _check_cooldowns_start():
 func refresh_ap():
 	current_ap = max_ap
 	is_overwatch_active = false
+	
+	var sb = get_node_or_null("/root/SignalBus")
+	if sb:
+		sb.on_unit_stats_changed.emit(self)
+		
 	if DEBUG_UNIT:
 		print(name, " AP refreshed to ", current_ap)
 

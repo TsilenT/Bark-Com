@@ -475,7 +475,8 @@ func _parse_data(data) -> Dictionary:
 		d["level"] = raw_level
 		d["hp"] = data.current_hp; d["max_hp"] = data.max_hp
 		d["sanity"] = data.current_sanity; d["max_sanity"] = data.max_sanity
-		d["ap"] = data.max_ap
+		d["ap"] = data.current_ap # Fix: Use Current AP for display
+		d["max_ap"] = data.max_ap
 		d["mobility"] = data.mobility
 		d["accuracy"] = data.accuracy
 		d["defense"] = data.defense
