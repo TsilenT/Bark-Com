@@ -771,15 +771,21 @@ func _show_roster():
 		look_btn.pressed.connect(func(): _show_customization_selector(c))
 		actions.add_child(look_btn)
 		
+
 		# Promote?
 		var lvl = c.get("level", 1)
 		var xp = c.get("xp", 0)
+		
+		var promo = Button.new()
+		promo.text = "PROMOTE!"
+		actions.add_child(promo)
+		
 		if xp >= (lvl * 100):
-			var promo = Button.new()
-			promo.text = "PROMOTE!"
 			promo.modulate = Color.YELLOW
 			promo.pressed.connect(func(): _start_promotion(c))
-			actions.add_child(promo)
+		else:
+			promo.disabled = true
+			promo.modulate = Color(1, 1, 1, 0.5) # Explicit dim to ensure visibility change
 
 	# RECRUITMENT BUTTON
 	right_col.add_child(HSeparator.new())
