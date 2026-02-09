@@ -1,19 +1,20 @@
 param($WorkerId, $TaskListFile, $GodotPath, $IsolationDir, $LogFile, $Strict)
 $ErrorActionPreference = 'Stop'
 
-# Isolation
 if ($IsLinux) {
     $env:HOME = $IsolationDir
     $env:XDG_DATA_HOME = "$IsolationDir/.local/share"
     $env:XDG_CONFIG_HOME = "$IsolationDir/.config"
+
+    New-Item -ItemType Directory -Path $env:XDG_DATA_HOME -Force | Out-Null
+    New-Item -ItemType Directory -Path $env:XDG_CONFIG_HOME -Force | Out-Null
 } else {
     $env:APPDATA = "$IsolationDir\AppData\Roaming"
     $env:LOCALAPPDATA = "$IsolationDir\AppData\Local"
-}
 
-# Create dirs if needed by Godot
-New-Item -ItemType Directory -Path $env:APPDATA -Force | Out-Null
-New-Item -ItemType Directory -Path $env:LOCALAPPDATA -Force | Out-Null
+    New-Item -ItemType Directory -Path $env:APPDATA -Force | Out-Null
+    New-Item -ItemType Directory -Path $env:LOCALAPPDATA -Force | Out-Null
+}
 
 Add-Content -Path $LogFile -Value "--- WORKER $WorkerId STARTED ---"
 
