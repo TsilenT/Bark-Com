@@ -89,13 +89,43 @@ func run_test():
 		get_tree().quit(1)
 		return
 	
+	# 1. Free Watchdog first (Runs LeakDetector)
+	# 1. Watchdog Handling
+	# We DO NOT free watchdog manually as it causes "Object Locked" errors errors due to threading.
+	# We rely on get_tree().quit() to trigger _exit_tree() naturally.
+
+
+	# 2. Free BaseScene
 	if base_scene:
-		base_scene.free()
+		if is_instance_valid(base_scene):
+			base_scene.free()
+		base_scene = null
 		
 	if slot:
-		slot.free()
+		if is_instance_valid(slot):
+			slot.free()
+		slot = null
 		
+	# 3. Clean up GameManager Internal Nodes (Audio, Nemesis, NameGen)
+	# Because GameManager is AutoLoad, it persists, but we want to confirm they aren't the leak source.
 	if GameManager.audio_manager:
-		GameManager.audio_manager.stop_music()
+		if is_instance_valid(GameManager.audio_manager):
+			GameManager.audio_manager.free()
+		GameManager.audio_manager = null
+		
+	if GameManager.name_gen:
+		if is_instance_valid(GameManager.name_gen):
+			GameManager.name_gen.free()
+		GameManager.name_gen = null
+		
+	var nm = GameManager.get_node_or_null("NemesisManager")
+	if nm:
+		nm.free()
+
+	# 4. Clear Data
+	GameManager.roster.clear()
+	GameManager.inventory.clear()
+	GameManager.shop_stock.clear()
+	GameManager._master_item_list.clear() # Clear master list too
 		
 	get_tree().quit(0)

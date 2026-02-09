@@ -2,7 +2,7 @@ param ()
 
 $ErrorActionPreference = "Stop"
 $GodotFilesPattern = "\.(gd|tscn|tres|import|json|cfg)$|project\.godot|tests/"
-$CoreFilesPattern = "^(scripts/core/|scripts/managers/GameManager.gd|project.godot|tests/run_tests.ps1|scripts/Global.gd)" # Add meaningful core patterns here
+$CoreFilesPattern = "^(scripts/core/|scripts/managers/SignalBus.gd|project.godot|tests/run_tests.*\.ps1)"
 
 # 1. Get Staged Files
 echo "Checking staged files..."
@@ -72,12 +72,12 @@ if ($RunAll -or ($Targets.Count -eq 0)) {
     if (-not $RunAll) { Write-Host "No specific tests found for changes. Running Full Suite." -ForegroundColor Cyan }
     
     # Run all tests
-    & ".\tests\run_tests.ps1"
+    & ".\tests\run_tests_parallel.ps1" -Jobs 4
     exit $LASTEXITCODE
 } else {
     Write-Host "Running Targeted Tests: $($Targets -join ', ')" -ForegroundColor Cyan
     
     # Pass targets to runner
-    & ".\tests\run_tests.ps1" -Targets $Targets
+    & ".\tests\run_tests_parallel.ps1" -Filters $Targets -Jobs 4
     exit $LASTEXITCODE
 }

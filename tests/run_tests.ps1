@@ -42,7 +42,7 @@ if ($Targets.Count -gt 0) {
 else {
     Write-Host "Searching for All Tests..." -ForegroundColor Cyan
     $TestScenes = Get-ChildItem -Path "tests" -Filter "*.tscn" -Recurse | Where-Object { $_.Name -notlike "Mock*" -and $_.Name -notlike "*Utils*" }
-    $TestScripts = Get-ChildItem -Path "tests" -Filter "*.gd" -Recurse | Where-Object { $_.Name -notlike "Mock*" -and $_.Name -notlike "*Utils*" -and $_.Name -notlike "TestSafeGuard.gd" -and $_.Name -notlike "LeakDetector.gd" }
+    $TestScripts = Get-ChildItem -Path "tests" -Filter "*.gd" -Recurse | Where-Object { $_.Name -notlike "Mock*" -and $_.Name -notlike "*Utils*" -and $_.Name -notlike "TestSafeGuard.gd" -and $_.Name -notlike "LeakDetector.gd" -and $_.Name -notlike "check_user_dir.gd" }
 }
 
 $GlobalExitCode = 0

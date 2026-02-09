@@ -53,43 +53,27 @@ jobs:
         if: steps.filter.outputs.run_tests == 'true'
         run: godot --headless --editor --quit
           
+      - name: Setup PowerShell
+        if: steps.filter.outputs.run_tests == 'true'
+        run: |
+          apt-get update
+          apt-get install -y wget apt-transport-https software-properties-common
+          wget -q https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb
+          dpkg -i packages-microsoft-prod.deb
+          rm packages-microsoft-prod.deb
+          apt-get update
+          apt-get install -y powershell
+
       - name: Run Dynamic Tests
         if: steps.filter.outputs.run_tests == 'true'
         timeout-minutes: 15
+        shell: pwsh
         run: |
-          echo "🔍 Discovering Tests..."
-          FAIL=0
+          # Make scripts executable (just in case)
+          chmod +x tests/run_tests_parallel.ps1
           
-          # 1. Run all Test Scenes (*.tscn)
-          find tests -name "*.tscn" | while read -r scene; do
-            echo "🎬 Running Scene: $scene"
-            godot --headless --path . "$scene"
-            if [ $? -ne 0 ]; then
-                echo "❌ FAILURE in $scene"
-                touch .test_failed
-                FAIL=1
-            fi
-          done
-          
-          # 2. Run Standalone Scripts
-          find tests -name "*.gd" | while read -r script; do
-            if grep -q -E "extends\s+(SceneTree|MainLoop)" "$script"; then
-              echo "📜 Running Script: $script"
-              godot --headless -s "$script"
-              if [ $? -ne 0 ]; then
-                  echo "❌ FAILURE in $script"
-                  touch .test_failed
-                  FAIL=1
-              fi
-            fi
-          done
-          
-          if [ -f .test_failed ]; then
-            echo "🔥 SOME TESTS FAILED"
-            exit 1
-          else
-             echo "✅ ALL TESTS PASSED"
-          fi
+          # Run tests with 4 parallel jobs
+          ./tests/run_tests_parallel.ps1 -Jobs 4
 
   build:
     name: 📦 Build

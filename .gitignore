@@ -32,3 +32,9 @@ Desktop.ini
 # Builds and Artifacts
 builds/
 coverage/
+
+# Test Artifacts
+tests/parallel_logs/
+test_log.txt
+test_log_parallel.txt
+*_log.txt
