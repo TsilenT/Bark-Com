@@ -154,6 +154,12 @@ func _on_unit_died(unit):
 	
 	# 3. Generic Status Check
 	_check_mission_status()
+	
+	# 4. Refresh Grid (Clear Dead Unit from Pathfinding)
+	if grid_manager and turn_manager:
+		# Use TurnManager's unit list which contains everyone.
+		# Dead units (hp<=0) are automatically ignored by refresh_pathfinding.
+		grid_manager.refresh_pathfinding(turn_manager.units)
 
 
 func _on_turn_changed(_phase, turn_num):

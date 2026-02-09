@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://repro_dead_enemy_blocking"]
+
+[ext_resource type="Script" path="res://tests/reproduce_dead_enemy_blocking.gd" id="1_repro"]
+
+[node name="ReproduceDeadEnemyBlocking" type="Node"]
+script = ExtResource("1_repro")
