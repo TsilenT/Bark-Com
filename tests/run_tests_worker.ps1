@@ -39,7 +39,15 @@ foreach ($task in $Tasks) {
         $OldEAP = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         
-        $Output = & cmd /c "`"$GodotPath`" $CmdArgs" 2>&1
+        if ($IsLinux) {
+            # Linux (PowerShell Core): Direct invocation usually captures exit codes correctly
+            Add-Content -Path $LogFile -Value "DEBUG: Invoking directly `"$GodotPath`" $CmdArgs"
+            $Output = & $GodotPath $ArgsList 2>&1
+        } else {
+            # Windows: cmd /c wrapper needed for some exit code edge cases
+            Add-Content -Path $LogFile -Value "DEBUG: Invoking cmd /c `"$GodotPath`" $CmdArgs"
+            $Output = & cmd /c "`"$GodotPath`" $CmdArgs" 2>&1
+        }
         $ExitCode = $LASTEXITCODE
         
         $ErrorActionPreference = $OldEAP
