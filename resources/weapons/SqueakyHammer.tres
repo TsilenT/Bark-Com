@@ -11,3 +11,4 @@ display_name = "Squeaky Hammer"
 description = "Melee weapon. Squeaks on impact, causing annoyance."
 icon = "res://assets/icons/weapons/icon_squeaky_hammer.svg"
 cost = 40
+damage_type = "Melee"

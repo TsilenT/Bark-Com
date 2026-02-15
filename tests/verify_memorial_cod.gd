@@ -62,11 +62,9 @@ func _run_test():
 	enemy.primary_weapon = claws
 	
 	print(LOG_PREFIX, "--- Scenario A: Enemy Kill ---")
-	if victim_a.has_method("take_damage_from"):
-		# Simulate CombatResolver mapping: Claws -> Melee
-		victim_a.take_damage_from(100, enemy, gm.DMG_TYPE_MELEE) 
-	else:
-		victim_a.take_damage(100) # Baseline
+	# Simulate CombatResolver mapping: Claws -> Melee
+	victim_a.take_damage_from(100, enemy, gm.DMG_TYPE_MELEE) 
+
 	await _wait_for_death()
 	
 	
@@ -75,11 +73,9 @@ func _run_test():
 	var friend = _create_unit("Boomer", "Grenadier", "Player")
 	
 	print(LOG_PREFIX, "--- Scenario B: Friendly Fire ---")
-	if victim_b.has_method("take_damage_from"):
-		# Simulate CombatResolver mapping: Grenade -> Explosion
-		victim_b.take_damage_from(100, friend, gm.DMG_TYPE_EXPLOSION)
-	else:
-		victim_b.take_damage(100)
+	# Simulate CombatResolver mapping: Grenade -> Explosion
+	victim_b.take_damage_from(100, friend, gm.DMG_TYPE_EXPLOSION)
+
 	await _wait_for_death()
 
 	# --- Scenario C: Barrel Explosion ---
@@ -90,20 +86,16 @@ func _run_test():
 	_allocated_nodes.append(barrel)
 	
 	print(LOG_PREFIX, "--- Scenario C: Barrel ---")
-	if victim_c.has_method("take_damage_from"):
-		victim_c.take_damage_from(100, barrel, gm.DMG_TYPE_EXPLOSION)
-	else:
-		victim_c.take_damage(100)
+	victim_c.take_damage_from(100, barrel, gm.DMG_TYPE_EXPLOSION)
+
 	await _wait_for_death()
 
 	# --- Scenario D: Poison ---
 	var victim_d = _create_unit("Victim D", "Paramedic")
 	
 	print(LOG_PREFIX, "--- Scenario D: Poison ---")
-	if victim_d.has_method("take_damage_from"):
-		victim_d.take_damage_from(100, null, gm.DMG_TYPE_POISON)
-	else:
-		victim_d.take_damage(100)
+	victim_d.take_damage_from(100, null, gm.DMG_TYPE_POISON)
+
 	await _wait_for_death()
 
 	

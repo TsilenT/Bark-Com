@@ -23,18 +23,22 @@ func execute(user, target, target_tile: Vector2, gm: GridManager):
 	
 	for v in victims:
 		if v != user:
-			v.take_damage(8)
+			v.take_damage_from(8, user, GameManager.DMG_TYPE_EXPLOSION)
 			
 	# Damage Destructible Props (Walls, Barrels)
 	var props = user.get_tree().get_nodes_in_group("Destructible")
 	for p in props:
+		var target_obj = p
+		if p is StaticBody3D:
+			target_obj = p.get_parent()
+			
 		# check if valid and in radius
-		if is_instance_valid(p) and p.global_position.distance_to(user.global_position) <= world_radius:
+		if is_instance_valid(target_obj) and target_obj.global_position.distance_to(user.global_position) <= world_radius:
 			# Avoid double dipping if it somehow counted as a Unit (e.g. Barrel in both groups)
-			if victims.has(p):
+			if victims.has(target_obj):
 				continue
-			if p.has_method("take_damage"):
-				p.take_damage(8)
+				
+			target_obj.take_damage_from(8, user, GameManager.DMG_TYPE_EXPLOSION)
 			
 	# Kill User
 	if user.has_method("die"):

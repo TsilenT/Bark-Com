@@ -1,6 +1,8 @@
 extends CharacterBody3D
 class_name Unit
 
+const LOG_PREFIX = "Unit"
+
 const DEBUG_UNIT = false
 
 signal on_death(unit)
@@ -549,11 +551,7 @@ func move_along_path(path_points: Array, grid_points: Array = []):
 
 
 # --- COMBAT & DAMAGE ---
-func take_damage(amount: int):
-	# Forward to new signature with defaults
-	take_damage_from(amount, null, "Generic")
-
-func take_damage_from(amount: int, source = null, dmg_type: String = "Generic"):
+func take_damage_from(amount: int, source = null, dmg_type: String = GameManager.DMG_TYPE_GENERIC):
 	if is_dead:
 		return
 	
@@ -616,7 +614,16 @@ func take_damage_from(amount: int, source = null, dmg_type: String = "Generic"):
 		if DEBUG_UNIT:
 			print(name, " lost Overwatch due to damage.")
 
-	SignalBus.on_request_floating_text.emit(self, str(damage_int), Color.RED)
+	var text_color = Color.RED
+	match dmg_type:
+		GameManager.DMG_TYPE_POISON, GameManager.DMG_TYPE_ACID:
+			text_color = Color.GREEN
+		GameManager.DMG_TYPE_FIRE, GameManager.DMG_TYPE_EXPLOSION:
+			text_color = Color.ORANGE
+		_:
+			text_color = Color.RED
+
+	SignalBus.on_request_floating_text.emit(self, str(damage_int), text_color)
 
 	if current_hp <= 0:
 		# Ensure we don't process further logic if dead

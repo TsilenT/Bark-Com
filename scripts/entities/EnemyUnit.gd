@@ -2,7 +2,7 @@ extends Unit
 class_name EnemyUnit
 
 signal action_complete
-const LOG_PREFIX = "EnemyAI: "
+const AI_LOG = "EnemyAI: "
 
 # const EnemyDataScript - Removed, using Global Class EnemyData directly
 
@@ -120,9 +120,9 @@ func initialize_from_data(data: EnemyData):
 	if DEBUG_AI:
 		var gm = get_node_or_null("/root/GameManager")
 		if gm:
-			gm.log(LOG_PREFIX, "Initialized ", name, " with behavior ", data.ai_behavior)
+			gm.log(AI_LOG, "Initialized ", name, " with behavior ", data.ai_behavior)
 		else:
-			print(LOG_PREFIX, "Initialized ", name, " with behavior ", data.ai_behavior)
+			print(AI_LOG, "Initialized ", name, " with behavior ", data.ai_behavior)
 
 
 func _load_behavior(type: int):
@@ -191,7 +191,7 @@ func check_los(tile: Vector2, target, gm: GridManager) -> bool:
 func _end_action():
 	var gm = get_node_or_null("/root/GameManager")
 	if gm:
-		gm.log(LOG_PREFIX, name, " _end_action() called. Emitting action_complete.")
+		gm.log(AI_LOG, name, " _end_action() called. Emitting action_complete.")
 	action_complete.emit()
 
 
@@ -203,11 +203,11 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 	
 	var gm = get_node_or_null("/root/GameManager")
 	if gm:
-		gm.log(LOG_PREFIX, name, " decide_action START. AP: ", current_ap)
+		gm.log(AI_LOG, name, " decide_action START. AP: ", current_ap)
 
 	if DEBUG_AI:
 		if gm:
-			gm.log(LOG_PREFIX, name, " starting turn. AP: ", current_ap)
+			gm.log(AI_LOG, name, " starting turn. AP: ", current_ap)
 	
 	var actions_taken = 0
 	const MAX_ACTIONS = 5 # Infinite loop guard
@@ -219,12 +219,12 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 		# If no target, Idle
 		if not target_unit:
 			state = State.IDLE
-			if DEBUG_AI and gm: gm.log(LOG_PREFIX, "- No valid targets. Spending AP to end turn.")
+			if DEBUG_AI and gm: gm.log(AI_LOG, "- No valid targets. Spending AP to end turn.")
 			spend_ap(current_ap) 
 			break
 			
 		if DEBUG_AI and gm:
-			gm.log(LOG_PREFIX, "- Target: ", target_unit.name, " AP: ", current_ap)
+			gm.log(AI_LOG, "- Target: ", target_unit.name, " AP: ", current_ap)
 
 		# 2. Evaluate Actions (Abilities vs Weapon)
 		var best_action = null
@@ -256,7 +256,7 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 
 		# 3. Execute or Move
 		if best_action:
-			if gm: gm.log(LOG_PREFIX, "Chose action: ", best_action.type, " Score: ", best_score)
+			if gm: gm.log(AI_LOG, "Chose action: ", best_action.type, " Score: ", best_score)
 			
 			# REVEAL ON ACTION (Muzzle Flash)
 			reveal_position()
@@ -286,7 +286,7 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 				# Loop continues to see if we can attack/ability now
 			else:
 				# Stuck or no valid moves
-				if DEBUG_AI and gm: gm.log(LOG_PREFIX, "- No valid moves or decided to wait.")
+				if DEBUG_AI and gm: gm.log(AI_LOG, "- No valid moves or decided to wait.")
 				spend_ap(current_ap) # End turn
 				break
 	
@@ -335,7 +335,7 @@ func reveal_position():
 	if not visible:
 		visible = true
 		set_visual_mode("NORMAL")
-		GameManager.log(LOG_PREFIX, name, " REVEALED by Action!")
+		GameManager.log(AI_LOG, name, " REVEALED by Action!")
 		SignalBus.on_request_floating_text.emit(self, "REVEALED!", Color.RED)
 
 

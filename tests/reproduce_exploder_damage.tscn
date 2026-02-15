@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://reproduce_exploder_damage"]
+
+[ext_resource type="Script" path="res://tests/reproduce_exploder_damage.gd" id="1_script"]
+
+[node name="ReproduceExploderDamage" type="Node"]
+script = ExtResource("1_script")

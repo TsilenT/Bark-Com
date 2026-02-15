@@ -46,7 +46,7 @@ func execute(user, _target_unit, target_pos: Vector2, grid_manager) -> String:
 	
 	for unit in units:
 		# Friendly Fire is ENABLED for Rockets
-		unit.take_damage(6)
+		unit.take_damage_from(6, user, GameManager.DMG_TYPE_EXPLOSION)
 		
 		# Shred Armor
 		var shred = load("res://scripts/resources/statuses/ShreddedArmorStatus.gd").new()
@@ -55,14 +55,19 @@ func execute(user, _target_unit, target_pos: Vector2, grid_manager) -> String:
 	# Detonate Explosives (Barrels)
 	var destructibles = user.get_tree().get_nodes_in_group("Destructible")
 	for obj in destructibles:
+		var target_obj = obj
+		if obj is StaticBody3D:
+			target_obj = obj.get_parent()
+			
+		if not is_instance_valid(target_obj):
+			continue
+			
 		# Check distance
-		var obj_pos_2d = Vector2(obj.global_position.x, obj.global_position.z)
+		var obj_pos_2d = Vector2(target_obj.global_position.x, target_obj.global_position.z)
 		var center_2d = Vector2(world_pos.x, world_pos.z)
 		
 		if obj_pos_2d.distance_to(center_2d) <= world_radius:
-			if obj.has_method("take_damage"):
-				obj.take_damage(999) # INSTANT DETONATION
-				print("Rocket detonated ", obj.name)
+			target_obj.take_damage_from(999, user, GameManager.DMG_TYPE_EXPLOSION) # INSTANT DETONATION
 
 	# Deduct AP
 	if user.has_method("spend_ap"):

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://reproduce_turn_crash"]
+
+[ext_resource type="Script" path="res://tests/reproduce_turn_crash.gd" id="1_script"]
+
+[node name="ReproduceTurnCrash" type="Node"]
+script = ExtResource("1_script")

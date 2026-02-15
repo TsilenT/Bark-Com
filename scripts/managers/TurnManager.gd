@@ -243,23 +243,26 @@ func start_enemy_turn():
 						result = await waiter.completed
 					
 					if result == "timeout":
-						GameManager.log(LOG_PREFIX, "WARNING: Action timed out for ", unit.name, "! Forcing continuation.")
+						var u_name = "Unknown"
+						if is_instance_valid(unit): u_name = unit.name
+						GameManager.log(LOG_PREFIX, "WARNING: Action timed out for ", u_name, "! Forcing continuation.")
 					else:
-						GameManager.log(LOG_PREFIX, "Received action_complete for ", unit.name)
+						if is_instance_valid(unit):
+							GameManager.log(LOG_PREFIX, "Received action_complete for ", unit.name)
 				else:
 					await get_tree().create_timer(1.0).timeout
 
 				# await unit.decide_action(units, gm) # Replaced with signal wait
 				
 				# SAFETY CHECK: If unit is still moving, force wait
-				if unit.get("is_moving"):
+				if is_instance_valid(unit) and unit.get("is_moving"):
 					# print("TM: WARNING! Unit ", unit.name, " is still moving after decide_action! Forcing wait.")
 					var move_wait_time = 0.0
-					while unit.get("is_moving") and move_wait_time < 5.0:
+					while is_instance_valid(unit) and unit.get("is_moving") and move_wait_time < 5.0:
 						await get_tree().process_frame
 						move_wait_time += get_process_delta_time()
 					
-					if move_wait_time >= 5.0:
+					if move_wait_time >= 5.0 and is_instance_valid(unit):
 						GameManager.log(LOG_PREFIX, "WARNING: Unit ", unit.name, " stuck in is_moving state! Forcing continuation.")
 					# print("TM: Unit ", unit.name, " finished forced move wait.")
 

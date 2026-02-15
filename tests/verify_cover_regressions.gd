@@ -81,7 +81,7 @@ func _ready():
 
 	# 3. Test Damage Isolation
 	print("Action: Damaging Crate 2...")
-	crate2.take_damage(1) # Should COW Crate 2 now
+	crate2.take_damage_from(1, null, "Generic") # Should COW Crate 2 now
 	
 	# Crate 2 should now have its OWN, unique material (different from Crate 1's unique one)
 	if _get_mat(crate2) != mat2 and _get_mat(crate2) != _get_mat(crate1):

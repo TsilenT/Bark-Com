@@ -30,7 +30,7 @@ func execute(user, _target_unit, target_pos: Vector2, grid_manager) -> String:
 		unit.apply_effect(status)
 		
 		# Deal Chip Damage
-		unit.take_damage(1) 
+		unit.take_damage_from(1, user, GameManager.DMG_TYPE_BALLISTIC) 
 		SignalBus.on_request_floating_text.emit(unit, "SUPPRESSED!", Color.ORANGE)
 		print(user.name, " suppressed ", unit.name)
 	

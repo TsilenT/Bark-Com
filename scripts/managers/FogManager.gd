@@ -218,7 +218,5 @@ func apply_sanity_penalties(units: Array):
 			if not is_tile_explored(unit.grid_pos):
 				var dmg = 5
 				unit.take_sanity_damage(dmg)
-				SignalBus.on_request_floating_text.emit(
-					unit, "Lost in Fog! -5 Sanity", Color.PURPLE
-				)
+				# Floating text is handled by unit.take_sanity_damage
 				# print("FogManager: ", unit.name, " took damage from Fog.")

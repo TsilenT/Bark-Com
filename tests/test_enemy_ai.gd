@@ -40,7 +40,7 @@ class MockPlayerUnit extends Node3D:
 	
 	func get_type(): return "Unit"
 	
-	func take_damage(amount):
+	func take_damage_from(amount, _source, _type):
 		current_hp -= amount
 		
 	func has_perk(p): return false
@@ -51,6 +51,12 @@ class MockPlayerUnit extends Node3D:
 			"pos": grid_pos
 		}
 	
+func _exit_tree():
+	if is_instance_valid(grid_manager): grid_manager.free()
+	if is_instance_valid(mock_tm): mock_tm.free()
+	if is_instance_valid(get_node_or_null("GridVisualizer")): get_node("GridVisualizer").free()
+	if is_instance_valid(get_node_or_null("VisionManager")): get_node("VisionManager").free()
+
 func _ready():
 	print("--- TEST START: Enemy AI ---")
 	add_child(load("res://tests/TestSafeGuard.gd").new())

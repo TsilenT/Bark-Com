@@ -20,12 +20,14 @@ func _ready():
 		SignalBus.on_turn_changed.connect(_on_turn_changed)
 
 
-func take_damage(amount: int):
-	take_damage_custom(amount, "Normal")
+func take_damage_from(amount: int, source = null, dmg_type: String = GameManager.DMG_TYPE_GENERIC):
+	take_damage_custom(amount, dmg_type)
+
+
 
 
 # OVERRIDE
-func take_damage_custom(amount: int, damage_source_type: String = "Normal"):
+func take_damage_custom(amount: int, damage_source_type: String = GameManager.DMG_TYPE_GENERIC):
 	if has_meta("is_detonating"):
 		return
 
@@ -40,7 +42,7 @@ func take_damage_custom(amount: int, damage_source_type: String = "Normal"):
 		should_detonate = true
 
 	if should_detonate:
-		if damage_source_type == "Explosion":
+		if damage_source_type == GameManager.DMG_TYPE_EXPLOSION:
 			# CHAIN REACTION: Instant (No Camera)
 			detonate()
 		else:
@@ -160,12 +162,8 @@ func detonate():
 		if is_instance_valid(unit) and not unit.is_dead:
 			var dist = center.distance_to(unit.grid_pos)
 			if dist <= explosion_range:
-				if unit.has_method("take_damage_from"):
-					print(" - Explosion hits unit ", unit.name)
-					unit.take_damage_from(explosion_damage, self, GameManager.DMG_TYPE_EXPLOSION)
-				elif unit.has_method("take_damage"):
-					print(" - Explosion hits unit ", unit.name)
-					unit.take_damage(explosion_damage)
+				print(" - Explosion hits unit ", unit.name)
+				unit.take_damage_from(explosion_damage, self, GameManager.DMG_TYPE_EXPLOSION)
 
 	# Other Volatile Objects (Chain Reaction)
 	var props = get_tree().get_nodes_in_group("Destructible")
@@ -178,11 +176,8 @@ func detonate():
 		if is_instance_valid(prop) and prop != self and "grid_pos" in prop:
 			var dist = center.distance_to(prop.grid_pos)
 			if dist <= explosion_range:
-				if prop.has_method("take_damage_custom"):
-					print(" - Explosion hits prop ", prop.name)
-					prop.take_damage_custom(999, "Explosion")  # Trigger Instant
-				elif prop.has_method("take_damage"):
-					prop.take_damage(999)  # Destroy normal cover
+				print(" - Explosion hits prop ", prop.name)
+				prop.take_damage_from(999, self, GameManager.DMG_TYPE_EXPLOSION)
 
 	# 3. Destroy Self
 	# Remove Fire VFX if valid

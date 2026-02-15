@@ -35,33 +35,30 @@ func execute(user, target, target_grid, grid_manager):
 		dmg = user.primary_weapon.damage 
 	
 	# Deal Damage
-	if target.has_method("take_damage"):
-		target.take_damage(dmg)
-		
-		# Apply Effects
-		if target.has_method("apply_effect"):
-			var slow = load("res://scripts/resources/statuses/SlowedStatus.gd").new()
-			slow.duration = 2
-			target.apply_effect(slow)
-			var vuln = load("res://scripts/resources/statuses/VulnerableStatus.gd").new()
-			vuln.duration = 2
-			target.apply_effect(vuln)
-			
-		if SignalBus:
-			SignalBus.on_request_floating_text.emit(target, "ANKLES BITTEN!", Color.RED)
-		
-		# Start Cooldown
-		start_cooldown()
-		
-		# Deduct AP
-		if user.has_method("spend_ap"):
-			user.spend_ap(ap_cost)
-			
-		SignalBus.on_combat_action_finished.emit(user)
-		return "Used Go For Ankles"
+	target.take_damage_from(dmg, user, GameManager.DMG_TYPE_MELEE)
 	
-	return "Invalid Target"
-
+	# Apply Effects
+	if target.has_method("apply_effect"):
+		var slow = load("res://scripts/resources/statuses/SlowedStatus.gd").new()
+		slow.duration = 2
+		target.apply_effect(slow)
+		var vuln = load("res://scripts/resources/statuses/VulnerableStatus.gd").new()
+		vuln.duration = 2
+		target.apply_effect(vuln)
+		
+	if SignalBus:
+		SignalBus.on_request_floating_text.emit(target, "ANKLES BITTEN!", Color.RED)
+	
+	# Start Cooldown
+	start_cooldown()
+	
+	# Deduct AP
+	if user.has_method("spend_ap"):
+		user.spend_ap(ap_cost)
+		
+	SignalBus.on_combat_action_finished.emit(user)
+	return "Used Go For Ankles"
+	
 func get_valid_tiles(grid_manager, user) -> Array[Vector2]:
 	var valid: Array[Vector2] = []
 	# Adjacent enemies (1.5 tiles ~ Diagonals)

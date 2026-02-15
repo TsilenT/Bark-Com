@@ -100,7 +100,7 @@ func execute(user, _target_unit, target_tile: Vector2, grid_manager: GridManager
 		for u in units_hit:
 			if is_instance_valid(u) and u.current_hp > 0:
 				# Friendly Fire? Yes.
-				u.take_damage(1)
+				u.take_damage_from(1, user, GameManager.DMG_TYPE_EXPLOSION)
 				
 				# Apply Stun (Uses StunEffect resource)
 				var stun_res = load("res://scripts/resources/effects/StunEffect.gd")

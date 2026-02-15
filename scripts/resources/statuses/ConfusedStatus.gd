@@ -104,8 +104,13 @@ func _perform_betrayal_attack(attacker, victim):
 			dmg = attacker.primary_weapon.damage
 
 		GameManager.log(LOG_PREFIX, "BETRAYAL! ", attacker.name, " hits ", victim.name, " for ", dmg, " damage!")
-		if victim.has_method("take_damage"):
-			victim.take_damage(dmg)
+		# Determine type?
+		var dtype = GameManager.DMG_TYPE_GENERIC
+		if attacker.get("primary_weapon"):
+			if "damage_type" in attacker.primary_weapon:
+				dtype = attacker.primary_weapon.damage_type
+
+		victim.take_damage_from(dmg, attacker, dtype)
 
 		# VFX
 		if attacker.get_node_or_null("VFXManager"):  # Global?

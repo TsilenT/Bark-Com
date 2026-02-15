@@ -77,7 +77,7 @@ func _ready():
 	if gm.grid_data[pos].type == GridManager.TileType.OBSTACLE:
 		print("PASS: Respawned Door blocked grid.")
 	
-	door2.take_damage(100) # Should call destroy()
+	door2.take_damage_from(100, null, "Generic") # Should call destroy()
 	
 	tile_data = gm.grid_data[pos]
 	if tile_data.type == GridManager.TileType.GROUND and tile_data.is_walkable:

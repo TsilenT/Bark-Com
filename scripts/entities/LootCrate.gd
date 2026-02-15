@@ -69,11 +69,9 @@ func interact(user_unit):
 			queue_free()
 
 
-func take_damage(_amount: int):
+func take_damage_from(_amount: int, _source = null, _dmg_type: String = GameManager.DMG_TYPE_GENERIC):
 	# Immune to damage
 	SignalBus.on_request_floating_text.emit(self, "IMMUNE", Color.GRAY)
-
-
 
 func _give_item_to_unit(unit, item) -> bool:
 	if unit.has_method("add_item"):

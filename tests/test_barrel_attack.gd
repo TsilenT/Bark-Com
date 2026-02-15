@@ -93,6 +93,8 @@ var faction = 'Neutral'
 var visible = true
 var position = Vector3(5, 0, 5)
 var stats = {'defense': 0, 'evasion': 0}
+func take_damage_from(amt, source, type):
+	print('Barrel took damage from:', source, ' amt:', amt, ' type:', type)
 func take_damage(amt): 
 	print('Barrel took damage:', amt)
 """

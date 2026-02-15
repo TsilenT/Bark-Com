@@ -96,7 +96,7 @@ func execute(user, _target_unit, target_tile: Vector2, grid_manager: GridManager
 			var units = user.get_tree().get_nodes_in_group("Units")
 			for u in units:
 				if u.grid_pos == tile and u.current_hp > 0:
-					u.take_damage(3) # Moderate initial damage
+					u.take_damage_from(3, user, GameManager.DMG_TYPE_FIRE)
 					
 					# Apply Burning
 					var burn_res = load("res://scripts/resources/statuses/BurningEffect.gd")

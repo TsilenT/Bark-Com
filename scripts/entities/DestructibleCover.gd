@@ -705,11 +705,16 @@ func _mouse_exit():
 		# But keeping the unique material is safer to avoid flickering or complexity.
 
 
-func take_damage(amount: int):
+func take_damage_from(amount: int, source = null, dmg_type: String = GameManager.DMG_TYPE_GENERIC):
 	current_hp -= amount
-	print("Cover at ", grid_pos, " took ", amount, " damage. HP: ", current_hp)
+	print("Cover at ", grid_pos, " took ", amount, " damage (", dmg_type, "). HP: ", current_hp)
 
-	var color = Color(1.0, 0.84, 0.0) # Gold
+	var color = Color(1.0, 0.84, 0.0) # Default Gold
+	match dmg_type:
+		GameManager.DMG_TYPE_POISON, GameManager.DMG_TYPE_ACID:
+			color = Color.GREEN
+		GameManager.DMG_TYPE_FIRE, GameManager.DMG_TYPE_EXPLOSION:
+			color = Color.ORANGE
 	
 	SignalBus.on_request_floating_text.emit(self, str(amount), color)
 

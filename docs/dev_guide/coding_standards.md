@@ -8,12 +8,12 @@ Use static typing wherever possible to prevent runtime errors.
 ```gdscript
 # Good
 var health: int = 100
-func take_damage(amount: int) -> bool:
-    return true
+func take_damage_from(amount: int, source: Node, type: String) -> void:
+    return
 
 # Avoid
 var health = 100
-func take_damage(amount):
+func take_damage_from(amount, source, type):
 ```
 
 ### Naming
@@ -35,6 +35,12 @@ Use the centralized `GameManager` logging system.
     ```gdscript
     GameManager.log(LOG_PREFIX, "Something happened.")
     ```
+
+### Feedback & Signals (Strict)
+To prevent duplicate UI events (like double floating text):
+1.  **Logic Classes (Managers/Effects)**: Apply changes (e.g., `unit.take_damage_from(amount, source, type)`).
+2.  **Reactive Classes (Unit/UI)**: Emit visual feedback (e.g., `Unit` emits `on_request_floating_text`).
+3.  **Explicit Ban**: Do not emit `on_request_floating_text` from a Manager/Effect if you are calling a method on `Unit` that already emits it.
 
 ### Unit Instantiation
 We use a **Code-First** approach for Units.

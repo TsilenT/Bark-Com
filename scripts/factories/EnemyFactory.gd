@@ -26,6 +26,7 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			w.display_name = "Bite"
 			w.damage = 3
 			w.weapon_range = 1
+			w.damage_type = GameManager.DMG_TYPE_MELEE
 			data.primary_weapon = w
 
 		"Sniper":
@@ -65,6 +66,7 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			w.display_name = "Acid Spit"
 			w.damage = 2
 			w.weapon_range = 6 # Matches SpitterUnit.gd
+			w.damage_type = GameManager.DMG_TYPE_ACID
 			data.primary_weapon = w
 			
 			data.abilities.append(preload("res://scripts/abilities/AcidSpitAbility.gd"))
@@ -124,6 +126,7 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			w.display_name = "Smash"
 			w.damage = 6
 			w.weapon_range = 1
+			w.damage_type = GameManager.DMG_TYPE_MELEE
 			data.primary_weapon = w
 
 		"Infiltrator":
@@ -144,6 +147,7 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			w.display_name = "Backstab"
 			w.damage = 5
 			w.weapon_range = 1
+			w.damage_type = GameManager.DMG_TYPE_MELEE
 			data.primary_weapon = w
 
 		"Whisperer":

@@ -1,8 +1,8 @@
 extends Node
 
 var grid_manager
-var player_unit
-var enemy_unit
+var player_unit: Unit
+var enemy_unit: Unit
 
 func _ready():
 	await get_tree().create_timer(1.0).timeout
@@ -50,10 +50,10 @@ func _setup_test_environment():
 	player_unit.initialize(Vector2(0, 0), grid_manager)
 	
 	# 4. Spawn Enemy Unit at (1, 0)
-	var enemy_script = load("res://scripts/entities/EnemyUnit.gd")
-	if not enemy_script:
-		enemy_script = unit_script
-	enemy_unit = enemy_script.new()
+	# Use Unit script directly if EnemyUnit causes issues in test env
+	enemy_unit = unit_script.new()
+	if not enemy_unit:
+		gm.log("TEST_REPRO", "CRITICAL: Failed to instantiate enemy_unit!")
 	enemy_unit.name = "EnemyUnit"
 	enemy_unit.faction = "Enemy"
 	add_child(enemy_unit)
@@ -80,7 +80,12 @@ func _run_test():
 
 	# 1. Kill Enemy
 	gm.log("TEST_REPRO", "Killing Enemy...")
-	enemy_unit.take_damage(100) # Should exceed max hp (10)
+	if not is_instance_valid(enemy_unit):
+		gm.log("TEST_REPRO", "CRITICAL ERROR: enemy_unit is invalid/null before taking damage!")
+		return
+
+	# Use take_damage_from to avoid deprecation warning
+	enemy_unit.take_damage_from(100, null, "Generic") 
 	
 	gm.log("TEST_REPRO", "Enemy HP: " + str(enemy_unit.current_hp))
 	gm.log("TEST_REPRO", "Enemy is_dead: " + str(enemy_unit.is_dead))

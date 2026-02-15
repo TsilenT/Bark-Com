@@ -88,7 +88,7 @@ func execute(user, target_unit, target_tile: Vector2, grid_manager: GridManager)
 			print("CRITICAL HIT!")
 			SignalBus.on_combat_log_event.emit("CRITICAL!", Color.RED)
 			
-		target_unit.take_damage(dmg)
+		target_unit.take_damage_from(dmg, user, GameManager.DMG_TYPE_BALLISTIC)
 		print("Headshot LANDED for ", dmg, " damage.")
 		
 		if VFXManager.instance:

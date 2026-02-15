@@ -54,8 +54,8 @@ func _ready():
 	add_child(label)
 
 
-func take_damage(amount, source_unit = null):
-	super.take_damage(amount)
+func take_damage_from(amount: int, source = null, dmg_type: String = GameManager.DMG_TYPE_GENERIC):
+	super.take_damage_from(amount, source, dmg_type)
 	if current_hp <= 0:
 		_on_destroyed()
 

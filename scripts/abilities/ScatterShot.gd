@@ -66,13 +66,13 @@ func execute(user, _target_unit, target_tile: Vector2, grid_manager: GridManager
 		var unit = _get_unit_at(tile, user)
 		if unit and unit.current_hp > 0:
 			# Damage
-			unit.take_damage(4)
+			unit.take_damage_from(4, user, GameManager.DMG_TYPE_BALLISTIC)
 			hits += 1
 			print("Scatter hit ", unit.name)
 
 			# Push
 			if unit.current_hp > 0:
-				_apply_push(unit, target_tile, grid_manager)
+				_apply_push(unit, target_tile, grid_manager, user) # Pass user
 
 			# XP
 			if unit.current_hp <= 0 and user.has_method("gain_xp"):
@@ -91,7 +91,7 @@ func _get_unit_at(grid_pos: Vector2, user):
 	return null
 
 
-func _apply_push(unit, center: Vector2, grid_manager: GridManager):
+func _apply_push(unit, center: Vector2, grid_manager: GridManager, user): # Added user arg
 	var dir = (unit.grid_pos - center).normalized()
 	if dir == Vector2.ZERO:
 		dir = Vector2(1, 0)  # Default push if direct hit
@@ -111,5 +111,5 @@ func _apply_push(unit, center: Vector2, grid_manager: GridManager):
 		unit.take_sanity_damage(2)  # Shake them up
 	else:
 		# Wall Slam! Extra damage?
-		unit.take_damage(2)
+		unit.take_damage_from(2, user, GameManager.DMG_TYPE_GENERIC)
 		print(unit.name, " slammed into a wall!")

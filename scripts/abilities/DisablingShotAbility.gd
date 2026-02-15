@@ -66,7 +66,7 @@ func execute(user, target_unit, target_tile: Vector2, grid_manager: GridManager)
 		var dmg = user.primary_weapon.damage
 		if user.has_method("get_weapon_damage"):
 			dmg = user.get_weapon_damage()
-		target_unit.take_damage(dmg) # Base damage
+		target_unit.take_damage_from(dmg, user, GameManager.DMG_TYPE_BALLISTIC)
 		
 		# VFX: Blood Splatter (Impact)
 		SignalBus.on_request_vfx.emit(

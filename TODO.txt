@@ -119,22 +119,34 @@ enemy damage scaling with party level scaling? re-evaluate difficulty scaling op
 cover should take into account height?
 add sanity when slaying an enemy?
 address all scaling
+when a dog unit is selected, show bond hearts above allies in range
+all explosions should shred armor
+grenadier charges should affect ammo for item grenades
+overwatch sucks and isn't represented well visually
+rename recruit -> officer
+add extra effect to destructible cover (i.e. water push for hydrant/fountain)
+re-center camera on unit when clicked on in squad detail panel even if already chosen.
+spawn "elite" enemy on elite mission, starts revealed + plays taunt message/animation
+add icon helper to field manual
+ankle biter animation + sound effect
+dismiss unit button
+rebalance heal gun ideas (equip restriction to officer/medic? hit chance calcs normal, maybe ammo per mission?)
+
 
 0.6 extra features
 
-
+Fix end mission + add boss
 Map tiles have expanded textures for visual intrigue and thematic setting
 user requests different terrain (sludge, conveyer, water)
 add disruptive elements to mission (has effect on xp rewards etc.) based on biome. Disruptive element displayed on mission screen as well
 user feedback button (available in options)
 exploder detonate on death
 ammo for acid spitter spit attack
+increase triage range (add drone animation or something)
 
 Tooling:
 
 Better build process
-Overall test speedup
-test efficiency overhaul?
 
 
 Bugs
@@ -156,16 +168,13 @@ on click does not clear the line hit chance indicator (cleared on hover i think)
 bump up default grenade ability/item range
 skipped player turn in some scenario not really clear how it happened, maybe because of a unit death?
 selecting a unit in the deploy screen should stay selected even when leaving and returning to the screen
-promote button should be visible always but greyed out if not available to prevent misclicking customize
 rescue target is not factored into enemy unit attacks
 Player/Environment/Enemy phase should always be displayed on screen
 missions not persisted in user save so they can be reloaded with game reload
-low sanity effects permanenty on?
 squad detail panel can still get out of sync with unit detail
-squad detail panel did not refresh after ap use (this panel should always be in sync with the unit ui panel)
 exploder still using ranged attack for some reason, in some cases where pathfinding determines theres no other way?
 win screen gets skipped easily
-action cam does not snap to units properly when they attack
+action cam needs to actually show all important events
 some revealed units become invisible again if they are out of squad sight range, not sure how i feel about that
 ghost image with ? on tile that has been revealed but out of sight?
 if text size is up high some numbers can be obscured in the bottom unit screen
@@ -176,9 +185,15 @@ abilities not greyed out when out of action points
 units should be able to see over half cover objects
 destructible cover should not be vulnerable to acid/poison?
 double poison damage floating text
-flying enemies do not attack
-unit was not attackable for some reason even with 100% hit chance? unit had spawned in exact corner of the map nearest to corgi spawn
 paramedic sanity scaling broken (444 in mission)
+fleeing looks janky af with the insta tween between squares, should use movement
+enemies can spawn on low wall tiles with nowhere to go
+low wall tile do not provide cover
+rescue action can be taken at 0 ap -> goes to -1 ap
+Use was confused about unit detail panel, did not know where to look for unit name regardless of many interactions with the screen.
+player units can spawn on a ladder tile that is not correct
+recruiting dogs higher level than the ones you have in your roster is too powerful
+using rescue as last action did not end the turn
 
 ################WEB###################
 
@@ -200,5 +215,6 @@ Full items/guns/cybernetics
 Animations
 Full mission type/rewards
 Mission biomes + disruptive elements
+Proper win screen and credits
 mobile/tablet support
 more music / mmusic player/ secret tracks

@@ -1857,8 +1857,8 @@ func _on_mouse_hover(grid_pos: Vector2):
 					if "faction" in target_unit and "faction" in selected_unit:
 						if target_unit.faction != selected_unit.faction:
 							is_valid_target = true
-					# 2. Check Destructible (Barrel/Prop) - Must have take_damage
-					elif target_unit.has_method("take_damage"):
+					# 2. Check Destructible (Barrel/Prop) - Must have take_damage_from
+					elif target_unit.has_method("take_damage_from"):
 						is_valid_target = true
 
 				if is_valid_target:
@@ -1938,8 +1938,8 @@ func _on_debug_action(action: String):
 	elif action == "ForceFail":
 		GameManager.log(LOG_PREFIX, "DEBUG: Force FAIL Defense")
 		var hydrant = get_tree().get_first_node_in_group("Objectives")
-		if hydrant and is_instance_valid(hydrant) and hydrant.has_method("take_damage"):
-			hydrant.take_damage(9999)
+		if hydrant and is_instance_valid(hydrant) and hydrant.has_method("take_damage_from"):
+			hydrant.take_damage_from(9999, null, "Generic")
 		else:
 			SignalBus.on_mission_ended.emit(false, 0)
 

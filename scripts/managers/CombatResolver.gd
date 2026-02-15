@@ -447,23 +447,15 @@ static func execute_attack(
 
 		var dmg_type = GameManager.DMG_TYPE_GENERIC
 		if attacker.primary_weapon:
-			var w_name = attacker.primary_weapon.display_name
-			if w_name in ["Claws", "Bite"]:
-				dmg_type = GameManager.DMG_TYPE_MELEE
-			elif w_name in ["Grenade", "Rocket Launcher"]:
-				dmg_type = GameManager.DMG_TYPE_EXPLOSION
-			elif w_name in ["Syringe Gun"]:
-				dmg_type = GameManager.DMG_TYPE_GENERIC # Should not kill usually?
+			if "damage_type" in attacker.primary_weapon:
+				dmg_type = attacker.primary_weapon.damage_type
 			else:
-				# Default Guns
+				# Fallback for old resources or safekeeping
 				dmg_type = GameManager.DMG_TYPE_BALLISTIC
 		else:
-			dmg_type = GameManager.DMG_TYPE_MELEE
+			dmg_type = GameManager.DMG_TYPE_GENERIC
 
-		if target.has_method("take_damage_from"):
-			target.take_damage_from(int(final_damage), attacker, dmg_type)
-		else:
-			target.take_damage(int(final_damage))
+		target.take_damage_from(int(final_damage), attacker, dmg_type)
 
 		# VFX: Impact
 		if (

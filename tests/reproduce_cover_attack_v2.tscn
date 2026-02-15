@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://reproduce_cover_attack_v2"]
+
+[ext_resource type="Script" path="res://tests/reproduce_cover_attack_v2.gd" id="1_script"]
+
+[node name="ReproduceCoverAttack" type="Node"]
+script = ExtResource("1_script")

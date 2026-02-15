@@ -714,7 +714,7 @@ func _preview_attack(grid_pos: Vector2):
 		if is_instance_valid(selected_unit) and "faction" in target_obj and "faction" in selected_unit:
 			if target_obj.faction != selected_unit.faction:
 				is_valid_target = true
-		elif target_obj.has_method("take_damage"):
+		elif target_obj.has_method("take_damage_from"):
 			# SAFEGUARD: Prevent targeting Objectives
 			if selected_unit.faction == "Player" and (target_obj.is_in_group("Objectives") or target_obj.is_in_group("TreatBags")):
 				is_valid_target = false
@@ -885,7 +885,7 @@ func _find_destructible_at(grid_pos: Vector2):
 			obj = d.get_parent()
 			
 		if is_instance_valid(obj) and "grid_pos" in obj and obj.grid_pos == grid_pos:
-			if obj.has_method("take_damage"):
+			if obj.has_method("take_damage_from"):
 				return obj
 	return null
 

@@ -69,10 +69,8 @@ func _apply_hazard_to_occupants():
 		if is_instance_valid(prop) and "grid_pos" in prop:
 			if prop.grid_pos == grid_pos:
 				# Apply Damage
-				if prop.has_method("take_damage_custom"):
-					prop.take_damage_custom(damage, "Acid")
-				elif prop.has_method("take_damage"):
-					prop.take_damage(damage)
+				# Use acid type
+				prop.take_damage_from(damage, self, GameManager.DMG_TYPE_ACID)
 
 
 func _setup_visuals():
@@ -98,8 +96,7 @@ func _setup_visuals():
 
 func _apply_effect(unit):
 	# Apply Damage to ANYTHING with health (Unit or Prop)
-	if unit.has_method("take_damage"):
-		unit.take_damage(damage)
+	unit.take_damage_from(damage, self, GameManager.DMG_TYPE_ACID)
 	
 	# Apply Poison Effect (Only for Units)
 	if unit.has_method("apply_effect"):

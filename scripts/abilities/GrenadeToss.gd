@@ -143,7 +143,7 @@ func execute(user, _target_unit, target_tile: Vector2, grid_manager: GridManager
 			for u in units:
 				if u.grid_pos == tile and u.current_hp > 0:
 					var dmg = 5 + damage_bonus
-					u.take_damage(dmg)
+					u.take_damage_from(dmg, user, GameManager.DMG_TYPE_EXPLOSION)
 					print("BOOM! ", u.name, " took ", dmg, " damage.")
 
 					# Check Kill
@@ -168,10 +168,7 @@ func execute(user, _target_unit, target_tile: Vector2, grid_manager: GridManager
 
 				if is_instance_valid(prop_script_obj) and "grid_pos" in prop_script_obj:
 					if prop_script_obj.grid_pos == tile:
-						if prop_script_obj.has_method("take_damage_custom"):
-							prop_script_obj.take_damage_custom(999, "Explosion")
-						elif prop_script_obj.has_method("take_damage"):
-							prop_script_obj.take_damage(999)
+						prop_script_obj.take_damage_from(999, user, GameManager.DMG_TYPE_EXPLOSION)
 		
 		# Notify TurnManager that action is done
 		SignalBus.on_combat_action_finished.emit(user)

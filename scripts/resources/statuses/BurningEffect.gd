@@ -19,6 +19,5 @@ func on_apply(unit: Node):
 	)
 
 func on_turn_start(unit: Node):
-	if unit.has_method("take_damage"):
-		unit.take_damage(damage_per_turn)
-		GameManager.log(LOG_PREFIX, unit.name, " burns for ", damage_per_turn)
+	unit.take_damage_from(damage_per_turn, self, GameManager.DMG_TYPE_FIRE)
+	GameManager.log(LOG_PREFIX, unit.name, " burns for ", damage_per_turn)
