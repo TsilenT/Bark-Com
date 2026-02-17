@@ -21,9 +21,6 @@ func _ready():
 	SignalBus.on_unit_died.connect(_on_unit_died)
 
 
-
-
-
 # Enemies (Hardcoded Archetypes for now, could be Resources too)
 const ENEMY_SCRIPTS = {
 	"Rusher": "res://scripts/entities/EnemyUnit.gd",
@@ -164,6 +161,38 @@ func _on_unit_died(unit):
 
 func _on_turn_changed(_phase, turn_num):
 	_check_mission_status(turn_num)
+	
+	# Periodic Reinforcements (Final Mission)
+	if active_mission_config and active_mission_config.is_final_defense:
+		# Every 4 turns
+		if turn_num > 0 and turn_num % 4 == 0:
+			_spawn_reinforcements(2)
+
+
+func _spawn_reinforcements(count: int):
+	# Unit Cap Check
+	if spawned_units.size() >= 15:
+		GameManager.log(LOG_PREFIX, "Reinforcements skipped. Too many units (", spawned_units.size(), ")")
+		return
+
+	GameManager.log(LOG_PREFIX, ">>> SPAWNING REINFORCEMENTS! (Turn Periodic)")
+	SignalBus.on_request_floating_text.emit(null, "REINFORCEMENTS INBOUND!", Color.ORANGE) # Null target = global? Need to check UI.
+	# Actually SignalBus needs a node target usually. We can find a player.
+	var players = get_tree().get_nodes_in_group("PlayerUnits") # If group exists
+	if players.size() > 0:
+		SignalBus.on_request_floating_text.emit(players[0], "INBOUND!", Color.ORANGE)
+	
+	# Determine Type
+	var allowed = ["Rusher", "Spitter"] # Fallback
+	if active_mission_config.waves.size() > 0:
+		# Use archetypes from the LAST wave definition
+		allowed = active_mission_config.waves.back().allowed_archetypes
+	
+	for i in range(count):
+		var type = allowed.pick_random()
+		
+		# Spawn at random location (using standard logic)
+		_spawn_enemy(type)
 
 
 func _check_mission_status(turn_num: int = -1):
@@ -382,6 +411,7 @@ func spawn_enemy_at(type_name: String, grid_pos: Vector2):
 				script_path = ENEMY_SCRIPTS[key]
 				type_name = key # Auto-correct canonical name
 				break
+	
 	if not script_path or not ResourceLoader.exists(script_path):
 		GameManager.log(LOG_PREFIX, "Error: Unknown enemy script for ", type_name)
 		return

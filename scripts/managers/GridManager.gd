@@ -20,6 +20,12 @@ const GRID_SIZE = Vector2(20, 20)
 const TILE_SIZE = 2.0  # World units (3D)
 const HEIGHT_STEP = 1.0  # Vertical Units (Y) per elevation layer
 
+# Convenience Properties (Interface Consistency)
+var width: int:
+	get: return int(GRID_SIZE.x)
+var height: int:
+	get: return int(GRID_SIZE.y)
+
 # Data Structures
 # grid_data keys are Vector2 coordinates (x, y)
 # Values are Dictionaries: { "type": int, "is_walkable": bool, "height": float, "world_pos": Vector3 }
@@ -47,7 +53,7 @@ func generate_tactical_grid(biome_override: int = -1):
 		grid_data[coord]["items"] = []
 
 	print("Grid generated with ", grid_data.size(), " tiles.")
-	_setup_astar()
+	setup_astar()
 	emit_signal("grid_generated")
 
 
@@ -105,7 +111,7 @@ func _get_point_id(coord: Vector2) -> int:
 ## 2. Disables Points marked as `is_walkable: false`.
 ## 3. Connects Neighbors (including diagonals).
 ##    - Supports specific logic for Ramps and Ladders (elevation changes).
-func _setup_astar():
+func setup_astar():
 	astar = AStar3D.new()
 
 	# 1. Add Points & Configuration (Merged Pass)
@@ -243,6 +249,27 @@ func is_tile_blocked(coord: Vector2) -> bool:
 	if not astar.has_point(id):
 		return true
 	return astar.is_point_disabled(id)
+
+
+func get_unit_at_grid_pos(coord: Vector2) -> Node:
+	if grid_data.has(coord):
+		var u = grid_data[coord].get("unit")
+		if is_instance_valid(u):
+			return u
+	return null
+
+func move_unit(unit, target_pos: Vector2):
+	# Update Grid Data
+	if grid_data.has(unit.grid_pos):
+		grid_data[unit.grid_pos]["unit"] = null
+		
+	unit.grid_pos = target_pos
+	
+	if grid_data.has(target_pos):
+		grid_data[target_pos]["unit"] = unit
+		
+	# Todo: Update AStar/Occupancy if strict blocking needed
+
 
 
 const TILE_THICKNESS = 0.2

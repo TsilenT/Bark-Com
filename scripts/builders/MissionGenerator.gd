@@ -90,8 +90,17 @@ func pick_random_archetype(wave_def: WaveDefinition) -> String:
 	if not wave_def.allowed_archetypes.is_empty():
 		pool = wave_def.allowed_archetypes
 	else:
-		# Fallback
-		pool = ["Rusher", "Sniper", "Spitter", "Exploder", "Flying", "Tank"]
+		# Fallback (All Non-Boss Archetypes)
+		pool = [
+			EnemyData.ARCHETYPE_RUSHER, 
+			EnemyData.ARCHETYPE_SNIPER, 
+			EnemyData.ARCHETYPE_SPITTER, 
+			EnemyData.ARCHETYPE_EXPLODER, 
+			EnemyData.ARCHETYPE_FLYING, 
+			EnemyData.ARCHETYPE_TANK,
+			EnemyData.ARCHETYPE_WHISPERER,
+			EnemyData.ARCHETYPE_INFILTRATOR
+		]
 	
 	if pool.is_empty():
 		return ""

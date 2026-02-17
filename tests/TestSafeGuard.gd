@@ -16,6 +16,11 @@ func _ready():
 	var gm = get_node_or_null("/root/GameManager")
 	if gm:
 		gm.is_test_mode = true
+		gm.TEST_MOCK_ENABLED = true # FORCE SAFETY
+		# Force update save path immediately to be safe
+		if gm.save_file_path == "user://savegame.dat":
+			gm.save_file_path = "user://test_savegame.dat"
+			print("TestSafeGuard: ENFORCED SAFE SAVE PATH -> ", gm.save_file_path)
 	
 	# Auto-Attach LeakDetector
 	var ld_script = load("res://tests/LeakDetector.gd")
@@ -72,10 +77,16 @@ func _force_quit():
 	
 	# If main loop is truly deadlocked, get_tree().quit() might queue nicely but never run.
 	# We need a way to kill process.
-	# Since we can't easily OS.kill(pid) in cross-platform GDScript:
+	var pid = OS.get_process_id()
 	
-	# We will spam errors to maybe cause crash?
-	printerr("FATAL: WATCHDOG TIMEOUT. PROCESS HUNG.")
+	if OS.get_name() == "Windows":
+		OS.execute("taskkill", ["/F", "/PID", str(pid)])
+	else:
+		OS.execute("kill", ["-9", str(pid)])
+		
+	# Fallback crash if execute fails
+	printerr("FATAL: WATCHDOG TIMEOUT. PROCESS HUNG. FORCING CRASH.")
+	OS.crash("Watchdog Timeout")
 
 func _main_thread_quit():
 	get_tree().quit(1)

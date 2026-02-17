@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://bjm4s4a01p4h0"]
+
+[ext_resource type="Script" path="res://tests/verify_whisperer_crash.gd" id="1"]
+
+[node name="Node" type="Node"]
+script = ExtResource("1")

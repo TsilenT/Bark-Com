@@ -34,7 +34,7 @@ func setup():
 				"elevation": 0,
 				"cover_height": 0.0
 			}
-	gm._setup_astar()
+	gm.setup_astar()
 	
 	# 2. Setup Player Unit
 	player = mock_unit_script.new()

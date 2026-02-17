@@ -73,7 +73,7 @@ jobs:
           chmod +x tests/run_tests_parallel.ps1
           
           # Run tests with 4 parallel jobs
-          ./tests/run_tests_parallel.ps1 -Jobs 4
+          ./tests/run_tests_parallel.ps1 -Jobs 4 -Strict $true
 
   build:
     name: 📦 Build

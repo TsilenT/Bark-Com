@@ -24,7 +24,7 @@ func _ready():
 		Vector2(1,0): {"type": 0, "is_walkable": true, "elevation": 0},
 		Vector2(2,0): {"type": 0, "is_walkable": true, "elevation": 0}
 	}
-	gm._setup_astar()
+	gm.setup_astar()
 	
 	# 2. Setup Player Unit
 	var player = Unit.new()

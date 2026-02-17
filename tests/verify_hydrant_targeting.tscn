@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cxy635pikqxex"]
+
+[ext_resource type="Script" path="res://tests/verify_hydrant_targeting.gd" id="1"]
+
+[node name="Node" type="Node"]
+script = ExtResource("1")

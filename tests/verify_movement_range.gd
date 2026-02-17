@@ -29,7 +29,7 @@ func _run_test():
 				"world_pos": Vector3(x*2, 0, y*2)
 			}
 			
-	gm._setup_astar()
+	gm.setup_astar()
 	print("AStar initialized with ", gm.grid_data.size(), " points.")
 	
 	# TEST 1: Basic Movement from (10, 10), Mobility 6

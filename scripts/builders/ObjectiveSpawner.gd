@@ -137,8 +137,13 @@ func _add_to_scene(node: Node3D, grid_pos: Vector2, gm: GridManager):
 func _find_valid_objective_pos(type: int, gm: GridManager) -> Vector2:
 	if type == OBJ_TYPE_DEFENSE:
 		# Spiral from Center Logic
-		var center = Vector2(gm.width / 2, gm.height / 2)
-		var max_dist = min(gm.width, gm.height) / 2
+		if not gm:
+			GameManager.log(LOG_PREFIX, "Invalid GridManager for Objective Spawn")
+			return Vector2(5, 5)
+
+		# Use standardized interface (works for Real GM and Mocks)
+		var center = Vector2(int(gm.width / 2), int(gm.height / 2))
+		var max_dist = int(min(gm.width, gm.height) / 2)
 		
 		# Simplification: specific logic for Hydrant 
 		# We need a reachable tile, creating one if needed (breaking walls).
@@ -166,14 +171,26 @@ func _find_spiral_pos(center: Vector2, range_limit: int, gm: GridManager) -> Vec
 	for x in range(center.x - 2, center.x + 3):
 		for y in range(center.y - 2, center.y + 3):
 			var p = Vector2(x, y)
-			if gm.is_valid_tile(p):
+			if gm.grid_data.has(p):
 				return p # Just take the first valid coordinate near center
 				
 	return center # Fallback
 
 
 func _ensure_tile_clear(pos: Vector2, gm: GridManager):
-	# Raycast or Grid Data check to remove walls
+	# 1. GRID DATA CHECK (Primary Reliability)
+	if gm.grid_data.has(pos):
+		var tile = gm.grid_data[pos]
+		if tile.get("unit"):
+			var u = tile["unit"]
+			if is_instance_valid(u):
+				GameManager.log(LOG_PREFIX, "Grid Clear: Removing occupied unit ", u.name, " at ", pos)
+				u.queue_free()
+			tile["unit"] = null
+			tile["walkable"] = true
+			tile["type"] = 0 # Ground
+
+	# 2. RAYCAST CHECK (Physics Backup for Debris/Unregistered Barriers)
 	var world_pos = gm.get_world_position(pos)
 	var space = gm.get_viewport().world_3d.direct_space_state
 	var query = PhysicsRayQueryParameters3D.create(world_pos + Vector3(0, 10, 0), world_pos - Vector3(0, 10, 0))
@@ -189,10 +206,22 @@ func _ensure_tile_clear(pos: Vector2, gm: GridManager):
 				var owner_node = result.collider.get_meta("owner_node")
 				if is_instance_valid(owner_node):
 					owner_node.queue_free()
+					# Also clear from grid_data if it was registered
+					if "grid_pos" in owner_node:
+						var g_pos = owner_node.grid_pos
+						if gm.grid_data.has(g_pos):
+							gm.grid_data[g_pos]["type"] = 0 # FLOOR
+							gm.grid_data[g_pos]["walkable"] = true
+							gm.grid_data[g_pos]["unit"] = null
 				else:
 					result.collider.queue_free()
 			else:
-				result.collider.queue_free()
+				# Fallback: Try to find parent if it looks like a Prop
+				var parent = result.collider.get_parent()
+				if parent and (parent.is_in_group("Destructible") or parent.has_method("take_damage")):
+					parent.queue_free()
+				else:
+					result.collider.queue_free()
 			# Update Grid Data to remove "Wall" type?
 			# LevelGenerator uses Type 1 for Wall.
 			if gm.grid_data.has(pos):

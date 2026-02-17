@@ -13,7 +13,7 @@ func _ready():
 	
 	# Mock LevelGenerator or manually inject data
 	# We manually inject for precision
-	grid_manager._setup_astar() # Initialize empty astar
+	grid_manager.setup_astar() # Initialize empty astar
 	grid_manager.grid_data = {}
 	
 	# Create 3x3 Grid
@@ -35,7 +35,7 @@ func _ready():
 	# Note: is_valid_destination explicitly blocks Move TO Ladder.
 	
 	# Re-setup AStar with data
-	grid_manager._setup_astar()
+	grid_manager.setup_astar()
 	
 	var start_pos = Vector2(5, 4)
 	

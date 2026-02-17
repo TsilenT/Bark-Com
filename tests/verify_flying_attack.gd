@@ -64,7 +64,7 @@ func _run_test():
 				"is_destructible": false,
 				"items": []
 			}
-	gm._setup_astar()
+	gm.setup_astar()
 	print(LOG_PREFIX, "Grid Initialized")
 	
 	# 2. Setup SignalBus Spy

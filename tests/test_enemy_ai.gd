@@ -96,7 +96,7 @@ func setup_env():
 	add_child(vm)
 	
 	# Setup AStar (Critical!)
-	grid_manager._setup_astar()
+	grid_manager.setup_astar()
 
 func run_tests():
 	await test_movement_towards_enemy()

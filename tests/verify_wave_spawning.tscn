@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://br16nxpfu1b1a"]
+
+[ext_resource type="Script" path="res://tests/verify_wave_spawning.gd" id="1"]
+
+[node name="Node" type="Node"]
+script = ExtResource("1")

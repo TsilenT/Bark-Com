@@ -52,3 +52,11 @@ func start_cooldown():
 func on_turn_start(_user):
 	if current_cooldown > 0:
 		current_cooldown -= 1
+
+
+# AI Scoring (Optional Override)
+# Returns a score for the AI to decide whether to use this ability.
+# > 0.0 means "Consider using". Higher is better.
+# < 0.0 means "Do not use".
+func get_ai_score(_user, _target, _grid_manager) -> float:
+	return -1.0 # Default: AI does not use base abilities

@@ -57,7 +57,12 @@ func spawn_vfx(
 		
 	# Standard Orientation Fallback
 	elif look_at_target != null and look_at_target is Vector3:
-		vfx.look_at(look_at_target, Vector3.UP)
+		if not global_pos.is_equal_approx(look_at_target):
+			var dir = (look_at_target - global_pos).normalized()
+			if abs(dir.dot(Vector3.UP)) > 0.99:
+				vfx.look_at(look_at_target, Vector3.RIGHT)
+			else:
+				vfx.look_at(look_at_target, Vector3.UP)
 	elif rotation_vec != Vector3.ZERO:
 		vfx.rotation = rotation_vec
 

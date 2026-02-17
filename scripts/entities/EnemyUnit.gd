@@ -78,6 +78,12 @@ func initialize_from_data(data: EnemyData):
 	# Apply Action Points
 	max_ap = data.action_points
 	current_ap = data.action_points
+	
+	# Apply Accuracy (New)
+	accuracy = data.accuracy
+	
+	# Apply Armor
+	armor = data.armor
 
 	if data.primary_weapon:
 		primary_weapon = data.primary_weapon
@@ -100,6 +106,10 @@ func initialize_from_data(data: EnemyData):
 	if label:
 		label.text = data.display_name.to_upper()
 		label.modulate = data.visual_color
+		
+	# LOGICAL NAME
+	unit_name = data.display_name
+	name = data.display_name # Update Node Name too for easier debugging
 
 	# Apply Abilities
 	for script_res in data.abilities:
@@ -144,7 +154,8 @@ func _load_behavior(type: int):
 		8: # INFILTRATOR
 			behavior_resource = load("res://scripts/ai/InfiltratorBehavior.gd").new()
 		9: # BOSS
-			behavior_resource = load("res://scripts/ai/BossBehavior.gd").new()
+			# Use Dogthulhu Behavior as default Boss behavior for now
+			behavior_resource = load("res://scripts/ai/DogthulhuBehavior.gd").new()
 		_: # GENERIC (2) and others default
 			behavior_resource = load("res://scripts/ai/GenericBehavior.gd").new()
 
@@ -278,6 +289,9 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 			elif best_action.type == "attack":
 				await _perform_attack(target_unit, grid_manager)
 				actions_taken += 1
+			else:
+				# Stuck or local action done? This else technically unreachable if best_action checks cover types
+				pass
 		else:
 			# No offensive action valid from here? MOVE.
 			var did_move = await _perform_move(grid_manager, _all_units)
@@ -286,11 +300,109 @@ func decide_action(_all_units: Array, grid_manager: GridManager):
 				# Loop continues to see if we can attack/ability now
 			else:
 				# Stuck or no valid moves
-				if DEBUG_AI and gm: gm.log(AI_LOG, "- No valid moves or decided to wait.")
-				spend_ap(current_ap) # End turn
-				break
+				if DEBUG_AI and gm: gm.log(AI_LOG, "- No valid moves.")
+				
+				# BREAKOUT ATTEMPT
+				var broke_out = false
+				
+				# Only attempt breakout if we TRULY cannot move closer?
+				# If _perform_move failed, it means either:
+				# 1. No path to best_tile
+				# 2. best_tile == grid_pos (already at best spot according to behavior)
+				
+				# We only want to break out if we are NOT at an optimal spot, but simply blocked.
+				# If we are adjacent to target, we should attack target (covered by Logic 2).
+				# So if we are here, we are not adjacent, and we can't move.
+				
+				if target_unit:
+					broke_out = await _try_breakout_attack(grid_manager)
+				
+				if broke_out:
+					actions_taken += 1
+					# Continue loop to see if we can move/act again
+				else:
+					if DEBUG_AI and gm: gm.log(AI_LOG, "- Breakout failed or not possible. Ending turn.")
+					spend_ap(current_ap) # End turn
+					break
 	
 	_end_action()
+
+func _try_breakout_attack(gm: GridManager) -> bool:
+	# Scan a "Chunk" (Radius ~4) for Destructibles that block our path to target
+	var scan_radius = 4
+	var candidates = []
+	
+	var my_pos = grid_pos
+	var target_dir = (target_unit.grid_pos - my_pos).normalized()
+	
+	# 1. Gather Candidates
+	for x in range(my_pos.x - scan_radius, my_pos.x + scan_radius + 1):
+		for y in range(my_pos.y - scan_radius, my_pos.y + scan_radius + 1):
+			var tile = Vector2(x, y)
+			if tile == my_pos: continue
+			
+			# Must be Destructible Cover
+			# GridManager doesn't list objects directly easily without iterating all?
+			# Actually gm.grid_data has 'unit'.
+			if gm.grid_data.has(tile):
+				var data = gm.grid_data[tile]
+				var obj = data.get("unit")
+				if obj and is_instance_valid(obj) and obj.is_in_group("Destructible"):
+					# Must be in weapon range relative to ME
+					if my_pos.distance_to(tile) <= attack_range:
+						candidates.append(obj)
+						
+	if candidates.is_empty():
+		return false
+		
+	# 2. Score Candidates
+	var best_cand = null
+	var best_score = -100.0
+	
+	for obj in candidates:
+		var score = 0.0
+		var obj_pos = obj.grid_pos
+		
+		# A. Distance to Me (Closer = Better to clear immediate path)
+		score -= my_pos.distance_to(obj_pos) * 2.0
+		
+		# B. Alignment with Target (Dot Product)
+		var dir_to_obj = (obj_pos - my_pos).normalized()
+		var alignment = dir_to_obj.dot(target_dir)
+		score += alignment * 10.0 # Strongly favor objects visible TOWARDS target
+		
+		# C. Is it actually blocking LOS? (Optional, expensive)
+		# If Raycast to target hits THIS object, massive bonus.
+		# (We can use physics raycast to sanity check)
+		var space = get_viewport().world_3d.direct_space_state
+		var query = PhysicsRayQueryParameters3D.create(position + Vector3(0,1,0), target_unit.position + Vector3(0,1,0))
+		query.exclude = [self.get_rid()]
+		var result = space.intersect_ray(query)
+		if result and result.collider == obj:
+			score += 50.0 # IT IS THE BLOCKER!
+			
+		if score > best_score:
+			best_score = score
+			best_cand = obj
+			
+	# 3. Attack
+	if best_cand:
+		var game_mgr = get_node_or_null("/root/GameManager")
+		if game_mgr: game_mgr.log(AI_LOG, name, " BREAKOUT! Attacking obstacle at ", best_cand.grid_pos)
+		
+		# Execute Attack (Manual or via CombatResolver?)
+		# Use CombatResolver for visuals/consistency, but force 100% hit on stationary usually
+		# CombatResolver handles "Stationary +10", we depend on that.
+		
+		if spend_ap(1):
+			# Force look at target
+			look_at(best_cand.global_position, Vector3.UP)
+			
+			CombatResolver.execute_attack(self, best_cand, gm)
+			await get_tree().create_timer(1.0).timeout
+			return true
+			
+	return false
 
 
 # --- FOG OF WAR LOGIC ---
@@ -356,7 +468,7 @@ func _acquire_target(units: Array, gm: GridManager):
 				# Cannot see/hear this player. Ignore.
 				continue
 
-			var score = 0.0
+			var score = 100.0 # BASE SCORE FOR PLAYERS
 			# Distance prioritization (Closer is usually better/threat)
 			var dist = grid_pos.distance_to(u.grid_pos)
 			score -= dist
@@ -370,6 +482,34 @@ func _acquire_target(units: Array, gm: GridManager):
 				candidates = [u]
 			elif score == best_score:
 				candidates.append(u)
+				
+	# --- NEW: Check Objectives (Golden Hydrant) ---
+	var objectives = get_tree().get_nodes_in_group("Objectives")
+	for obj in objectives:
+		if is_instance_valid(obj) and obj.has_method("take_damage_from") and "current_hp" in obj and obj.current_hp > 0:
+			# Faction Check (Don't attack own objectives if any?)
+			if "faction" in obj and obj.faction == "Enemy":
+				continue
+
+			# EXCLUSION: Do not target Hackable Terminals or Loot Crates
+			if obj.is_in_group("Terminals") or obj.is_in_group("LootCrate"):
+				continue
+				
+			# Detection Check
+			if not can_detect(obj, gm):
+				continue
+				
+			var score = 80.0 # BASE SCORE FOR OBJECTIVES (Lower than Player 100)
+			
+			# Distance prioritization
+			var dist = grid_pos.distance_to(obj.grid_pos)
+			score -= dist
+			
+			if score > best_score:
+				best_score = score
+				candidates = [obj]
+			elif score == best_score:
+				candidates.append(obj)
 				
 	if candidates.size() > 0:
 		target_unit = candidates.pick_random()
@@ -390,14 +530,29 @@ func _perform_move(gm: GridManager, all_units: Array) -> bool:
 	# Unit.mobility is range.
 	var tiles = gm.get_reachable_tiles(grid_pos, mobility)
 	
+	var target_is_reachable = true
+	var path_check = []
+	if target_unit:
+		path_check = gm.get_move_path(grid_pos, target_unit.grid_pos)
+		if path_check.is_empty():
+			target_is_reachable = false
+
 	var best_tile = grid_pos
 	var best_score = -9999.0
 	var debug_scores = {}
 	
-	for tile in tiles:
-		# Check occupancy manually if GridManager doesn't filter perfectly
-		if tile != grid_pos:
-			# Check Unit Occupancy
+	# LOGIC BRANCH:
+	# A. Target Unreachable -> Approach Mode (Minimize Distance)
+	# B. Target Reachable -> Use Behavior (Evaluate Position)
+	
+	if not target_is_reachable and target_unit:
+		# Approach Mode: Just get as close as possible
+		best_score = grid_pos.distance_to(target_unit.grid_pos) * -1.0 # Initialize with current
+		
+		for tile in tiles:
+			if tile == grid_pos: continue
+			
+			# Check Occupancy
 			var occupied = false
 			for u in all_units:
 				if not is_instance_valid(u): continue
@@ -405,18 +560,57 @@ func _perform_move(gm: GridManager, all_units: Array) -> bool:
 					occupied = true; break
 			if occupied: continue
 			
-		var score = behavior_resource.evaluate_position(self, tile, target_unit, gm)
-		debug_scores[tile] = score
-		
-		if score > best_score:
-			best_score = score
-			best_tile = tile
+			# Score = Negative Distance (Closer is Higher)
+			var dist = tile.distance_to(target_unit.grid_pos)
+			var score = -dist
 			
+			if score > best_score:
+				best_score = score
+				best_tile = tile
+				
+	elif behavior_resource:
+		# Standard Behavior Evaluation
+		for tile in tiles:
+			# Check occupancy manually if GridManager doesn't filter perfectly
+			if tile != grid_pos:
+				# Check Unit Occupancy
+				var occupied = false
+				for u in all_units:
+					if not is_instance_valid(u): continue
+					if u.grid_pos == tile and u != self and u.current_hp > 0:
+						occupied = true; break
+				if occupied: continue
+				
+			var score = behavior_resource.evaluate_position(self, tile, target_unit, gm)
+			debug_scores[tile] = score
+			
+			if score > best_score:
+				best_score = score
+				best_tile = tile
+				
+	else:
+		# Fallback Logic (Null Behavior)
+		for tile in tiles:
+			if tile != grid_pos:
+				var occupied = false
+				for u in all_units:
+					if not is_instance_valid(u): continue
+					if u.grid_pos == tile and u != self and u.current_hp > 0:
+						occupied = true; break
+				if occupied: continue
+			
+			var dist = tile.distance_to(target_unit.grid_pos)
+			var score = -dist + 20.0
+			
+			if score > best_score:
+				best_score = score
+				best_tile = tile
+
 	# Send Debug overlay
 	var debugger = get_node_or_null("/root/AIDebugger")
 	if debugger:
 		debugger.emit_debug_overlay(self, debug_scores)
-		debugger.log_decision(name, "Move Calculation", best_score, {"target": target_unit.name, "best_tile": best_tile})
+		debugger.log_decision(name, "Move Calculation", best_score, {"target": target_unit.name if target_unit else "None", "best_tile": best_tile, "reachable": target_is_reachable})
 	
 	if best_tile != grid_pos:
 		# Execute Move
@@ -432,10 +626,14 @@ func _perform_move(gm: GridManager, all_units: Array) -> bool:
 			
 			# Calculate Cost
 			var cost = gm.calculate_path_cost(path)
-			spend_ap(1) # Moving costs 1 AP usually in this system (or scaled?)
-			# For now, 1 Move Action = 1 AP.
+			spend_ap(1) 
+			
+			# Guard against hanging await
+			var timer = get_tree().create_timer(2.0)
+			timer.timeout.connect(func(): emit_signal("movement_finished")) # Failsafe
 			
 			await movement_finished
+			# Timer frees auto
 			return true
 	
 	return false

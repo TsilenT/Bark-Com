@@ -1,8 +1,6 @@
 extends GridManager
 class_name MockGridManager
 
-var width = 10
-var height = 10
 
 
 func get_random_valid_position() -> Vector2:

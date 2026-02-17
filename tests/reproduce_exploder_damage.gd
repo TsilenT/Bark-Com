@@ -67,7 +67,7 @@ func setup():
 	for x in range(10):
 		for y in range(10):
 			gm.grid_data[Vector2(x, y)] = { "type": 0, "is_walkable": true, "elevation": 0 }
-	gm._setup_astar()
+	gm.setup_astar()
 	
 	# 2. Setup Tank (Victim)
 	tank = mock_unit_script.new()

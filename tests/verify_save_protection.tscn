@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://dq1fuc8awbuid"]
+
+[ext_resource type="Script" path="res://tests/verify_save_protection.gd" id="1_script"]
+
+[node name="TestRunner" type="Node"]
+script = ExtResource("1_script")

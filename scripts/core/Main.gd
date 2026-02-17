@@ -109,11 +109,34 @@ func _setup_mission_data():
 					var w = WaveDefinition.new()
 					w.budget_points = 5 + i
 					# Progressive Difficulty: Add Whisperers later
+					if i == 0:
+						w.guaranteed_spawns[EnemyData.ARCHETYPE_BOSS] = 1 # DOGTHULHU ARRIVES
+						w.wave_message = "INVASION STARTED! THE ANCIENT ONE AWAKENS!"
+						# Randomize Biome for Final Mission (User Request)
+						mission_config.biome_type = randi() % LevelGenerator.Biome.size()
+						GameManager.log(LOG_PREFIX, "Final Defense Biome set to: ", mission_config.biome_type)
+					
 					if i >= 5:
-						w.allowed_archetypes.assign(["Rusher", "Sniper", "Spitter", "Whisperer"])
+						w.allowed_archetypes.assign([
+							EnemyData.ARCHETYPE_RUSHER, 
+							EnemyData.ARCHETYPE_SNIPER, 
+							EnemyData.ARCHETYPE_SPITTER, 
+							EnemyData.ARCHETYPE_WHISPERER,
+							EnemyData.ARCHETYPE_TANK,
+							EnemyData.ARCHETYPE_FLYING,
+							EnemyData.ARCHETYPE_INFILTRATOR
+						])
 					else:
-						w.allowed_archetypes.assign(["Rusher", "Sniper", "Spitter"])
-					w.wave_message = "INVASION WAVE " + str(i + 1) + " (Threat: " + str(w.budget_points) + ")"
+						w.allowed_archetypes.assign([
+							EnemyData.ARCHETYPE_RUSHER, 
+							EnemyData.ARCHETYPE_SNIPER, 
+							EnemyData.ARCHETYPE_SPITTER,
+							EnemyData.ARCHETYPE_FLYING
+						])
+					
+					if i > 0: # Default message for non-boss waves
+						w.wave_message = "INVASION WAVE " + str(i + 1) + " (Threat: " + str(w.budget_points) + ")"
+					
 					mission_config.waves.append(w)
 			else:
 				# Legacy / Generated Mission Waves

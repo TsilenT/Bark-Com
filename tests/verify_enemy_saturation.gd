@@ -76,8 +76,8 @@ func _run_test():
 	var test_tile = valid_tiles[0] 
 	
 	if not gm.is_tile_occupied(test_tile):
-		 _fail("Test tile mysteriously empty!")
-		 return
+		_fail("Test tile mysteriously empty!")
+		return
 		
 	# Logic Under Test: Main.gd spawning loop (Simulated)
 	# Main.gd checks `grid_manager.get_nearest_walkable_tile` then checks occupancy.

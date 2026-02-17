@@ -86,7 +86,7 @@ func _ready():
 	# Initialize AStar for test
 	grid_manager.astar = AStar3D.new()
 	# Basic mock setup for AStar if GridManager methods rely on it
-	# Assuming GridManager._setup_astar() does this, but we can just mock it if private.
+	# Assuming GridManager.setup_astar() does this, but we can just mock it if private.
 	# Actually, since we are mocking grid_data, we should populate astar too or GridManager fails.
 	# Let's call a minimal setup loop here.
 	for vec in grid_manager.grid_data:

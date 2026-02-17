@@ -28,7 +28,7 @@ func _run_test():
 				"is_destructible": false,
 				"items": []
 			}
-	gm._setup_astar() # Initialize AStar with mock data
+	gm.setup_astar() # Initialize AStar with mock data
 	
 	var sb = get_node("/root/SignalBus")   # Autoload Instance
 

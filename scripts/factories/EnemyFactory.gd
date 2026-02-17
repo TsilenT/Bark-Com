@@ -20,6 +20,7 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			data.ai_behavior = data.AIBehavior.RUSHER
 			data.max_hp = 8
 			data.mobility = 6
+			data.accuracy = 75 # Melee needs consistency
 			data.visual_color = Color.ORANGE
 			
 			var w = WeaponScript.new()
@@ -28,6 +29,9 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			w.weapon_range = 1
 			w.damage_type = GameManager.DMG_TYPE_MELEE
 			data.primary_weapon = w
+			
+			# Ability: Ankle Biter (Debuff)
+			data.abilities.append(preload("res://scripts/abilities/GoForAnklesAbility.gd"))
 
 		"Sniper":
 			data.archetype_name = "Sniper"
@@ -40,6 +44,7 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			data.ai_behavior = data.AIBehavior.SNIPER
 			data.max_hp = 6
 			data.mobility = 3
+			data.accuracy = 90 # High Threat
 			data.visual_color = Color.CYAN
 			
 			var w = WeaponScript.new()
@@ -60,6 +65,7 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			data.ai_behavior = data.AIBehavior.AREA_DENIAL
 			data.max_hp = 10
 			data.mobility = 5
+			data.accuracy = 70 # Decent aim
 			data.visual_color = Color.WEB_GREEN
 			
 			var w = WeaponScript.new()
@@ -82,6 +88,7 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			data.ai_behavior = data.AIBehavior.EXPLODER
 			data.max_hp = 6
 			data.mobility = 8
+			data.accuracy = 60 # Rely on explosion
 			data.visual_color = Color.RED
 			data.action_points = 2
 			
@@ -98,6 +105,7 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			data.ai_behavior = data.AIBehavior.FLYING
 			data.max_hp = 10 # Matches Unit.gd default (was 8)
 			data.mobility = 8 # Matches FlyingEnemy.gd (was 7)
+			data.accuracy = 75 # Mobile threat
 			data.visual_color = Color.INDIGO
 			data.action_points = 2
 			
@@ -119,6 +127,7 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			data.max_hp = 12 # Matches TankEnemy.gd (was 20)
 			data.mobility = 3 # Matches TankEnemy.gd (was 4)
 			data.armor = 2
+			data.accuracy = 60 # Clumsy but strong
 			data.visual_color = Color.DARK_SLATE_GRAY
 			data.action_points = 2
 			
@@ -140,6 +149,7 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			data.ai_behavior = data.AIBehavior.INFILTRATOR
 			data.max_hp = 10 # Matches Unit.gd default (was 8)
 			data.mobility = 7 # Matches InfiltratorEnemy.gd (was 6)
+			data.accuracy = 85 # Assassin
 			data.visual_color = Color.TRANSPARENT
 			data.action_points = 3
 			
@@ -161,6 +171,7 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 			data.ai_behavior = data.AIBehavior.CONTROLLER
 			data.max_hp = 40 # Matches WhispererUnit.gd (was 8)
 			data.mobility = 6 # Matches WhispererUnit.gd (was 4)
+			data.accuracy = 80 # Elite
 			data.visual_color = Color.PURPLE
 			data.action_points = 2
 			
@@ -174,16 +185,37 @@ static func create_enemy_data(archetype: String, gm_ref = null) -> Resource:
 					data = res.duplicate()
 					data.archetype_name = "Whisperer" # Re-apply after dup
 					if gm_ref: data.display_name = gm_ref.get_enemy_name(theme)
+					data.accuracy = 80 # Ensure override
 					return data
 		
 		"Boss":
 			data.archetype_name = "Boss"
 			data.display_name = "Dogthulhu"
 			data.ai_behavior = data.AIBehavior.BOSS
-			data.max_hp = 100
-			data.mobility = 5
+			# UPDATED STATS per User Request
+			data.max_hp = 70 
+			data.mobility = 6
 			data.visual_color = Color.CRIMSON
 			data.action_points = 4
+			data.armor = 1
+			data.accuracy = 90
+			data.visual_model_path = "res://scenes/enemies/BossModel.tscn" # Placeholder
+			
+			# Boss Abilities
+			var boss_abilities: Array[Script] = [
+				preload("res://scripts/abilities/GoForAnklesAbility.gd"),
+				preload("res://scripts/abilities/EldritchHowlAbility.gd"),
+				preload("res://scripts/abilities/TentacleLashAbility.gd")
+			]
+			data.abilities = boss_abilities
+			
+			# Boss Weapon (Melee - High Damage)
+			var w = WeaponScript.new()
+			w.display_name = "Eldritch Claws"
+			w.damage = 8
+			w.weapon_range = 1
+			w.damage_type = GameManager.DMG_TYPE_MELEE
+			data.primary_weapon = w
 
 		_:
 			# Default / Fallback

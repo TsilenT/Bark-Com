@@ -343,6 +343,11 @@ func _process_command(cmd_str: String):
 						println("Spawned " + type + " at random location.", Color.GREEN)
 					else:
 						println("Error: Cannot spawn.", Color.RED)
+		"doomsday":
+			if _require_context(GameManager.GameState.BASE):
+				GameManager.debug_fill_invasion_meter()
+				GameManager.advance_doomsday_clock(0) # Trigger logic
+				println("DOOMSDAY CLOCK SET TO MIDNIGHT. INVASION IMMINENT.", Color.RED)
 		_:
 			println("Unknown command: " + cmd, Color.RED)
 

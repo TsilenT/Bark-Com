@@ -74,3 +74,24 @@ func get_valid_tiles(grid_manager, user) -> Array[Vector2]:
 			if unit.grid_pos.distance_to(user.grid_pos) <= 1.6: 
 				valid.append(unit.grid_pos)
 	return valid
+
+
+func get_ai_score(user, target, grid_manager) -> float:
+	# 1. Range Check (1.6 for diagonals)
+	var dist = user.grid_pos.distance_to(target.grid_pos)
+	if dist > 1.6:
+		return -1.0 # Cannot hit
+		
+	# 2. Status Check
+	if target.has_method("has_effect") and target.has_effect("Vulnerable"):
+		# Diminishing returns if already debuffed
+		return 5.0 
+		
+	# 3. Base Value
+	var score = 40.0 # High value attack
+	
+	# 4. Target Value (High HP = better value for Vulnerable)
+	if target.current_hp > 10:
+		score += 20.0
+		
+	return score

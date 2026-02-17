@@ -177,7 +177,13 @@ func detonate():
 			var dist = center.distance_to(prop.grid_pos)
 			if dist <= explosion_range:
 				print(" - Explosion hits prop ", prop.name)
-				prop.take_damage_from(999, self, GameManager.DMG_TYPE_EXPLOSION)
+				
+				# SAFETY CHECK: Do not one-shot Objectives (Hydrant)!
+				if prop.is_in_group("Objectives") or prop.is_in_group("RescueTargets"):
+					prop.take_damage_from(explosion_damage, self, GameManager.DMG_TYPE_EXPLOSION)
+				else:
+					# Chain Reaction for regular crates/barrels
+					prop.take_damage_from(999, self, GameManager.DMG_TYPE_EXPLOSION)
 
 	# 3. Destroy Self
 	# Remove Fire VFX if valid

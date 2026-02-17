@@ -21,19 +21,21 @@ signal on_death(unit)
 var mobility: int:
 	get:
 		var val = base_mobility
-		var btm = get_node_or_null("/root/BarkTreeManager")
-		if btm:
-			if btm.has_perk(name, "recruit_cardio"):
-				val += 2
-			
-			if btm.has_perk(name, "scout_zoomies"):
-				# Zoomies: +2 for first 2 turns
-				var tm = get_tree().get_first_node_in_group("TurnManager")
-				if tm and tm.turn_count <= 2:
+		# Safety: Only access singletons if we are in the scene tree
+		if is_inside_tree():
+			var btm = get_node_or_null("/root/BarkTreeManager")
+			if btm:
+				if btm.has_perk(name, "recruit_cardio"):
 					val += 2
-			
-			if btm.has_perk(name, "paramedic_field_medic"):
-				val += 1
+				
+				if btm.has_perk(name, "scout_zoomies"):
+					# Zoomies: +2 for first 2 turns
+					var tm = get_tree().get_first_node_in_group("TurnManager")
+					if tm and tm.turn_count <= 2:
+						val += 2
+				
+				if btm.has_perk(name, "paramedic_field_medic"):
+					val += 1
 					
 		# Status Modifiers
 		if modifiers.has("mobility"):
@@ -45,12 +47,13 @@ var mobility: int:
 var max_sanity: int:
 	get:
 		var val = base_max_sanity
-		var btm = get_node_or_null("/root/BarkTreeManager")
-		if btm:
-			if btm.has_perk(name, "recruit_good_boy"):
-				val += 10
-			if btm.has_perk(name, "paramedic_field_medic"):
-				val += 10
+		if is_inside_tree():
+			var btm = get_node_or_null("/root/BarkTreeManager")
+			if btm:
+				if btm.has_perk(name, "recruit_good_boy"):
+					val += 10
+				if btm.has_perk(name, "paramedic_field_medic"):
+					val += 10
 		return val
 @export var current_sanity: int = 100
 @export var max_ap: int = 3
@@ -540,11 +543,14 @@ func move_to(target_grid_pos: Vector2, world_pos: Vector3):
 
 
 func move_along_path(path_points: Array, grid_points: Array = []):
-	if faction == "Enemy":
-		print("DEBUG: Enemy ", name, " calling move_along_path!")
-		var stack = get_stack()
-		if stack.size() > 1:
-			print(" - Called from: ", stack[1]["source"], ":", stack[1]["line"], " func: ", stack[1]["function"])
+	# TEST MODE SHORTCUT
+	if GameManager.TEST_MOCK_ENABLED:
+		if grid_points.size() > 0:
+			grid_pos = grid_points.back()
+		if path_points.size() > 0:
+			position = path_points.back()
+		call_deferred("emit_signal", "movement_finished")
+		return
 
 	if state_machine:
 		state_machine.transition_to("Moving", {"world_path": path_points, "grid_path": grid_points})
@@ -964,6 +970,13 @@ func remove_effect_by_name(effect_name: String):
 			remove_effect(effect)
 			print(name, " cured of ", effect_name)
 			return
+
+
+func has_effect(effect_name: String) -> bool:
+	for effect in active_effects:
+		if effect.display_name == effect_name:
+			return true
+	return false
 
 
 func process_turn_start_effects(grid_manager = null):

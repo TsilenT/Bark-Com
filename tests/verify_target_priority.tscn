@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://0o6rnes7euqw"]
+
+[ext_resource type="Script" path="res://tests/verify_target_priority.gd" id="1"]
+
+[node name="Node" type="Node"]
+script = ExtResource("1")

@@ -53,21 +53,20 @@ func _apply_hazard_to_occupants():
 			
 	# 2. Check Destructibles (Barrels/Crates)
 	var props = get_tree().get_nodes_in_group("Destructible")
+	var processed_props = [] # Deduplication set
+	
 	for p in props:
 		# Resolve actual script object if attached to node
 		var prop = p
-		# DestructibleCover often puts script on the root Node3D, but adds collision child to group?
-		# The grep showed "sb.add_to_group" AND "add_to_group".
-		# DestructibleCover.gd:13 -> add_to_group("Destructible") (Self)
-		# DestructibleCover.gd:40 -> sb.add_to_group("Destructible") (Child StaticBody)
-		# If 'p' is StaticBody, we want p.get_meta("owner_node") or get_parent().
-		
-		# Safer resolution:
 		if p is StaticBody3D:
 			prop = p.get_parent()
 			
 		if is_instance_valid(prop) and "grid_pos" in prop:
+			if prop in processed_props:
+				continue
+				
 			if prop.grid_pos == grid_pos:
+				processed_props.append(prop)
 				# Apply Damage
 				# Use acid type
 				prop.take_damage_from(damage, self, GameManager.DMG_TYPE_ACID)

@@ -72,12 +72,12 @@ if ($RunAll -or ($Targets.Count -eq 0)) {
     if (-not $RunAll) { Write-Host "No specific tests found for changes. Running Full Suite." -ForegroundColor Cyan }
     
     # Run all tests
-    & ".\tests\run_tests_parallel.ps1" -Jobs 4
+    & ".\tests\run_tests_parallel.ps1" -Jobs 4 -Strict $true
     exit $LASTEXITCODE
 } else {
     Write-Host "Running Targeted Tests: $($Targets -join ', ')" -ForegroundColor Cyan
     
     # Pass targets to runner
-    & ".\tests\run_tests_parallel.ps1" -Filters $Targets -Jobs 4
+    & ".\tests\run_tests_parallel.ps1" -Filters $Targets -Jobs 4 -Strict $true
     exit $LASTEXITCODE
 }

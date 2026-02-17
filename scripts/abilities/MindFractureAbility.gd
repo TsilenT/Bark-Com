@@ -72,3 +72,32 @@ func execute(user, target_unit, _target_tile: Vector2, _grid_manager: GridManage
 			user.spend_ap(ap_cost)
 		start_cooldown()
 		return "Resisted"
+
+
+func get_ai_score(user, target, grid_manager) -> float:
+	# 1. Range Check
+	var dist = user.grid_pos.distance_to(target.grid_pos)
+	if dist > ability_range:
+		return -1.0
+		
+	# 2. Status Check (Don't spam confusion)
+	if target.has_method("has_effect") and target.has_effect("Confused"):
+		return -10.0
+		
+	# 3. Sanity Logic (Hit Chance depends on it)
+	var sanity = 100
+	if "current_sanity" in target:
+		sanity = target.current_sanity
+		
+	# High Sanity = High Resist = Bad Idea
+	if sanity > 80:
+		return -5.0
+		
+	# Low Sanity = Guarantee Hit = Good Idea
+	var score = 20.0
+	if sanity < 50:
+		score += 30.0
+	if sanity < 20:
+		score += 20.0 # Finisher/Control
+		
+	return score

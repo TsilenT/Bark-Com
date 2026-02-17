@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://difxes4apxm3u"]
+
+[ext_resource type="Script" path="res://tests/verify_enemy_accuracy.gd" id="1"]
+
+[node name="Node" type="Node"]
+script = ExtResource("1")

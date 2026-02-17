@@ -23,7 +23,7 @@ func _test_flat_connectivity():
 	gm.grid_data.clear()
 	gm.grid_data[Vector2(0,0)] = {"type": 0, "is_walkable": true, "elevation": 0}
 	gm.grid_data[Vector2(0,1)] = {"type": 0, "is_walkable": true, "elevation": 0}
-	gm._setup_astar()
+	gm.setup_astar()
 	
 	var path = gm.get_move_path(Vector2(0,0), Vector2(0,1))
 	if path.size() > 0:
@@ -37,7 +37,7 @@ func _test_step_up_logic():
 	gm.grid_data.clear()
 	gm.grid_data[Vector2(0,0)] = {"type": 0, "is_walkable": true, "elevation": 0}
 	gm.grid_data[Vector2(0,1)] = {"type": 0, "is_walkable": true, "elevation": 1} # 1 step up
-	gm._setup_astar()
+	gm.setup_astar()
 	
 	var path = gm.get_move_path(Vector2(0,0), Vector2(0,1))
 	if path.size() == 0:
@@ -50,7 +50,7 @@ func _test_step_up_logic():
 	gm.grid_data.clear()
 	gm.grid_data[Vector2(0,0)] = {"type": 0, "is_walkable": true, "elevation": 0}
 	gm.grid_data[Vector2(0,1)] = {"type": 4, "is_walkable": true, "elevation": 1} # Type 4 = RAMP
-	gm._setup_astar()
+	gm.setup_astar()
 	
 	path = gm.get_move_path(Vector2(0,0), Vector2(0,1))
 	if path.size() > 0:
@@ -67,7 +67,7 @@ func _test_ladder_cost():
 	gm.grid_data[Vector2(0,2)] = {"type": 0, "is_walkable": true, "elevation": 1} # Connects to upper? 
 	# Actually standard ladder logic in GM connects 0 diff and 1 diff if ladder.
 	# Let's just test flat cost first for simplicity's sake.
-	gm._setup_astar()
+	gm.setup_astar()
 	
 	# Check 1: Cost
 	var path = gm.get_move_path(Vector2(0,0), Vector2(0,1))

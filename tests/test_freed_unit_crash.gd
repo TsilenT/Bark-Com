@@ -27,7 +27,7 @@ func setup_env():
 			grid_manager.grid_data[Vector2(x,y)] = {
 				"type": 0, "is_walkable": true, "world_pos": Vector3(x*2.0, 0, y*2.0)
 			}
-	grid_manager._setup_astar()
+	grid_manager.setup_astar()
 
 func run_test():
 	print("Test: Verify _perform_move handles freed units...")

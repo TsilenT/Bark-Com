@@ -41,7 +41,7 @@ func _ready():
 		Vector2(20,20): {"is_walkable": true, "type": 0, "elevation": 0, "world_pos": Vector3(40,0,40)}
 	}
 	# We also need to mock astar setup if movement logic is called, but panic run calls _panic_run which uses get_random_valid_position which uses grid_data keys.
-	gm._setup_astar()
+	gm.setup_astar()
 	add_child(gm)
 	
 	# Unit needs to be in scene for StateMachine 
