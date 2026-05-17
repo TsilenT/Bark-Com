@@ -19,25 +19,7 @@ git pull origin main
 
 ---
 
-## Step 2: Self-heal
-
-Check if `tasks/completed/README.md` exists. If it does not, create it:
-
-```markdown
-# Completed Tasks
-
-Tasks listed in completion order — oldest at top, newest at bottom.
-
----
-
-## Index
-
-- [153 — Audit remaining docs for drift](153-audit-remaining-docs.md) *(Tooling / Docs)*
-```
-
----
-
-## Step 3: Pick the task
+## Step 2: Pick the task
 
 Read `tasks/README.md`. Find the `### Active` section. Take the **literal first item** in that flat list — this is your task for this run.
 
@@ -47,7 +29,7 @@ Read the task file in full.
 
 ---
 
-## Step 4: Triage
+## Step 3: Triage
 
 Choose exactly one branch. Reason explicitly before deciding.
 
@@ -113,11 +95,11 @@ If too big:
 
 ### Branch D — Executable
 
-The task is clear, scoped, and you can describe the implementation in one paragraph. Continue to Step 5.
+The task is clear, scoped, and you can describe the implementation in one paragraph. Continue to Step 4.
 
 ---
 
-## Step 5: Execute
+## Step 4: Execute
 
 Implement the task.
 
@@ -135,7 +117,7 @@ Implement the task.
 
 ---
 
-## Step 6: Verify
+## Step 5: Verify
 
 If you changed any `.gd` files, run:
 ```
@@ -149,7 +131,7 @@ Doc-only or text-only changes: skip this step.
 
 ---
 
-## Step 7: Bookkeep
+## Step 6: Bookkeep
 
 1. Append to the task file:
    ```
@@ -166,7 +148,7 @@ Doc-only or text-only changes: skip this step.
 
 ---
 
-## Step 8: Commit and push
+## Step 7: Commit and push
 
 Stage all changed files by name and commit:
 ```
